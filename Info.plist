@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>CamTrack Pro requires GPS access to capture georeferencing coordinates alongside camera positions outdoors.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>CamTrack Pro requires always-on background location tracking to log GPS coordinates while the screen is off or while taking photos inside the default camera app.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>CamTrack Pro requires access to your Photo Library to scan, match, and sync photos taken during the tracking session with logged coordinates.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>CamTrack Pro requires camera access to activate ARKit Visual-Inertial-LiDAR Odometry for precise local metric positioning indoors.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>CamTrack Pro requires access to device motion sensors (gyroscope/accelerometer) to record precise camera attitudes and orientations.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+</dict>
+</plist>

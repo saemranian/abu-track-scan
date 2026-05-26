@@ -1,0 +1,306 @@
+import Foundation
+import CoreMotion
+import ARKit
+import Combine
+
+struct RawPoint3D: Identifiable, Hashable {
+    let id = UUID()
+    let x: Float
+    let y: Float
+    let z: Float
+}
+
+class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
+    private let motionManager = CMMotionManager()
+    private let altimeter = CMAltimeter()
+    
+    // ARKit Session for Foreground VIO + LiDAR
+    var arSession = ARSession()
+    
+    @Published var isTrackingActive: Bool = false
+    @Published var appState: String = "Foreground (ARKit VIO Active)"
+    
+    // Real-time attitude data (Euler angles in degrees)
+    @Published var pitch: Double = 0.0
+    @Published var roll: Double = 0.0
+    @Published var yaw: Double = 0.0
+    
+    // Quaternion data
+    @Published var q_w: Double = 1.0
+    @Published var q_x: Double = 0.0
+    @Published var q_y: Double = 0.0
+    @Published var q_z: Double = 0.0
+    
+    // Local VIO coordinates in meters
+    @Published var localX: Double = 0.0
+    @Published var localY: Double = 0.0
+    @Published var localZ: Double = 0.0
+    
+    // Barometer relative altitude & pressure
+    @Published var relativeAltitude: Double = 0.0
+    @Published var pressureInKPa: Double = 101.325
+    @Published var barometerActive: Bool = false
+    
+    // Magnetic field accuracy
+    @Published var magneticCalibration: String = "Unknown"
+    
+    // Sparse point cloud for live 3D coverage mapping
+    @Published var sparsePointCloud: [RawPoint3D] = []
+    
+    private var cancellables = Set<AnyCancellable>()
+    private var isAltimeterRunning = false
+    
+    override init() {
+        super.init()
+        arSession.delegate = self
+        
+        // Listen to App Lifecycle transitions to switch between ARKit and CoreMotion
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak self] _ in self?.handleAppDidEnterBackground() }
+            .store(in: &cancellables)
+            
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .sink { [weak self] _ in self?.handleAppWillEnterForeground() }
+            .store(in: &cancellables)
+    }
+    
+    func startTracking(frequency: Double = 30.0) {
+        isTrackingActive = true
+        startAltimeter()
+        
+        if UIApplication.shared.applicationState == .active {
+            startARKitSession()
+        } else {
+            startCoreMotionUpdates(frequency: frequency)
+        }
+    }
+    
+    func stopTracking() {
+        isTrackingActive = false
+        stopARKitSession()
+        stopCoreMotionUpdates()
+        stopAltimeter()
+    }
+    
+    // MARK: - ARKit Session Management (Foreground)
+    
+    private func startARKitSession() {
+        guard ARWorldTrackingConfiguration.isSupported else {
+            print("ARWorldTracking is not supported on this device.")
+            return
+        }
+        
+        let configuration = ARWorldTrackingConfiguration()
+        configuration.worldAlignment = .gravityAndHeading // Aligns Y-axis with gravity, X-axis with True North!
+        
+        // Use LiDAR scene reconstruction if available
+        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
+            configuration.sceneReconstruction = .mesh
+        }
+        
+        arSession.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+        appState = "Foreground (ARKit VIO + LiDAR)"
+    }
+    
+    private func stopARKitSession() {
+        arSession.pause()
+    }
+    
+    // MARK: - CoreMotion Management (Background Fallback)
+    
+    private func startCoreMotionUpdates(frequency: Double) {
+        guard motionManager.isDeviceMotionAvailable else { return }
+        
+        motionManager.deviceMotionUpdateInterval = 1.0 / frequency
+        // Align reference frame with gravity and true north
+        let frame: CMAttitudeReferenceFrame = .xMagneticNorthZVertical
+        
+        motionManager.startDeviceMotionUpdates(using: frame, to: .main) { [weak self] (motion, error) in
+            guard let self = self, let motion = motion, self.isTrackingActive else { return }
+            
+            // Only update if in background (otherwise ARKit handles updates)
+            if UIApplication.shared.applicationState == .background {
+                self.updateAttitude(attitude: motion.attitude)
+                self.updateMagneticCalibration(calibration: motion.magneticField.accuracy)
+            }
+        }
+        appState = "Background (CoreMotion Active)"
+    }
+    
+    private func stopCoreMotionUpdates() {
+        motionManager.stopDeviceMotionUpdates()
+    }
+    
+    // MARK: - Barometer (Altimeter) Updates
+    
+    private func startAltimeter() {
+        guard CMAltimeter.isRelativeAltitudeAvailable() else {
+            barometerActive = false
+            return
+        }
+        
+        altimeter.startRelativeAltitudeUpdates(to: .main) { [weak self] (data, error) in
+            guard let self = self, let data = data, self.isTrackingActive else { return }
+            
+            DispatchQueue.main.async {
+                self.relativeAltitude = data.relativeAltitude.doubleValue
+                self.pressureInKPa = data.pressure.doubleValue // In kilopascals
+                self.barometerActive = true
+            }
+        }
+        isAltimeterRunning = true
+    }
+    
+    private func stopAltimeter() {
+        if isAltimeterRunning {
+            altimeter.stopRelativeAltitudeUpdates()
+            isAltimeterRunning = false
+        }
+    }
+    
+    // MARK: - App Lifecycle Handlers
+    
+    private func handleAppDidEnterBackground() {
+        guard isTrackingActive else { return }
+        stopARKitSession()
+        startCoreMotionUpdates(frequency: 30.0)
+    }
+    
+    private func handleAppWillEnterForeground() {
+        guard isTrackingActive else { return }
+        stopCoreMotionUpdates()
+        startARKitSession()
+    }
+    
+    // MARK: - Data Processing
+    
+    private func updateAttitude(attitude: CMAttitude) {
+        DispatchQueue.main.async {
+            // Convert radians to degrees
+            self.pitch = attitude.pitch * (180.0 / .pi)
+            self.roll = attitude.roll * (180.0 / .pi)
+            self.yaw = attitude.yaw * (180.0 / .pi)
+            
+            self.q_w = attitude.quaternion.w
+            self.q_x = attitude.quaternion.x
+            self.q_y = attitude.quaternion.y
+            self.q_z = attitude.quaternion.z
+        }
+    }
+    
+    private func updateMagneticCalibration(calibration: CMMagneticFieldCalibrationAccuracy) {
+        DispatchQueue.main.async {
+            switch calibration {
+            case .uncalibrated: self.magneticCalibration = "Uncalibrated"
+            case .low: self.magneticCalibration = "Low"
+            case .medium: self.magneticCalibration = "Medium"
+            case .high: self.magneticCalibration = "High"
+            @unknown default: self.magneticCalibration = "Unknown"
+            }
+        }
+    }
+    
+    // MARK: - ARSessionDelegate
+    
+    func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        guard isTrackingActive else { return }
+        
+        let transform = frame.camera.transform
+        let columns = transform.columns
+        
+        // Extract 3D translation vector (X, Y, Z coordinates in meters)
+        // columns.3 is the position vector
+        let tx = Double(columns.3.x)
+        let ty = Double(columns.3.y)
+        let tz = Double(columns.3.z)
+        
+        // Convert the 3x3 rotation matrix to Euler angles (degrees)
+        let attitude = frame.camera.eulerAngles
+        
+        // Convert to Quaternions
+        let quaternion = frame.camera.quaternion
+        
+        DispatchQueue.main.async {
+            self.localX = tx
+            self.localY = ty
+            self.localZ = tz
+            
+            // eulerAngles represent pitch, yaw, roll in radians
+            self.pitch = Double(attitude.x) * (180.0 / .pi)
+            self.yaw = Double(attitude.y) * (180.0 / .pi)
+            self.roll = Double(attitude.z) * (180.0 / .pi)
+            
+            self.q_w = Double(quaternion.w)
+            self.q_x = Double(quaternion.x)
+            self.q_y = Double(quaternion.y)
+            self.q_z = Double(quaternion.z)
+            
+            self.appState = "Foreground (ARKit VIO + LiDAR)"
+            
+            // Extract the sparse tracking point cloud for our visualizer
+            if let rawFeaturePoints = frame.rawFeaturePoints {
+                let points = rawFeaturePoints.points
+                // Limit the points logged to prevent memory overload in UI
+                let maxPoints = min(points.count, 200)
+                var newPoints: [RawPoint3D] = []
+                for i in 0..<maxPoints {
+                    let pt = points[i]
+                    newPoints.append(RawPoint3D(x: pt.x, y: pt.y, z: pt.z))
+                }
+                self.sparsePointCloud = newPoints
+            }
+        }
+    }
+    
+    func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
+        DispatchQueue.main.async {
+            switch camera.trackingState {
+            case .notAvailable:
+                self.appState = "ARKit Not Available"
+            case .limited(let reason):
+                switch reason {
+                case .initializing:
+                    self.appState = "ARKit Initializing..."
+                case .excessiveMotion:
+                    self.appState = "ARKit Warning: Excessive Motion"
+                case .insufficientFeatures:
+                    self.appState = "ARKit Warning: Insufficient Features"
+                case .relocalizing:
+                    self.appState = "ARKit Relocalizing..."
+                @unknown default:
+                    self.appState = "ARKit Limited"
+                }
+            case .normal:
+                self.appState = "ARKit Active (LiDAR VIO)"
+            }
+        }
+    }
+}
+
+// ARKit Camera Extensions to extract Euler Angles and Quaternions easily
+extension ARCamera {
+    var eulerAngles: SIMD3<Float> {
+        let transform = self.transform
+        let r11 = transform.columns.0.x
+        let r21 = transform.columns.0.y
+        let r31 = transform.columns.0.z
+        let r32 = transform.columns.1.z
+        let r33 = transform.columns.2.z
+        
+        let pitch = atan2(-r32, r33)
+        let yaw = atan2(r31, sqrt(r11*r11 + r21*r21))
+        let roll = atan2(r21, r11)
+        
+        return SIMD3<Float>(pitch, yaw, roll)
+    }
+    
+    var quaternion: simd_quatd {
+        // Convert simd_float4x4 rotation component to double-precision quaternion
+        let rotMat = simd_double3x3(
+            simd_double3(Double(self.transform.columns.0.x), Double(self.transform.columns.0.y), Double(self.transform.columns.0.z)),
+            simd_double3(Double(self.transform.columns.1.x), Double(self.transform.columns.1.y), Double(self.transform.columns.1.z)),
+            simd_double3(Double(self.transform.columns.2.x), Double(self.transform.columns.2.y), Double(self.transform.columns.2.z))
+        )
+        return simd_quaternion(rotMat)
+    }
+}
