@@ -25,7 +25,7 @@ jobs:
 
       - name: Compile SwiftPM App
         run: |
-          xcodebuild -scheme "CamTrackPro" \
+          xcodebuild -scheme "CamTrack Pro" \
             -destination "generic/platform=iOS" \
             -derivedDataPath ./build_output \
             -configuration Release \
@@ -36,6 +36,10 @@ jobs:
       - name: Package App into IPA
         run: |
           mkdir -p Payload
+          # Diagnostics: print the contents of the build products directory to find the app
+          echo "=== Diagnostic: Listing Build Products ==="
+          find ./build_output/Build/Products -maxdepth 5 || true
+          
           # Dynamically locate the compiled .app bundle recursively inside build output
           APP_PATH=$(find ./build_output -name "*.app" -type d | head -n 1)
           echo "Found compiled app bundle at: $APP_PATH"
