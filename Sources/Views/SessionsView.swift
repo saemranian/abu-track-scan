@@ -1,5 +1,9 @@
 import SwiftUI
 
+struct SessionsView: View {
+    @State private var sessions: [[String: Any]] = []
+    @State private var selectedSession: [String: Any]?
+    
     struct SessionListItem: Identifiable {
         let id: String
         let entries: Int

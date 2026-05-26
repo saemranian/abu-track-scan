@@ -230,10 +230,10 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             self.yaw = Double(attitude.y) * (180.0 / .pi)
             self.roll = Double(attitude.z) * (180.0 / .pi)
             
-            self.q_w = Double(quaternion.w)
-            self.q_x = Double(quaternion.x)
-            self.q_y = Double(quaternion.y)
-            self.q_z = Double(quaternion.z)
+            self.q_w = quaternion.vector.w
+            self.q_x = quaternion.vector.x
+            self.q_y = quaternion.vector.y
+            self.q_z = quaternion.vector.z
             
             self.appState = "Foreground (ARKit VIO + LiDAR)"
             

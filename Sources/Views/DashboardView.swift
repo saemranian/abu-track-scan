@@ -95,7 +95,7 @@ struct DashboardView: View {
                                             .fill(trackingManager.isTrackingActive ? Color.red : Color.cyan)
                                             .frame(width: 18, height: 18)
                                             .scaleEffect(trackingManager.isTrackingActive ? 1.2 : 1.0)
-                                            .animation(trackingManager.isTrackingActive ? AnyAnimation.easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default, value: trackingManager.isTrackingActive)
+                                            .animation(trackingManager.isTrackingActive ? Animation.easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default, value: trackingManager.isTrackingActive)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 2) {
