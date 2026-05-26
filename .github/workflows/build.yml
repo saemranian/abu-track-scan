@@ -25,7 +25,7 @@ jobs:
 
       - name: Compile SwiftPM App
         run: |
-          xcodebuild -scheme "CamTrack Pro" \
+          xcodebuild -scheme "CamTrackPro" \
             -destination "generic/platform=iOS" \
             -derivedDataPath ./build_output \
             -configuration Release \
