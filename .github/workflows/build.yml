@@ -36,8 +36,10 @@ jobs:
       - name: Package App into IPA
         run: |
           mkdir -p Payload
-          # Dynamically copy any compiled .app bundle into the Payload folder
-          cp -r ./build_output/Build/Products/Release-iphoneos/*.app Payload/
+          # Dynamically locate the compiled .app bundle recursively inside build output
+          APP_PATH=$(find ./build_output -name "*.app" -type d | head -n 1)
+          echo "Found compiled app bundle at: $APP_PATH"
+          cp -r "$APP_PATH" Payload/
           # Compress into an .ipa file
           zip -r CamTrackPro.ipa Payload
           
