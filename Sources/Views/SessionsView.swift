@@ -51,8 +51,8 @@ struct SessionsView: View {
                                             .foregroundColor(.white)
                                         
                                         HStack(spacing: 12) {
-                                            Label("\(item.entries) pts", systemName: "point.3.filled.connected.trianglepath.dotted")
-                                            Label(item.isGPS ? "GPS+IMU" : "Pure VIO", systemName: item.isGPS ? "location.fill" : "location.slash")
+                                            Label("\(item.entries) pts", systemImage: "circle.grid.3x3.fill")
+                                            Label(item.isGPS ? "GPS+IMU" : "Pure VIO", systemImage: item.isGPS ? "location.fill" : "location.slash")
                                         }
                                         .font(.caption2)
                                         .foregroundColor(.gray)
@@ -276,7 +276,7 @@ struct SessionDetailView: View {
                 // Link 1: Metashape Sync Output
                 if let url = metashapeCSVURL {
                     ShareLink(item: url) {
-                        Label("Metashape CSV", systemName: "arrow.up.doc")
+                        Label("Metashape CSV", systemImage: "arrow.up.doc")
                             .font(.caption)
                             .fontWeight(.bold)
                             .frame(maxWidth: .infinity)
@@ -291,7 +291,7 @@ struct SessionDetailView: View {
                 // Link 2: 3D Point Cloud PLY
                 if let url = plyURL {
                     ShareLink(item: url) {
-                        Label("PLY Cloud", systemName: "square.stack.3d.up.fill")
+                        Label("PLY Cloud", systemImage: "square.stack.3d.up.fill")
                             .font(.caption)
                             .fontWeight(.bold)
                             .frame(maxWidth: .infinity)
@@ -306,7 +306,7 @@ struct SessionDetailView: View {
                 // Link 3: Raw telemetry logs (30Hz)
                 if let url = csvURL {
                     ShareLink(item: url) {
-                        Label("Raw Logs", systemName: "doc.text")
+                        Label("Raw Logs", systemImage: "doc.text")
                             .font(.caption)
                             .fontWeight(.bold)
                             .frame(maxWidth: .infinity)
@@ -380,8 +380,9 @@ struct SessionDetailView: View {
                         }
                     }
                     .padding(.horizontal)
-                }
             }
+        }
+    }
         }
 
     

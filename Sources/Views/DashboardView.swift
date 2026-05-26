@@ -36,7 +36,7 @@ struct DashboardView: View {
                         // Interactive 3D Point Cloud Coverage Map
                         VStack(spacing: 5) {
                             HStack {
-                                Label("Live 3D Coverage Point Cloud", systemName: "point.3.filled.connected.trianglepath.dotted")
+                                Label("Live 3D Coverage Point Cloud", systemImage: "circle.grid.3x3.fill")
                                     .font(.caption)
                                     .fontWeight(.bold)
                                     .foregroundColor(.cyan)
