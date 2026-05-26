@@ -21,7 +21,12 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
       - name: List Available Schemes (Diagnostics)
-        run: xcodebuild -list
+        run: |
+          echo "=== List of Available Schemes ==="
+          xcodebuild -list
+          SCHEMES=$(xcodebuild -list | awk '/Schemes:/{flag=1;next}/^$/{flag=0}flag' | xargs)
+          echo "::error::Available schemes: $SCHEMES"
+          exit 1
 
       - name: Compile SwiftPM App
         run: |
