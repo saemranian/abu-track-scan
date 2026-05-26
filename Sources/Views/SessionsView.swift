@@ -379,26 +379,7 @@ struct SessionDetailView: View {
                 }
             }
         }
-            }
-            .navigationTitle("SESSION MANAGER")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
-                        dismiss()
-                    }
-                }
-            }
-            .onAppear {
-                checkFilesExist()
-            }
-            .alert("Post Processing", isPresented: $showAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(alertMessage)
-            }
-        }
-    }
+
     
     private func checkFilesExist() {
         let fileManager = FileManager.default
