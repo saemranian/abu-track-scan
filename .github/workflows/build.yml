@@ -20,9 +20,12 @@ jobs:
       - name: Select Xcode Version
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
+      - name: List Available Schemes (Diagnostics)
+        run: xcodebuild -list
+
       - name: Compile SwiftPM App
         run: |
-          xcodebuild -scheme "CamTrack Pro" \
+          xcodebuild -scheme "CamTrackPro" \
             -destination "generic/platform=iOS" \
             -derivedDataPath ./build_output \
             -configuration Release \
@@ -33,8 +36,8 @@ jobs:
       - name: Package App into IPA
         run: |
           mkdir -p Payload
-          # Copy the compiled .app bundle into the Payload folder
-          cp -r ./build_output/Build/Products/Release-iphoneos/CamTrack\ Pro.app Payload/
+          # Dynamically copy any compiled .app bundle into the Payload folder
+          cp -r ./build_output/Build/Products/Release-iphoneos/*.app Payload/
           # Compress into an .ipa file
           zip -r CamTrackPro.ipa Payload
           
