@@ -1,8 +1,22 @@
 import SwiftUI
 
-struct SessionsView: View {
-    @State private var sessions: [[String: Any]] = []
-    @State private var selectedSession: [String: Any]?
+    struct SessionListItem: Identifiable {
+        let id: String
+        let entries: Int
+        let isGPS: Bool
+        let startTime: Date
+        let rawSession: [String: Any]
+    }
+    
+    private var sessionListItems: [SessionListItem] {
+        sessions.compactMap { sess in
+            guard let id = sess["id"] as? String else { return nil }
+            let entries = sess["entryCount"] as? Int ?? 0
+            let isGPS = sess["isGPSEnabled"] as? Bool ?? true
+            let startTime = Date(timeIntervalSince1970: sess["startTime"] as? Double ?? 0.0)
+            return SessionListItem(id: id, entries: entries, isGPS: isGPS, startTime: startTime, rawSession: sess)
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -21,26 +35,20 @@ struct SessionsView: View {
                     }
                 } else {
                     List {
-                        ForEach(sessions.indices, id: \.self) { index in
-                            let sess = sessions[index]
-                            let id = sess["id"] as? String ?? "Unknown"
-                            let entries = sess["entryCount"] as? Int ?? 0
-                            let isGPS = sess["isGPSEnabled"] as? Bool ?? true
-                            let startTime = Date(timeIntervalSince1970: sess["startTime"] as? Double ?? 0.0)
-                            
+                        ForEach(sessionListItems) { item in
                             Button(action: {
-                                self.selectedSession = sess
+                                self.selectedSession = item.rawSession
                             }) {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text("Session \(id)")
+                                        Text("Session \(item.id)")
                                             .font(.footnote)
                                             .fontWeight(.black)
                                             .foregroundColor(.white)
                                         
                                         HStack(spacing: 12) {
-                                            Label("\(entries) pts", systemName: "point.3.filled.connected.trianglepath.dotted")
-                                            Label(isGPS ? "GPS+IMU" : "Pure VIO", systemName: isGPS ? "location.fill" : "location.slash")
+                                            Label("\(item.entries) pts", systemName: "point.3.filled.connected.trianglepath.dotted")
+                                            Label(item.isGPS ? "GPS+IMU" : "Pure VIO", systemName: item.isGPS ? "location.fill" : "location.slash")
                                         }
                                         .font(.caption2)
                                         .foregroundColor(.gray)
@@ -48,7 +56,7 @@ struct SessionsView: View {
                                     Spacer()
                                     
                                     VStack(alignment: .trailing, spacing: 6) {
-                                        Text(formatDate(startTime))
+                                        Text(formatDate(item.startTime))
                                             .font(.caption2)
                                             .foregroundColor(.cyan)
                                         Image(systemName: "chevron.right")
@@ -166,180 +174,211 @@ struct SessionDetailView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 20) {
-                    
-                    // Session Details Card
-                    VStack(spacing: 12) {
-                        HStack {
-                            Text("Session Details")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                            Spacer()
-                        }
-                        Divider().background(Color.gray.opacity(0.3))
-                        
-                        DetailRow(label: "Identifier", value: id)
-                        DetailRow(label: "Duration", value: String(format: "%.1fs", end.timeIntervalSince(start)))
-                        DetailRow(label: "Sensor Entries", value: "\(entries) pts")
-                        DetailRow(label: "GPS Tracking", value: isGPS ? "GPS + IMU Enabled" : "Pure Inertial/Baro Indoor Mode")
+                    detailsCard
+                    syncControlsCard
+                    exportLinksCard
+                    matchedPhotosCard
+                    Spacer()
+                }
+            }
+            .navigationTitle("SESSION MANAGER")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Close") {
+                        dismiss()
                     }
-                    .padding()
-                    .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                    .cornerRadius(14)
-                    .padding(.horizontal)
-                    .padding(.top, 15)
-                    
-                    // Trigger Sync controls
-                    VStack(spacing: 15) {
-                        Button(action: triggerPhotosSync) {
-                            HStack {
-                                if syncManager.isSyncing {
-                                    ProgressView()
-                                        .tint(.white)
-                                        .padding(.trailing, 8)
-                                } else {
-                                    Image(systemName: "arrow.triangle.2.circlepath.camera")
-                                }
-                                Text(syncManager.isSyncing ? "SYNCING..." : "SYNC CAMERA IMAGES")
-                                    .fontWeight(.bold)
-                            }
+                }
+            }
+            .onAppear {
+                checkFilesExist()
+            }
+            .alert("Post Processing", isPresented: $showAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(alertMessage)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var detailsCard: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Session Details")
+                    .font(.caption)
+                    .fontWeight(.black)
+                    .foregroundColor(.cyan)
+                Spacer()
+            }
+            Divider().background(Color.gray.opacity(0.3))
+            
+            DetailRow(label: "Identifier", value: id)
+            DetailRow(label: "Duration", value: String(format: "%.1fs", end.timeIntervalSince(start)))
+            DetailRow(label: "Sensor Entries", value: "\(entries) pts")
+            DetailRow(label: "GPS Tracking", value: isGPS ? "GPS + IMU Enabled" : "Pure Inertial/Baro Indoor Mode")
+        }
+        .padding()
+        .background(Color(red: 0.05, green: 0.08, blue: 0.16))
+        .cornerRadius(14)
+        .padding(.horizontal)
+        .padding(.top, 15)
+    }
+    
+    @ViewBuilder
+    private var syncControlsCard: some View {
+        VStack(spacing: 15) {
+            Button(action: triggerPhotosSync) {
+                HStack {
+                    if syncManager.isSyncing {
+                        ProgressView()
+                            .tint(.white)
+                            .padding(.trailing, 8)
+                    } else {
+                        Image(systemName: "arrow.triangle.2.circlepath.camera")
+                    }
+                    Text(syncManager.isSyncing ? "SYNCING..." : "SYNC CAMERA IMAGES")
+                        .fontWeight(.bold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(syncManager.isSyncing ? Color.cyan.opacity(0.4) : Color.cyan)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+                .shadow(color: Color.cyan.opacity(0.2), radius: 6, x: 0, y: 3)
+            }
+            .disabled(syncManager.isSyncing)
+            
+            if !syncManager.syncMessage.isEmpty {
+                Text(syncManager.syncMessage)
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    @ViewBuilder
+    private var exportLinksCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Export References")
+                .font(.caption)
+                .fontWeight(.black)
+                .foregroundColor(.cyan)
+                .padding(.horizontal)
+            
+            HStack(spacing: 15) {
+                // Link 1: Metashape Sync Output
+                if let url = metashapeCSVURL {
+                    ShareLink(item: url) {
+                        Label("Metashape CSV", systemName: "arrow.up.doc")
+                            .font(.caption)
+                            .fontWeight(.bold)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(syncManager.isSyncing ? Color.cyan.opacity(0.4) : Color.cyan)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                            .shadow(color: Color.cyan.opacity(0.2), radius: 6, x: 0, y: 3)
-                        }
-                        .disabled(syncManager.isSyncing)
-                        
-                        if !syncManager.syncMessage.isEmpty {
-                            Text(syncManager.syncMessage)
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Export File Share Link Hub
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Export References")
-                            .font(.caption)
-                            .fontWeight(.black)
-                            .foregroundColor(.cyan)
-                            .padding(.horizontal)
-                        
-                        HStack(spacing: 15) {
-                            // Link 1: Metashape Sync Output
-                            if let url = metashapeCSVURL {
-                                ShareLink(item: url) {
-                                    Label("Metashape CSV", systemName: "arrow.up.doc")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.green.opacity(0.2))
-                                        .foregroundColor(.green)
-                                        .cornerRadius(10)
-                                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green.opacity(0.4), lineWidth: 1))
-                                }
-                            }
-                            
-                            // Link 2: 3D Point Cloud PLY
-                            if let url = plyURL {
-                                ShareLink(item: url) {
-                                    Label("PLY Cloud", systemName: "square.stack.3d.up.fill")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.purple.opacity(0.2))
-                                        .foregroundColor(.purple)
-                                        .cornerRadius(10)
-                                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.purple.opacity(0.4), lineWidth: 1))
-                                }
-                            }
-                            
-                            // Link 3: Raw telemetry logs (30Hz)
-                            if let url = csvURL {
-                                ShareLink(item: url) {
-                                    Label("Raw Logs", systemName: "doc.text")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.yellow.opacity(0.2))
-                                        .foregroundColor(.yellow)
-                                        .cornerRadius(10)
-                                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.yellow.opacity(0.4), lineWidth: 1))
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    // Matched Photos Grid List
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Matched Images Grid (\(syncManager.matchedRecords.count))")
-                            .font(.caption)
-                            .fontWeight(.black)
-                            .foregroundColor(.cyan)
-                            .padding(.horizontal)
-                        
-                        if syncManager.matchedRecords.isEmpty {
-                            VStack {
-                                Spacer()
-                                HStack {
-                                    Spacer()
-                                    Text("Perform sync to match default library photos")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                    Spacer()
-                                }
-                                Spacer()
-                            }
-                            .frame(height: 100)
-                            .background(Color.black.opacity(0.2))
+                            .background(Color.green.opacity(0.2))
+                            .foregroundColor(.green)
                             .cornerRadius(10)
-                            .padding(.horizontal)
-                        } else {
-                            ScrollView {
-                                LazyVStack(spacing: 8) {
-                                    ForEach(syncManager.matchedRecords) { rec in
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text(rec.imageName)
-                                                    .font(.caption)
-                                                    .fontWeight(.bold)
-                                                    .foregroundColor(.white)
-                                                
-                                                Text(String(format: "Local VIO: %.2f, %.2f, %.2f m", rec.localX, rec.localY, rec.localZ))
-                                                    .font(.caption2)
-                                                    .foregroundColor(.gray)
-                                            }
-                                            Spacer()
-                                            
-                                            VStack(alignment: .trailing, spacing: 4) {
-                                                Text(String(format: "Yaw: %.1f°", rec.yaw))
-                                                    .font(.caption2)
-                                                    .foregroundColor(.cyan)
-                                                Text(String(format: "Diff: %+.2fs", rec.timeDifferenceSec))
-                                                    .font(.caption2)
-                                                    .foregroundColor(abs(rec.timeDifferenceSec) > 0.5 ? .orange : .gray)
-                                            }
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(Color(red: 0.04, green: 0.06, blue: 0.12))
-                                        .cornerRadius(8)
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
-                        }
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green.opacity(0.4), lineWidth: 1))
+                    }
+                }
+                
+                // Link 2: 3D Point Cloud PLY
+                if let url = plyURL {
+                    ShareLink(item: url) {
+                        Label("PLY Cloud", systemName: "square.stack.3d.up.fill")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.purple.opacity(0.2))
+                            .foregroundColor(.purple)
+                            .cornerRadius(10)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.purple.opacity(0.4), lineWidth: 1))
+                    }
+                }
+                
+                // Link 3: Raw telemetry logs (30Hz)
+                if let url = csvURL {
+                    ShareLink(item: url) {
+                        Label("Raw Logs", systemName: "doc.text")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.yellow.opacity(0.2))
+                            .foregroundColor(.yellow)
+                            .cornerRadius(10)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.yellow.opacity(0.4), lineWidth: 1))
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+    
+    @ViewBuilder
+    private var matchedPhotosCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Matched Images Grid (\(syncManager.matchedRecords.count))")
+                .font(.caption)
+                .fontWeight(.black)
+                .foregroundColor(.cyan)
+                .padding(.horizontal)
+            
+            if syncManager.matchedRecords.isEmpty {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text("Perform sync to match default library photos")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                        Spacer()
                     }
                     Spacer()
                 }
+                .frame(height: 100)
+                .background(Color.black.opacity(0.2))
+                .cornerRadius(10)
+                .padding(.horizontal)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(syncManager.matchedRecords) { rec in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(rec.imageName)
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                    
+                                    Text(String(format: "Local VIO: %.2f, %.2f, %.2f m", rec.localX, rec.localY, rec.localZ))
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+                                
+                                VStack(alignment: .trailing, spacing: 4) {
+                                    Text(String(format: "Yaw: %.1f°", rec.yaw))
+                                        .font(.caption2)
+                                        .foregroundColor(.cyan)
+                                    Text(String(format: "Diff: %+.2fs", rec.timeDifferenceSec))
+                                        .font(.caption2)
+                                        .foregroundColor(abs(rec.timeDifferenceSec) > 0.5 ? .orange : .gray)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color(red: 0.04, green: 0.06, blue: 0.12))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+        }
             }
             .navigationTitle("SESSION MANAGER")
             .navigationBarTitleDisplayMode(.inline)
