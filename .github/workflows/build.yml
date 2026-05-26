@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          path: CamTrackPro.swiftpm
 
       - name: Show Available Xcode Versions
         run: ls /Applications | grep Xcode
@@ -21,16 +23,22 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
       - name: List Available Schemes (Diagnostics)
+        working-directory: CamTrackPro.swiftpm
         run: |
           echo "=== List of Available Schemes ==="
           xcodebuild -list
-          SCHEMES=$(xcodebuild -list | awk '/Schemes:/{flag=1;next}/^$/{flag=0}flag' | xargs)
-          echo "::error::Available schemes: $SCHEMES"
-          exit 1
-
+          
       - name: Compile SwiftPM App
+        working-directory: CamTrackPro.swiftpm
         run: |
-          xcodebuild -scheme "CamTrackPro" \
+          # Dynamically determine the scheme
+          SCHEME="CamTrackPro"
+          if xcodebuild -list | grep -q "CamTrack Pro"; then
+            SCHEME="CamTrack Pro"
+          fi
+          echo "Building scheme: $SCHEME"
+          
+          xcodebuild -scheme "$SCHEME" \
             -destination "generic/platform=iOS" \
             -derivedDataPath ./build_output \
             -configuration Release \
@@ -39,6 +47,7 @@ jobs:
             clean build
 
       - name: Package App into IPA
+        working-directory: CamTrackPro.swiftpm
         run: |
           mkdir -p Payload
           # Diagnostics: print the contents of the build products directory to find the app
@@ -50,7 +59,7 @@ jobs:
           echo "Found compiled app bundle at: $APP_PATH"
           cp -r "$APP_PATH" Payload/
           # Compress into an .ipa file
-          zip -r CamTrackPro.ipa Payload
+          zip -r ../CamTrackPro.ipa Payload
           
       - name: Upload Compiled IPA Artifact
         uses: actions/upload-artifact@v4
