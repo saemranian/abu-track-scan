@@ -424,7 +424,7 @@ struct SensorCard: View {
                 .background(Color.gray.opacity(0.3))
             
             VStack(spacing: 5) {
-                for row in content {
+                ForEach(content, id: \.self) { row in
                     HStack {
                         Text(row.label)
                             .font(.caption2)
