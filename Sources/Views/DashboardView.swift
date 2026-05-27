@@ -134,6 +134,7 @@ struct DashboardView: View {
                                         isTracking: trackingManager.isTrackingActive,
                                         rotX: isFollowModeActive ? -trackingManager.pitch * Double.pi / 180.0 : rotX,
                                         rotY: isFollowModeActive ? -trackingManager.yaw * Double.pi / 180.0 : rotY,
+                                        rotZ: isFollowModeActive ? -trackingManager.roll * Double.pi / 180.0 : 0.0,
                                         panX: isFollowModeActive ? trackingManager.localX : panX,
                                         panY: isFollowModeActive ? trackingManager.localY : panY,
                                         panZ: isFollowModeActive ? trackingManager.localZ : panZ,
@@ -531,12 +532,10 @@ struct DashboardView: View {
             }
         }
         
-        // Set tactile shutter HUD confirmation and resume tracking
+        // Set tactile shutter HUD confirmation and increment session record count
         DispatchQueue.main.async {
+            self.entryCount += 1
             self.shutterFeedbackMessage = "SAVED: \(filename)"
-            if self.trackingManager.isTrackingActive {
-                self.trackingManager.resumeARKitSession()
-            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 if self.shutterFeedbackMessage == "SAVED: \(filename)" {
                     self.shutterFeedbackMessage = ""
@@ -564,25 +563,69 @@ struct DashboardView: View {
     private func updateManualFocus() {
         cameraManager.updateFocus(isAutoFocus: isAutoFocus, lensPosition: focusPosition)
     }
-    
-    private func triggerInAppCapture() {
+     private func triggerInAppCapture() {
         if trackingManager.isTrackingActive {
-            // 1. Temporarily pause ARKit tracking to release hardware lock!
-            trackingManager.arSession.pause()
+            // 1. Instantaneous capture from active ARKit tracking frame (no pauses, no locks, zero freeze!)
+            guard let currentFrame = trackingManager.arSession.currentFrame else {
+                self.shutterFeedbackMessage = "CAPTURE FAILED (NO FRAME)"
+                return
+            }
             
-            // 2. Short delay to allow session release, configure and start AVCaptureSession, then take photo
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                cameraManager.setupCamera { success in
-                    if success {
-                        cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
-                    } else {
-                        // Resume ARKit if camera setup failed
-                        trackingManager.resumeARKitSession()
+            let pixelBuffer = currentFrame.capturedImage
+            let timestamp = Date().timeIntervalSince1970
+            
+            guard let sessionID = activeSessionID else { return }
+            let fileManager = FileManager.default
+            guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+            let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
+            
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy_MM_dd_HH_mm"
+            let datePrefix = formatter.string(from: Date())
+            
+            let ext = pictureFormat == "HEIF" ? "HEIC" : "JPG"
+            let filename = "\(datePrefix)_IMG_\(entryCount + 1255).\(ext)" // Suffix count increments with entry count
+            let fileURL = sessionFolderURL.appendingPathComponent(filename)
+            
+            // Save CVPixelBuffer asynchronously in background to prevent ANY main-thread or mapping lag
+            DispatchQueue.global(qos: .userInitiated).async {
+                let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+                let context = CIContext()
+                var success = false
+                
+                if self.pictureFormat == "HEIF", #available(iOS 11.0, *) {
+                    if let heifData = context.heifRepresentation(of: ciImage, format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB(), options: [:]) {
+                        do {
+                            try heifData.write(to: fileURL)
+                            success = true
+                        } catch {
+                            print("DashboardView: Failed to write HEIF: \(error)")
+                            success = false
+                        }
+                    }
+                } else {
+                    if let jpegData = context.jpegRepresentation(of: ciImage, colorSpace: CGColorSpaceCreateDeviceRGB(), options: [:]) {
+                        do {
+                            try jpegData.write(to: fileURL)
+                            success = true
+                        } catch {
+                            print("DashboardView: Failed to write JPEG: \(error)")
+                            success = false
+                        }
+                    }
+                }
+                
+                if success {
+                    print("DashboardView: Instantly saved georeferenced AR photo to: \(fileURL.path)")
+                    self.handleInAppPhotoCaptured(url: fileURL, timestamp: timestamp * 1000.0, filename: filename)
+                } else {
+                    DispatchQueue.main.async {
+                        self.shutterFeedbackMessage = "WRITE ERROR"
                     }
                 }
             }
         } else {
-            // Standard photo capture when not tracking
+            // Standard non-georeferenced viewport aim capture
             cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
         }
     }
@@ -924,6 +967,7 @@ struct PointCloudVisualizerView: View {
     let isTracking: Bool
     let rotX: Double
     let rotY: Double
+    let rotZ: Double // NEW
     let panX: Double
     let panY: Double
     let panZ: Double
@@ -972,7 +1016,7 @@ struct PointCloudVisualizerView: View {
             
             // Draw axis markers safely
             let origin3D = (x: 0.0, y: 0.0, z: 0.0)
-            let projectedOrigin = project(point: origin3D, center: center, rotX: rotX, rotY: rotY)
+            let projectedOrigin = project(point: origin3D, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
             
             if projectedOrigin.x >= 0 && projectedOrigin.x <= size.width && projectedOrigin.y >= 0 && projectedOrigin.y <= size.height {
                 let axes = [
@@ -982,7 +1026,7 @@ struct PointCloudVisualizerView: View {
                 ]
                 
                 for ax in axes {
-                    let projPt = project(point: ax.pt, center: center, rotX: rotX, rotY: rotY)
+                    let projPt = project(point: ax.pt, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
                     if projPt.x >= 0 && projPt.x <= size.width && projPt.y >= 0 && projPt.y <= size.height {
                         context.stroke(
                             Path { path in
@@ -1003,7 +1047,7 @@ struct PointCloudVisualizerView: View {
             
             for pt in points {
                 let pt3D = (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z))
-                let proj = project(point: pt3D, center: center, rotX: rotX, rotY: rotY)
+                let proj = project(point: pt3D, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
                 
                 // Rapid viewport bounds check to ignore off-screen projections
                 guard proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height else {
@@ -1057,14 +1101,14 @@ struct PointCloudVisualizerView: View {
                 context.stroke(
                     Path { path in
                         let firstPt = pathPoints[0]
-                        let projFirst = project(point: (x: Double(firstPt.x), y: Double(firstPt.y), z: Double(firstPt.z)), center: center, rotX: rotX, rotY: rotY)
+                        let projFirst = project(point: (x: Double(firstPt.x), y: Double(firstPt.y), z: Double(firstPt.z)), center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
                         if projFirst.x >= 0 && projFirst.x <= size.width && projFirst.y >= 0 && projFirst.y <= size.height {
                             path.move(to: projFirst)
                         }
                         
                         for i in 1..<pathPoints.count {
                             let pt = pathPoints[i]
-                            let proj = project(point: (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z)), center: center, rotX: rotX, rotY: rotY)
+                            let proj = project(point: (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z)), center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
                             if proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height {
                                 if i == 1 || path.isEmpty {
                                     path.move(to: proj)
@@ -1081,7 +1125,7 @@ struct PointCloudVisualizerView: View {
             
             // Draw Camera Position
             if showCamera, let camPos = cameraPosition {
-                let projCam = project(point: camPos, center: center, rotX: rotX, rotY: rotY)
+                let projCam = project(point: camPos, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
                 
                 if projCam.x >= 0 && projCam.x <= size.width && projCam.y >= 0 && projCam.y <= size.height {
                     let outerRect = CGRect(x: projCam.x - 7, y: projCam.y - 7, width: 14, height: 14)
@@ -1095,7 +1139,7 @@ struct PointCloudVisualizerView: View {
     }
     
     // 3D Perspective Projection Mathematics
-    private func project(point: (x: Double, y: Double, z: Double), center: CGPoint, rotX: Double, rotY: Double) -> CGPoint {
+    private func project(point: (x: Double, y: Double, z: Double), center: CGPoint, rotX: Double, rotY: Double, rotZ: Double) -> CGPoint {
         // Shift point by panning coordinates (including depth Z axis)
         let px = point.x - panX
         let py = point.y - panY
@@ -1121,7 +1165,13 @@ struct PointCloudVisualizerView: View {
         let z2 = rz * cosX - y1 * sinX  // Screen vertical coordinate
         let depth2 = rz * sinX + y1 * cosX // Screen depth coordinate
         
-        // 3. Perspective Projection
+        // 3. Rotate in the screen plane (x1, z2) by roll (rotZ)
+        let cosZ = cos(rotZ)
+        let sinZ = sin(rotZ)
+        let x2 = x1 * cosZ - z2 * sinZ
+        let z3 = x1 * sinZ + z2 * cosZ
+        
+        // 4. Perspective Projection
         let fov = 3.0 // Focus distance/zoom
         let distance = 4.0 // Distance from camera
         let zoomAmount = 140.0 * zoom
@@ -1132,8 +1182,8 @@ struct PointCloudVisualizerView: View {
         }
         
         let scale = fov / (distance + depth2)
-        let screenX = center.x + CGFloat(x1 * scale * zoomAmount)
-        let screenY = center.y - CGFloat(z2 * scale * zoomAmount)
+        let screenX = center.x + CGFloat(x2 * scale * zoomAmount)
+        let screenY = center.y - CGFloat(z3 * scale * zoomAmount)
         
         return CGPoint(x: screenX, y: screenY)
     }

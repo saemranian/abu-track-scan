@@ -102,6 +102,16 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         let configuration = ARWorldTrackingConfiguration()
         configuration.worldAlignment = .gravityAndHeading // Aligns Y-axis with gravity, X-axis with True North!
         
+        // Select 4:3 video format if available to prevent cropping in the 4:3 viewports
+        let targetRatio: CGFloat = 4.0 / 3.0
+        if let format = ARWorldTrackingConfiguration.supportedVideoFormats.first(where: { format in
+            let ratio = format.imageResolution.width / format.imageResolution.height
+            return abs(ratio - targetRatio) < 0.02
+        }) {
+            configuration.videoFormat = format
+            print("MotionAndTrackingManager: Configured native 4:3 AR video resolution: \(format.imageResolution)")
+        }
+        
         // Use LiDAR scene reconstruction if available
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
             configuration.sceneReconstruction = .mesh
@@ -119,6 +129,16 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     func resumeARKitSession() {
         let configuration = ARWorldTrackingConfiguration()
         configuration.worldAlignment = .gravityAndHeading
+        
+        // Select 4:3 video format if available to prevent cropping in the 4:3 viewports
+        let targetRatio: CGFloat = 4.0 / 3.0
+        if let format = ARWorldTrackingConfiguration.supportedVideoFormats.first(where: { format in
+            let ratio = format.imageResolution.width / format.imageResolution.height
+            return abs(ratio - targetRatio) < 0.02
+        }) {
+            configuration.videoFormat = format
+        }
+        
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
             configuration.sceneReconstruction = .mesh
         }

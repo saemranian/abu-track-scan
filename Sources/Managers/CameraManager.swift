@@ -20,6 +20,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     private var photoCounter = 1255 // Match system photos starting index
     private var isConfigured = false
     private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var selectedFormat = "JPG" // Selected picture format (JPG, HEIF, DNG)
     
     override init() {
         super.init()
@@ -38,15 +39,15 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             self.captureSession.beginConfiguration()
             self.captureSession.sessionPreset = .photo // Maximum resolution
             
-            // 1. Find best Dual/Triple/Wide-angle Back Camera
+            // 1. Find physical main Wide-angle back camera (supports 48MP and manual exposure/focus locks)
             let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(
-                deviceTypes: [.builtInTripleCamera, .builtInDualCamera, .builtInWideAngleCamera],
+                deviceTypes: [.builtInWideAngleCamera],
                 mediaType: .video,
                 position: .back
             )
             
             guard let videoDevice = deviceDiscoverySession.devices.first else {
-                print("CameraManager: No back camera found")
+                print("CameraManager: No back physical wide camera found")
                 self.captureSession.commitConfiguration()
                 completion(false)
                 return
@@ -55,6 +56,17 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             // Configure hardware settings for absolute best clarity
             do {
                 try videoDevice.lockForConfiguration()
+                
+                // Select 48MP active format (dimensions >= 8000, e.g. 8064x6048) if supported
+                if #available(iOS 16.0, *) {
+                    if let highResFormat = videoDevice.formats.first(where: { format in
+                        format.supportedMaxPhotoDimensions.contains(where: { $0.width >= 8000 })
+                    }) {
+                        videoDevice.activeFormat = highResFormat
+                        print("CameraManager: Configured physical 48MP active format: \(highResFormat)")
+                    }
+                }
+                
                 if videoDevice.isFocusModeSupported(.continuousAutoFocus) {
                     videoDevice.focusMode = .continuousAutoFocus
                 }
@@ -99,13 +111,14 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 
                 // Enable maximum high-resolution options safely
                 photoOutput.isHighResolutionCaptureEnabled = true
-                photoOutput.maxPhotoQualityPrioritization = .quality // DSLR-quality Deep Fusion/Smart HDR processing
+                photoOutput.maxPhotoQualityPrioritization = .quality // DSLR-quality processing
                 
                 if #available(iOS 16.0, *) {
-                    // Query the maximum dimensions supported by the active format of the back camera to avoid startup crash
+                    // Query the maximum dimensions supported by the active format of the back camera
                     if let videoDevice = self.videoDeviceInput?.device,
                        let maxDim = videoDevice.activeFormat.supportedMaxPhotoDimensions.max(by: { $0.width * $0.height < $1.width * $1.height }) {
                         photoOutput.maxPhotoDimensions = maxDim
+                        print("CameraManager: Configured photoOutput max dimensions: \(maxDim)")
                     }
                 }
             } else {
@@ -116,10 +129,12 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             }
             
             self.captureSession.commitConfiguration()
+            
+            self.isConfigured = true
+            
             if !self.captureSession.isRunning {
                 self.captureSession.startRunning()
             }
-            self.isConfigured = true
             completion(true)
         }
     }
@@ -156,11 +171,19 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                         device.exposureMode = .continuousAutoExposure
                     }
                 } else {
-                    let duration = CMTime(seconds: shutterSpeed, preferredTimescale: 1000000)
-                    let minISO = device.activeFormat.minISO
-                    let maxISO = device.activeFormat.maxISO
-                    let targetISO = max(minISO, min(maxISO, Float(iso == 0.0 ? Double(device.iso) : iso)))
-                    device.setExposureModeCustom(duration: duration, iso: targetISO, completionHandler: nil)
+                    if device.isExposureModeSupported(.custom) {
+                        let minDuration = device.activeFormat.minExposureDuration
+                        let maxDuration = device.activeFormat.maxExposureDuration
+                        // Clamp exposure duration safely to prevent hardware crash
+                        let targetSeconds = max(minDuration.seconds, min(maxDuration.seconds, shutterSpeed))
+                        let duration = CMTime(seconds: targetSeconds, preferredTimescale: 1000000)
+                        
+                        let minISO = device.activeFormat.minISO
+                        let maxISO = device.activeFormat.maxISO
+                        let targetISO = max(minISO, min(maxISO, Float(iso == 0.0 ? Double(device.iso) : iso)))
+                        
+                        device.setExposureModeCustom(duration: duration, iso: targetISO, completionHandler: nil)
+                    }
                 }
                 
                 // 2. White Balance temperature settings (wbTemperature = 0.0 is automatic)
@@ -169,27 +192,27 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                         device.whiteBalanceMode = .continuousAutoWhiteBalance
                     }
                 } else {
-                    // Clamp white balance temperature to a highly compatible safe range to prevent crash
-                    let safeTemperature = max(3000.0, min(8000.0, Float(wbTemperature)))
-                    let tempAndTint = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: safeTemperature, tint: 0.0)
-                    let gains = device.deviceWhiteBalanceGains(for: tempAndTint)
-                    
-                    var red = gains.redGain
-                    var green = gains.greenGain
-                    var blue = gains.blueGain
-                    
-                    if red.isNaN || red.isInfinite { red = 1.0 }
-                    if green.isNaN || green.isInfinite { green = 1.0 }
-                    if blue.isNaN || blue.isInfinite { blue = 1.0 }
-                    
-                    let maxGain = device.maxWhiteBalanceGain
-                    let clampedGains = AVCaptureDevice.WhiteBalanceGains(
-                        redGain: max(1.0, min(maxGain, red)),
-                        greenGain: max(1.0, min(maxGain, green)),
-                        blueGain: max(1.0, min(maxGain, blue))
-                    )
-                    
                     if device.isWhiteBalanceModeSupported(.locked) {
+                        // Clamp white balance temperature to a highly compatible safe range to prevent crash
+                        let safeTemperature = max(3000.0, min(8000.0, Float(wbTemperature)))
+                        let tempAndTint = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: safeTemperature, tint: 0.0)
+                        let gains = device.deviceWhiteBalanceGains(for: tempAndTint)
+                        
+                        var red = gains.redGain
+                        var green = gains.greenGain
+                        var blue = gains.blueGain
+                        
+                        if red.isNaN || red.isInfinite { red = 1.0 }
+                        if green.isNaN || green.isInfinite { green = 1.0 }
+                        if blue.isNaN || blue.isInfinite { blue = 1.0 }
+                        
+                        let maxGain = device.maxWhiteBalanceGain
+                        let clampedGains = AVCaptureDevice.WhiteBalanceGains(
+                            redGain: max(1.0, min(maxGain, red)),
+                            greenGain: max(1.0, min(maxGain, green)),
+                            blueGain: max(1.0, min(maxGain, blue))
+                        )
+                        
                         device.setWhiteBalanceModeLocked(with: clampedGains, completionHandler: nil)
                     }
                 }
@@ -216,7 +239,9 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 } else {
                     if device.isFocusModeSupported(.locked) {
                         device.focusMode = .locked
-                        device.setFocusModeLocked(lensPosition: Float(lensPosition), completionHandler: nil)
+                        // Clamp focus lens position between 0.0 and 1.0 to prevent hardware crash
+                        let clampedPosition = max(0.0, min(1.0, Float(lensPosition)))
+                        device.setFocusModeLocked(lensPosition: clampedPosition, completionHandler: nil)
                     }
                 }
                 
@@ -227,7 +252,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
         }
     }
     
-    // Sets active physical lens and digital zoom factor (from 0.5x to 25.0x or hardware limits)
+    // Sets active physical lens and digital zoom factor (from 1.0x to max hardware limits)
     func setZoomFactor(_ factor: Double) {
         guard let device = videoDeviceInput?.device else { return }
         
@@ -250,6 +275,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 return
             }
             
+            self.selectedFormat = format // Save active format choice
             var photoSettings = AVCapturePhotoSettings()
             
             // Resolve format constraints: DNG (RAW), HEIF, JPG
@@ -316,18 +342,31 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
         
         let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
         
-        // Build filename matches structure: YYYY_MM_DD_HH_MM_IMG_XXXX.JPG
+        // Build filename based on dynamic formats
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy_MM_dd_HH_mm"
         let datePrefix = formatter.string(from: Date())
-        let filename = "\(datePrefix)_IMG_\(photoCounter).JPG"
-        photoCounter += 1
         
+        let extensionStr: String
+        if photo.isRawPhoto {
+            extensionStr = "DNG"
+        } else if self.selectedFormat == "HEIF" {
+            extensionStr = "HEIC"
+        } else {
+            extensionStr = "JPG"
+        }
+        
+        let currentCounter = photoCounter
+        if !photo.isRawPhoto {
+            photoCounter += 1 // Increment only for processed/jpeg companion to sync RAW/companion pairs
+        }
+        
+        let filename = "\(datePrefix)_IMG_\(currentCounter).\(extensionStr)"
         let fileURL = sessionFolderURL.appendingPathComponent(filename)
         
         do {
             try fileData.write(to: fileURL)
-            print("CameraManager: Successfully saved high-res photo to: \(fileURL.path)")
+            print("CameraManager: Successfully saved photo to: \(fileURL.path)")
             
             // Notify delegate with exact timestamp and local URL
             delegate?.cameraManager(self, didCapturePhotoAt: fileURL, timestamp: timestamp * 1000.0, filename: filename)

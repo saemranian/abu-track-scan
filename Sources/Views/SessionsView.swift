@@ -517,6 +517,7 @@ struct SessionDetailView: View {
                             isTracking: true,
                             rotX: rotX,
                             rotY: rotY,
+                            rotZ: 0.0,
                             panX: panX,
                             panY: panY,
                             panZ: panZ,
