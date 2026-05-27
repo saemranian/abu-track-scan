@@ -36,6 +36,7 @@ struct DashboardView: View {
     @State private var rotY: Double = 0.5
     @State private var panX: Double = 0.0
     @State private var panY: Double = 0.0
+    @State private var panZ: Double = 0.0
     @State private var zoom: Double = 1.0
     @State private var isFollowModeActive = true // Aligns viewport to active camera coordinate by default
     
@@ -132,6 +133,7 @@ struct DashboardView: View {
                                         rotY: isFollowModeActive ? -trackingManager.yaw * Double.pi / 180.0 : rotY,
                                         panX: isFollowModeActive ? trackingManager.localX : panX,
                                         panY: isFollowModeActive ? trackingManager.localY : panY,
+                                        panZ: isFollowModeActive ? trackingManager.localZ : panZ,
                                         zoom: zoom,
                                         cameraPosition: (x: trackingManager.localX, y: trackingManager.localY, z: trackingManager.localZ),
                                         trajectory: trackingManager.cameraTrajectory,
@@ -168,6 +170,7 @@ struct DashboardView: View {
                                             rotY = -trackingManager.yaw * Double.pi / 180.0
                                             panX = trackingManager.localX
                                             panY = trackingManager.localY
+                                            panZ = trackingManager.localZ
                                             zoom = 1.0
                                         }
                                     }) {
@@ -187,6 +190,7 @@ struct DashboardView: View {
                                         rotY = -trackingManager.yaw * Double.pi / 180.0
                                         panX = trackingManager.localX
                                         panY = trackingManager.localY
+                                        panZ = trackingManager.localZ
                                         zoom = 1.0
                                     }) {
                                         Text("CENTER")
@@ -370,6 +374,7 @@ struct DashboardView: View {
         // Automatically snap viewport to active camera coordinate
         self.panX = trackingManager.localX
         self.panY = trackingManager.localY
+        self.panZ = trackingManager.localZ
         self.rotY = -trackingManager.yaw * Double.pi / 180.0
         
         // UI Timer updates
@@ -830,6 +835,7 @@ struct PointCloudVisualizerView: View {
     let rotY: Double
     let panX: Double
     let panY: Double
+    let panZ: Double
     let zoom: Double
     
     // Optional parameters for rendering current position and trajectory
@@ -873,26 +879,30 @@ struct PointCloudVisualizerView: View {
                 return
             }
             
-            // Draw axis markers
+            // Draw axis markers safely
             let origin3D = (x: 0.0, y: 0.0, z: 0.0)
             let projectedOrigin = project(point: origin3D, center: center, rotX: rotX, rotY: rotY)
             
-            let axes = [
-                (pt: (x: 0.5, y: 0.0, z: 0.0), col: Color.red),   // X - Red
-                (pt: (x: 0.0, y: 0.5, z: 0.0), col: Color.green), // Y - Green
-                (pt: (x: 0.0, y: 0.0, z: 0.5), col: Color.blue)   // Z - Blue
-            ]
-            
-            for ax in axes {
-                let projPt = project(point: ax.pt, center: center, rotX: rotX, rotY: rotY)
-                context.stroke(
-                    Path { path in
-                        path.move(to: projectedOrigin)
-                        path.addLine(to: projPt)
-                    },
-                    with: .color(ax.col.opacity(0.7)),
-                    lineWidth: 2.0
-                )
+            if projectedOrigin.x >= 0 && projectedOrigin.x <= size.width && projectedOrigin.y >= 0 && projectedOrigin.y <= size.height {
+                let axes = [
+                    (pt: (x: 0.5, y: 0.0, z: 0.0), col: Color.red),   // X - Red
+                    (pt: (x: 0.0, y: 0.5, z: 0.0), col: Color.green), // Y - Green
+                    (pt: (x: 0.0, y: 0.0, z: 0.5), col: Color.blue)   // Z - Blue
+                ]
+                
+                for ax in axes {
+                    let projPt = project(point: ax.pt, center: center, rotX: rotX, rotY: rotY)
+                    if projPt.x >= 0 && projPt.x <= size.width && projPt.y >= 0 && projPt.y <= size.height {
+                        context.stroke(
+                            Path { path in
+                                path.move(to: projectedOrigin)
+                                path.addLine(to: projPt)
+                            },
+                            with: .color(ax.col.opacity(0.7)),
+                            lineWidth: 2.0
+                        )
+                    }
+                }
             }
             
             // Project and draw the 3D points in combined paths to avoid 100% CPU lock
@@ -957,12 +967,20 @@ struct PointCloudVisualizerView: View {
                     Path { path in
                         let firstPt = pathPoints[0]
                         let projFirst = project(point: (x: Double(firstPt.x), y: Double(firstPt.y), z: Double(firstPt.z)), center: center, rotX: rotX, rotY: rotY)
-                        path.move(to: projFirst)
+                        if projFirst.x >= 0 && projFirst.x <= size.width && projFirst.y >= 0 && projFirst.y <= size.height {
+                            path.move(to: projFirst)
+                        }
                         
                         for i in 1..<pathPoints.count {
                             let pt = pathPoints[i]
                             let proj = project(point: (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z)), center: center, rotX: rotX, rotY: rotY)
-                            path.addLine(to: proj)
+                            if proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height {
+                                if i == 1 || path.isEmpty {
+                                    path.move(to: proj)
+                                } else {
+                                    path.addLine(to: proj)
+                                }
+                            }
                         }
                     },
                     with: .color(Color.yellow.opacity(0.85)),
@@ -974,21 +992,23 @@ struct PointCloudVisualizerView: View {
             if showCamera, let camPos = cameraPosition {
                 let projCam = project(point: camPos, center: center, rotX: rotX, rotY: rotY)
                 
-                let outerRect = CGRect(x: projCam.x - 7, y: projCam.y - 7, width: 14, height: 14)
-                let innerRect = CGRect(x: projCam.x - 3, y: projCam.y - 3, width: 6, height: 6)
-                
-                context.stroke(Path(ellipseIn: outerRect), with: .color(.yellow), lineWidth: 1.5)
-                context.fill(Path(ellipseIn: innerRect), with: .color(.red))
+                if projCam.x >= 0 && projCam.x <= size.width && projCam.y >= 0 && projCam.y <= size.height {
+                    let outerRect = CGRect(x: projCam.x - 7, y: projCam.y - 7, width: 14, height: 14)
+                    let innerRect = CGRect(x: projCam.x - 3, y: projCam.y - 3, width: 6, height: 6)
+                    
+                    context.stroke(Path(ellipseIn: outerRect), with: .color(.yellow), lineWidth: 1.5)
+                    context.fill(Path(ellipseIn: innerRect), with: .color(.red))
+                }
             }
         }
     }
     
     // 3D Perspective Projection Mathematics
     private func project(point: (x: Double, y: Double, z: Double), center: CGPoint, rotX: Double, rotY: Double) -> CGPoint {
-        // Shift point by panning coordinates
+        // Shift point by panning coordinates (including depth Z axis)
         let px = point.x - panX
         let py = point.y - panY
-        let pz = point.z
+        let pz = point.z - panZ
         
         // 1. Rotate around Y-axis
         let cosY = cos(rotY)
@@ -1007,7 +1027,12 @@ struct PointCloudVisualizerView: View {
         let distance = 4.0 // Distance from camera
         let zoomAmount = 140.0 * zoom
         
-        let scale = fov / (fov + z2 + distance)
+        // Guard against points behind camera (z2 >= 0) to avoid inverse scaling or artifacts
+        guard z2 < 0.0 else {
+            return CGPoint(x: -9999.0, y: -9999.0)
+        }
+        
+        let scale = fov / (distance - z2) // Corrected linear perspective!
         let screenX = center.x + CGFloat(x1 * scale * zoomAmount)
         let screenY = center.y - CGFloat(y2 * scale * zoomAmount)
         

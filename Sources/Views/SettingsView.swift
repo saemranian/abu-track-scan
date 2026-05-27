@@ -177,9 +177,9 @@ struct SettingsView: View {
                                 
                                 Divider().background(Color.gray.opacity(0.3))
                                 
-                                DiagnosticRow(label: "App Version", value: "0.0.5")
-                                DiagnosticRow(label: "Build Try", value: "16")
-                                DiagnosticRow(label: "Compile Date", value: "2026-05-27 12:30")
+                                DiagnosticRow(label: "App Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.5")
+                                DiagnosticRow(label: "Build Number", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "16")
+                                DiagnosticRow(label: "Compile Date", value: "2026-05-27 18:15")
                                 DiagnosticRow(label: "Release State", value: "Active Development")
                             }
                             .padding()

@@ -241,6 +241,7 @@ struct SessionDetailView: View {
     @State private var rotY: Double = 0.5
     @State private var panX: Double = 0.0
     @State private var panY: Double = 0.0
+    @State private var panZ: Double = 0.0
     @State private var zoom: Double = 1.0
     @State private var showTrajectory = true
     @State private var showCamera = true
@@ -518,6 +519,7 @@ struct SessionDetailView: View {
                             rotY: rotY,
                             panX: panX,
                             panY: panY,
+                            panZ: panZ,
                             zoom: zoom,
                             cameraPosition: historicalTrajectory.last.map { (x: Double($0.x), y: Double($0.y), z: Double($0.z)) },
                             trajectory: historicalTrajectory,

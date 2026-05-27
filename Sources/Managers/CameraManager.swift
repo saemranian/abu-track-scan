@@ -313,20 +313,38 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     }
 }
 
+// Custom view that overrides layoutSubviews to cleanly adjust layer bounds in UIKit layout cycle
+class PreviewView: UIView {
+    private let previewLayer: AVCaptureVideoPreviewLayer
+    
+    init(previewLayer: AVCaptureVideoPreviewLayer) {
+        self.previewLayer = previewLayer
+        super.init(frame: .zero)
+        self.previewLayer.frame = self.bounds
+        self.previewLayer.videoGravity = .resizeAspectFill
+        self.layer.addSublayer(previewLayer)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Safely adjust previewLayer size without triggering SwiftUI recursive invalidations
+        previewLayer.frame = self.bounds
+    }
+}
+
 // SwiftUI Camera Viewport Preview Wrapper
 struct CameraPreviewContainer: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer
     
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
-        previewLayer.frame = view.bounds
-        view.layer.addSublayer(previewLayer)
-        return view
+    func makeUIView(context: Context) -> PreviewView {
+        return PreviewView(previewLayer: previewLayer)
     }
     
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            self.previewLayer.frame = uiView.bounds
-        }
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        // Leave completely empty to prevent recursive main-thread layout cycles!
     }
 }
