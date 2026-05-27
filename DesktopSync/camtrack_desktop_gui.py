@@ -94,7 +94,7 @@ class CamTrackDesktopApp:
         title_frame = ttk.Frame(left_panel)
         title_frame.grid(row=0, column=0, sticky="w", pady=(0, 20))
         ttk.Label(title_frame, text="CAMTRACK PRO // DESKTOP CONSOLE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        ttk.Label(title_frame, text="Version 0.0.3 // Build 3 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(title_frame, text="Version 0.0.3 // Build 4 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
@@ -174,7 +174,7 @@ class CamTrackDesktopApp:
         
         # System Banner
         self.log("SYSTEM ACTIVE // DESKTOP GEODETIC DATA SYNCHRONIZER ENGINE")
-        self.log("Version: 0.0.3 // Build: 3 // OS Platform: Windows")
+        self.log("Version: 0.0.3 // Build: 4 // OS Platform: Windows")
         self.log("Standalone georeferencing suite ready for Metashape & RealityCapture...\n")
         
     def add_offset_input(self, parent, label, variable, col):
@@ -305,7 +305,9 @@ class CamTrackDesktopApp:
                     # Log skip with more diagnostic details on first and last failures to help user
                     if i < 3 or i == total - 1:
                         p_time_str = self.format_epoch(p_epoch)
-                        self.log(f"Skip // {p_name} (Aligned time: {p_time_str} - no matching telemetry epoch within tolerance)")
+                        closest_anyway = self.match_epoch_any(p_epoch, telemetry)
+                        diff_sec = p_epoch - closest_anyway["epoch"] if closest_anyway else 999.0
+                        self.log(f"Skip // {p_name} (Aligned time: {p_time_str} - nearest log is {diff_sec:+.2f}s away)")
                     elif i == 3:
                         self.log("Skip // ... [suppressing subsequent mismatch logs for brevity] ...")
                     
