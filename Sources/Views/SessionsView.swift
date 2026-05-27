@@ -4,6 +4,11 @@ struct SessionsView: View {
     @State private var sessions: [[String: Any]] = []
     @State private var selectedSession: [String: Any]?
     
+    // States for Renaming sessions
+    @State private var showRenameAlert = false
+    @State private var sessionToRename: String?
+    @State private var renameInputText = ""
+    
     struct SessionListItem: Identifiable {
         let id: String
         let entries: Int
@@ -72,6 +77,23 @@ struct SessionsView: View {
                                 .padding(.vertical, 4)
                             }
                             .listRowBackground(Color(red: 0.05, green: 0.08, blue: 0.16))
+                            .contextMenu {
+                                Button {
+                                    self.sessionToRename = item.id
+                                    self.renameInputText = item.id
+                                    self.showRenameAlert = true
+                                } label: {
+                                    Label("Rename Session", systemImage: "pencil")
+                                }
+                                
+                                Button(role: .destructive) {
+                                    if let idx = sessions.firstIndex(where: { ($0["id"] as? String) == item.id }) {
+                                        deleteSession(at: IndexSet(integer: idx))
+                                    }
+                                } label: {
+                                    Label("Delete Session", systemImage: "trash")
+                                }
+                            }
                         }
                         .onDelete(perform: deleteSession)
                     }
@@ -89,6 +111,17 @@ struct SessionsView: View {
             }
             .onAppear {
                 loadHistory()
+            }
+            .alert("Rename Session", isPresented: $showRenameAlert) {
+                TextField("New Session Name", text: $renameInputText)
+                Button("Rename") {
+                    if let id = sessionToRename {
+                        renameSession(id: id, newName: renameInputText)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Enter a new identifier for this capture session.")
             }
         }
     }
@@ -143,6 +176,38 @@ struct SessionsView: View {
         history.remove(atOffsets: offsets)
         UserDefaults.standard.set(history, forKey: "sessionHistory")
         loadHistory()
+    }
+    
+    private func renameSession(id: String, newName: String) {
+        var history = UserDefaults.standard.array(forKey: "sessionHistory") as? [[String: Any]] ?? []
+        guard let index = history.firstIndex(where: { ($0["id"] as? String) == id }) else { return }
+        
+        let fileManager = FileManager.default
+        guard let docURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        
+        // Sanitize new name (allow alphanumerics, hyphens, underscores)
+        let sanitized = newName
+            .components(separatedBy: CharacterSet.alphanumerics.inverted.subtracting(CharacterSet(charactersIn: "-_")))
+            .joined()
+        
+        if sanitized.isEmpty { return }
+        
+        let oldFolderURL = docURL.appendingPathComponent("Sessions").appendingPathComponent(id)
+        let newFolderURL = docURL.appendingPathComponent("Sessions").appendingPathComponent(sanitized)
+        
+        do {
+            if fileManager.fileExists(atPath: oldFolderURL.path) {
+                try fileManager.moveItem(at: oldFolderURL, to: newFolderURL)
+            }
+            
+            var sess = history[index]
+            sess["id"] = sanitized
+            history[index] = sess
+            UserDefaults.standard.set(history, forKey: "sessionHistory")
+            loadHistory()
+        } catch {
+            print("Failed to rename session: \(error.localizedDescription)")
+        }
     }
     
     private func formatDate(_ date: Date) -> String {

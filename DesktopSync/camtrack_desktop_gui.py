@@ -94,7 +94,7 @@ class CamTrackDesktopApp:
         title_frame = ttk.Frame(left_panel)
         title_frame.grid(row=0, column=0, sticky="w", pady=(0, 20))
         ttk.Label(title_frame, text="CAMTRACK PRO // DESKTOP CONSOLE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        ttk.Label(title_frame, text="Version 0.0.3 // Build 2 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(title_frame, text="Version 0.0.3 // Build 3 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
@@ -142,7 +142,7 @@ class CamTrackDesktopApp:
         slider_frame.grid(row=2, column=0, sticky="ew", pady=(0, 15))
         slider_frame.columnconfigure(0, weight=1)
         
-        slider = ttk.Scale(slider_frame, from_=-30.0, to=30.0, variable=self.time_offset, orient="horizontal")
+        slider = ttk.Scale(slider_frame, from_=-300.0, to=300.0, variable=self.time_offset, orient="horizontal")
         slider.grid(row=0, column=0, sticky="ew", padx=(0, 15))
         
         self.time_lbl = ttk.Label(slider_frame, text="0.00s", style="Header.TLabel")
@@ -174,7 +174,7 @@ class CamTrackDesktopApp:
         
         # System Banner
         self.log("SYSTEM ACTIVE // DESKTOP GEODETIC DATA SYNCHRONIZER ENGINE")
-        self.log("Version: 0.0.3 // Build: 2 // OS Platform: Windows")
+        self.log("Version: 0.0.3 // Build: 3 // OS Platform: Windows")
         self.log("Standalone georeferencing suite ready for Metashape & RealityCapture...\n")
         
     def add_offset_input(self, parent, label, variable, col):
@@ -352,11 +352,14 @@ class CamTrackDesktopApp:
                     
             epoch = 0.0
             if "timestamp_ms" in rec:
-                epoch = rec["timestamp_ms"] / 1000.0
+                epoch = rec["timestamp_ms"]
             elif "epoch" in rec:
                 epoch = rec["epoch"]
             else:
                 continue
+                
+            if epoch > 1e11:
+                epoch = epoch / 1000.0
                 
             records.append({
                 "epoch": epoch,
@@ -400,6 +403,29 @@ class CamTrackDesktopApp:
         if min_diff <= max_delta:
             return closest
         return None
+        
+    def match_epoch_any(self, target_epoch, records):
+        if not records:
+            return None
+        low = 0
+        high = len(records) - 1
+        closest = None
+        min_diff = float("inf")
+        
+        while low <= high:
+            mid = (low + high) // 2
+            mid_rec = records[mid]
+            diff = abs(mid_rec["epoch"] - target_epoch)
+            
+            if diff < min_diff:
+                min_diff = diff
+                closest = mid_rec
+                
+            if mid_rec["epoch"] < target_epoch:
+                low = mid + 1
+            else:
+                high = mid - 1
+        return closest
         
     def apply_offsets(self, px, py, pz, qw, qx, qy, qz, lx, ly, lz):
         # 3D Quaternion Rotation offset correction

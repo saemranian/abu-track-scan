@@ -96,6 +96,10 @@ def load_telemetry_csv(csv_path):
                     t_val = float(raw_time)
                 except ValueError:
                     continue
+                
+                # Scale seconds-based timestamp up to milliseconds if needed
+                if t_val < 1e11:
+                    t_val *= 1000.0
                     
                 try:
                     records.append({

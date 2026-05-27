@@ -17,6 +17,11 @@ struct DashboardView: View {
     @State private var panY: Double = 0.0
     @State private var zoom: Double = 1.0
     
+    // Hardware Load Diagnostic State
+    @State private var cpuUsage: Double = 0.0
+    @State private var ramUsage: Double = 0.0
+    @State private var hardwareTimer: Timer?
+    
     // Toggles for Trajectory and Camera Position
     @State private var showTrajectory = true
     @State private var showCamera = true
@@ -87,6 +92,23 @@ struct DashboardView: View {
                                 
                                 // Floating HUD Controls
                                 HStack(spacing: 6) {
+                                    Button(action: {
+                                        rotX = -0.4
+                                        rotY = -trackingManager.yaw * Double.pi / 180.0
+                                        panX = trackingManager.localX
+                                        panY = trackingManager.localY
+                                        zoom = 1.0
+                                    }) {
+                                        Text("CENTER")
+                                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                                            .foregroundColor(.cyan)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(4)
+                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.cyan.opacity(0.6), lineWidth: 0.5))
+                                    }
+                                    
                                     Button(action: { showTrajectory.toggle() }) {
                                         Text("PATH")
                                             .font(.system(size: 8, weight: .black, design: .monospaced))
@@ -179,6 +201,8 @@ struct DashboardView: View {
                                 Divider().background(Color.gray.opacity(0.1))
                                 TelemetryRow(label: "GNSS ABSOLUTE COORDS", value: locationManager.isGPSEnabled ? String(format: "%.6f, %.6f (±%.1fm)", locationManager.latitude, locationManager.longitude, locationManager.horizontalAccuracy) : "INDOOR GEODETIC FALLBACK", highlight: locationManager.isGPSEnabled ? .green : .orange)
                                 Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "SYS HARDWARE LOAD (CPU/RAM)", value: String(format: "CPU: %.1f%%  RAM: %.1f%%", cpuUsage, ramUsage), highlight: cpuUsage > 80.0 || ramUsage > 80.0 ? .red : .green)
+                                Divider().background(Color.gray.opacity(0.1))
                                 TelemetryRow(label: "SESSION TELEMETRY DATA", value: activeSessionID != nil ? "ID: \(String(activeSessionID!.suffix(8)))  [REC: \(entryCount)]" : "STREAM DISCONNECTED", highlight: .yellow)
                             }
                             .background(Color(red: 0.06, green: 0.08, blue: 0.15))
@@ -195,6 +219,16 @@ struct DashboardView: View {
         }
         .onAppear {
             locationManager.isGPSEnabled = RigSettings.isGPSEnabled
+            
+            // Periodic Hardware Diagnostics Timer (CPU / RAM Load monitoring)
+            hardwareTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                self.cpuUsage = getCPUUsage()
+                self.ramUsage = getMemoryUsage().used
+            }
+        }
+        .onDisappear {
+            hardwareTimer?.invalidate()
+            hardwareTimer = nil
         }
     }
     
@@ -210,6 +244,11 @@ struct DashboardView: View {
         // Start physical managers
         locationManager.startUpdates()
         trackingManager.startTracking(frequency: RigSettings.captureRate)
+        
+        // Automatically snap viewport to active camera coordinate
+        self.panX = trackingManager.localX
+        self.panY = trackingManager.localY
+        self.rotY = -trackingManager.yaw * Double.pi / 180.0
         
         // UI Timer updates
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
@@ -276,6 +315,68 @@ struct DashboardView: View {
         let seconds = Int(interval) % 60
         let tenths = Int((interval.truncatingRemainder(dividingBy: 1)) * 10)
         return String(format: "%02d:%02d.%d", minutes, seconds, tenths)
+    }
+    
+    private func getCPUUsage() -> Double {
+        var threadList: thread_act_array_t?
+        var threadCount: mach_msg_type_number_t = 0
+        
+        let result = withUnsafeMutablePointer(to: &threadList) {
+            $0.withMemoryRebound(to: thread_act_array_t?.self, capacity: 1) {
+                task_threads(mach_task_self_, $0, &threadCount)
+            }
+        }
+        
+        if result != KERN_SUCCESS { return 0.0 }
+        
+        var totalCPU: Double = 0.0
+        if let threadList = threadList {
+            for i in 0..<Int(threadCount) {
+                var threadInfo = thread_basic_info()
+                var threadInfoCount = mach_msg_type_number_t(THREAD_INFO_MAX)
+                
+                let infoResult = withUnsafeMutablePointer(to: &threadInfo) {
+                    $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                        thread_info(threadList[i], thread_flavor_t(THREAD_BASIC_INFO), $0, &threadInfoCount)
+                    }
+                }
+                
+                if infoResult == KERN_SUCCESS {
+                    if (threadInfo.flags & TH_FLAGS_IDLE) == 0 {
+                        totalCPU += Double(threadInfo.cpu_usage) / Double(TH_USAGE_SCALE) * 100.0
+                    }
+                }
+            }
+            
+            let size = MemoryLayout<thread_t>.size * Int(threadCount)
+            vm_deallocate(mach_task_self_, vm_address_t(bitPattern: threadList), vm_size_t(size))
+        }
+        
+        return min(totalCPU, 100.0)
+    }
+
+    private func getMemoryUsage() -> (used: Double, total: Double) {
+        var stats = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / 4)
+        
+        let kerr = withUnsafeMutablePointer(to: &stats) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        
+        if kerr == KERN_SUCCESS {
+            let usedBytes = Double(stats.resident_size)
+            let totalBytes = Double(ProcessInfo.processInfo.physicalMemory)
+            
+            let usedMB = usedBytes / 1024.0 / 1024.0
+            let totalGB = totalBytes / 1024.0 / 1024.0 / 1024.0
+            
+            let pct = (usedBytes / totalBytes) * 100.0
+            return (used: pct, total: totalGB)
+        }
+        
+        return (used: 0.0, total: 0.0)
     }
 }
 
@@ -358,9 +459,35 @@ struct PointCloudVisualizerView: View {
                 let pt3D = (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z))
                 let proj = project(point: pt3D, center: center, rotX: rotX, rotY: rotY)
                 
-                // Draw each point as a glowing particle
-                let rect = CGRect(x: proj.x - 1.5, y: proj.y - 1.5, width: 3, height: 3)
-                context.fill(Path(ellipseIn: rect), with: .color(.cyan.opacity(0.8)))
+                // Determine color based on reconstruction depth quality (distance from camera)
+                var pointColor = Color.green
+                if let cam = cameraPosition {
+                    let dx = Double(pt.x) - cam.x
+                    let dy = Double(pt.y) - cam.y
+                    let dz = Double(pt.z) - cam.z
+                    let dist = sqrt(dx*dx + dy*dy + dz*dz)
+                    
+                    if dist <= 1.8 {
+                        pointColor = .green
+                    } else if dist <= 3.2 {
+                        pointColor = .yellow
+                    } else {
+                        pointColor = .red
+                    }
+                } else {
+                    let distFromOrigin = sqrt(pt3D.x*pt3D.x + pt3D.y*pt3D.y + pt3D.z*pt3D.z)
+                    if distFromOrigin <= 2.0 {
+                        pointColor = .green
+                    } else if distFromOrigin <= 4.0 {
+                        pointColor = .yellow
+                    } else {
+                        pointColor = .red
+                    }
+                }
+                
+                // Draw each point as a glowing particle (4x smaller: width 0.75, height 0.75)
+                let rect = CGRect(x: proj.x - 0.375, y: proj.y - 0.375, width: 0.75, height: 0.75)
+                context.fill(Path(ellipseIn: rect), with: .color(pointColor.opacity(0.8)))
             }
             
             // Draw Trajectory Path
