@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import ARKit
 
 // Segmented device setup selector
 enum CaptureMode: String, CaseIterable, Identifiable {
@@ -63,6 +64,8 @@ struct DashboardView: View {
     @State private var isAutoISO = true
     @State private var wbTemperature: Double = 5000.0 // Kelvin range: 2500.0 to 9000.0
     @State private var isAutoWB = true
+    @State private var isAutoFocus = true // Default auto focus
+    @State private var focusPosition: Double = 1.0 // Default infinity (1.0)
     @State private var pictureFormat = "JPG" // options: JPG, HEIF, DNG
     @State private var is48MP = false // false = 12MP, true = 48MP (Quad-Pixel sensor)
     @State private var zoomFactor: Double = 1.0
@@ -327,6 +330,9 @@ struct DashboardView: View {
             cameraCoordinator.onCaptureError = { error in
                 DispatchQueue.main.async {
                     self.shutterFeedbackMessage = "CAPTURE FAILED"
+                    if self.trackingManager.isTrackingActive {
+                        self.trackingManager.resumeARKitSession()
+                    }
                 }
             }
             
@@ -525,9 +531,12 @@ struct DashboardView: View {
             }
         }
         
-        // Set tactile shutter HUD confirmation
+        // Set tactile shutter HUD confirmation and resume tracking
         DispatchQueue.main.async {
             self.shutterFeedbackMessage = "SAVED: \(filename)"
+            if self.trackingManager.isTrackingActive {
+                self.trackingManager.resumeARKitSession()
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 if self.shutterFeedbackMessage == "SAVED: \(filename)" {
                     self.shutterFeedbackMessage = ""
@@ -538,9 +547,44 @@ struct DashboardView: View {
     
     private func updateManualExposure() {
         let selectedShutter = shutterSpeeds[shutterSpeedIndex]
+        
+        // Auto-toggle ISO to manual if manual shutter speed is chosen (iOS requirement)
+        if selectedShutter != 0.0 && isAutoISO {
+            // Run on next runloop cycle to prevent layout engine warning
+            DispatchQueue.main.async {
+                self.isAutoISO = false
+            }
+        }
+        
         let targetISO = isAutoISO ? 0.0 : isoValue
         let targetWB = isAutoWB ? 0.0 : wbTemperature
         cameraManager.updateExposureAndWB(shutterSpeed: selectedShutter, iso: targetISO, wbTemperature: targetWB)
+    }
+    
+    private func updateManualFocus() {
+        cameraManager.updateFocus(isAutoFocus: isAutoFocus, lensPosition: focusPosition)
+    }
+    
+    private func triggerInAppCapture() {
+        if trackingManager.isTrackingActive {
+            // 1. Temporarily pause ARKit tracking to release hardware lock!
+            trackingManager.arSession.pause()
+            
+            // 2. Short delay to allow session release, configure and start AVCaptureSession, then take photo
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                cameraManager.setupCamera { success in
+                    if success {
+                        cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
+                    } else {
+                        // Resume ARKit if camera setup failed
+                        trackingManager.resumeARKitSession()
+                    }
+                }
+            }
+        } else {
+            // Standard photo capture when not tracking
+            cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
+        }
     }
     
     private func formatDuration(_ interval: TimeInterval) -> String {
@@ -629,10 +673,32 @@ struct DashboardView: View {
             
             ZStack(alignment: .bottom) {
                 if isCameraReady {
-                    CameraPreviewContainer(previewLayer: cameraManager.getPreviewLayer())
-                        .frame(height: 210)
-                        .cornerRadius(12)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15), lineWidth: 1))
+                    ZStack {
+                        if trackingManager.isTrackingActive {
+                            ARPreviewContainer(session: trackingManager.arSession)
+                        } else {
+                            CameraPreviewContainer(previewLayer: cameraManager.getPreviewLayer())
+                        }
+                        
+                        // Cyberpunk save directory path HUD overlay
+                        VStack {
+                            HStack {
+                                Text("SAVE PATH: Files -> On My iPhone -> CamTrack Pro -> Sessions -> \(activeSessionID?.suffix(8) ?? "SESSION_ID")")
+                                    .font(.system(size: 6.5, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.cyan.opacity(0.85))
+                                    .padding(4)
+                                    .background(Color.black.opacity(0.6))
+                                    .cornerRadius(4)
+                                Spacer()
+                            }
+                            Spacer()
+                        }
+                        .padding(8)
+                        .allowsHitTesting(false)
+                    }
+                    .frame(width: 280, height: 210) // 4:3 Perfect Aspect Ratio, no cropping!
+                    .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15), lineWidth: 1))
                 } else {
                     VStack(spacing: 12) {
                         Image(systemName: "camera.fill")
@@ -642,15 +708,14 @@ struct DashboardView: View {
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .foregroundColor(.gray)
                     }
-                    .frame(height: 210)
-                    .frame(maxWidth: .infinity)
+                    .frame(width: 280, height: 210)
                     .background(Color(red: 0.05, green: 0.06, blue: 0.12))
                     .cornerRadius(12)
                 }
                 
                 // Circular DSLR Shutter Button overlay
                 Button(action: {
-                    cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
+                    triggerInAppCapture()
                 }) {
                     ZStack {
                         Circle()
@@ -813,6 +878,33 @@ struct DashboardView: View {
                             Slider(value: $wbTemperature, in: 2500...9000, step: 100)
                                 .tint(.yellow)
                                 .onChange(of: wbTemperature) { _ in updateManualExposure() }
+                        }
+                    }
+                    
+                    Divider().background(Color.gray.opacity(0.1))
+                    
+                    // 5. Focus mode slider and auto/manual toggle (0.0 nearest focus, 1.0 infinity focus)
+                    VStack(spacing: 4) {
+                        HStack {
+                            Text("FOCUS MODE")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Toggle("AUTO", isOn: $isAutoFocus)
+                                .font(.system(size: 8, weight: .black, design: .monospaced))
+                                .toggleStyle(SwitchToggleStyle(tint: .green))
+                                .onChange(of: isAutoFocus) { _ in updateManualFocus() }
+                            if !isAutoFocus {
+                                Text(focusPosition == 1.0 ? "INF" : String(format: "%.2f", focusPosition))
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.green)
+                                    .frame(width: 40, alignment: .trailing)
+                            }
+                        }
+                        if !isAutoFocus {
+                            Slider(value: $focusPosition, in: 0.0...1.0, step: 0.05)
+                                .tint(.green)
+                                .onChange(of: focusPosition) { _ in updateManualFocus() }
                         }
                     }
                 }
@@ -1010,36 +1102,39 @@ struct PointCloudVisualizerView: View {
         let py = point.y - panY
         let pz = point.z - panZ
         
-        // Rotate 90 degrees around X-axis: mapping ARKit space (Y-up) to Metashape/GIS space (Z-up)
+        // Map ARKit space (Y-up) to photogrammetry/GIS space (Z-up)
+        // rx = East (X)
+        // ry = North (-Z)
+        // rz = Up (Y)
         let rx = px
         let ry = -pz
         let rz = py
         
-        // 1. Rotate around Y-axis using rotated coordinates
+        // 1. Rotate around vertical axis Z (rz) by yaw (rotY)
         let cosY = cos(rotY)
         let sinY = sin(rotY)
-        let x1 = rx * cosY - rz * sinY
-        let z1 = rx * sinY + rz * cosY
+        let x1 = rx * cosY - ry * sinY
+        let y1 = rx * sinY + ry * cosY
         
-        // 2. Rotate around X-axis
+        // 2. Rotate around horizontal axis X (rx) by pitch (rotX)
         let cosX = cos(rotX)
         let sinX = sin(rotX)
-        let y2 = ry * cosX - z1 * sinX
-        let z2 = ry * sinX + z1 * cosX
+        let z2 = rz * cosX - y1 * sinX  // Screen vertical coordinate
+        let depth2 = rz * sinX + y1 * cosX // Screen depth coordinate
         
         // 3. Perspective Projection
         let fov = 3.0 // Focus distance/zoom
         let distance = 4.0 // Distance from camera
         let zoomAmount = 140.0 * zoom
         
-        // Guard against points behind camera (z2 >= 0) to avoid inverse scaling or artifacts
-        guard z2 < 0.0 else {
+        // Guard against points behind camera (depth2 <= -distance) to avoid division by zero or artifacts
+        guard depth2 > -distance else {
             return CGPoint(x: -9999.0, y: -9999.0)
         }
         
-        let scale = fov / (distance - z2) // Corrected linear perspective!
+        let scale = fov / (distance + depth2)
         let screenX = center.x + CGFloat(x1 * scale * zoomAmount)
-        let screenY = center.y - CGFloat(y2 * scale * zoomAmount)
+        let screenY = center.y - CGFloat(z2 * scale * zoomAmount)
         
         return CGPoint(x: screenX, y: screenY)
     }
@@ -1199,4 +1294,19 @@ struct TelemetryRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
+}
+
+// SwiftUI wrapper for ARKit live camera preview during active runs
+struct ARPreviewContainer: UIViewRepresentable {
+    let session: ARSession
+    
+    func makeUIView(context: Context) -> ARSCNView {
+        let scnView = ARSCNView(frame: .zero)
+        scnView.session = session
+        scnView.antialiasingMode = .multisampling4X
+        scnView.autoenablesDefaultLighting = true
+        return scnView
+    }
+    
+    func updateUIView(_ uiView: ARSCNView, context: Context) {}
 }

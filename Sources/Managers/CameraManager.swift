@@ -157,7 +157,10 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                     }
                 } else {
                     let duration = CMTime(seconds: shutterSpeed, preferredTimescale: 1000000)
-                    device.setExposureModeCustom(duration: duration, iso: Float(iso), completionHandler: nil)
+                    let minISO = device.activeFormat.minISO
+                    let maxISO = device.activeFormat.maxISO
+                    let targetISO = max(minISO, min(maxISO, Float(iso == 0.0 ? Double(device.iso) : iso)))
+                    device.setExposureModeCustom(duration: duration, iso: targetISO, completionHandler: nil)
                 }
                 
                 // 2. White Balance temperature settings (wbTemperature = 0.0 is automatic)
@@ -166,7 +169,9 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                         device.whiteBalanceMode = .continuousAutoWhiteBalance
                     }
                 } else {
-                    let tempAndTint = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: Float(wbTemperature), tint: 0.0)
+                    // Clamp white balance temperature to a highly compatible safe range to prevent crash
+                    let safeTemperature = max(3000.0, min(8000.0, Float(wbTemperature)))
+                    let tempAndTint = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: safeTemperature, tint: 0.0)
                     let gains = device.deviceWhiteBalanceGains(for: tempAndTint)
                     
                     var red = gains.redGain
@@ -192,6 +197,32 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 device.unlockForConfiguration()
             } catch {
                 print("CameraManager: Failed to configure exposure/WB parameters: \(error)")
+            }
+        }
+    }
+    
+    // Sets camera focus mode and manual lens position (lensPosition = 0.0 is nearest, 1.0 is infinity/automatic)
+    func updateFocus(isAutoFocus: Bool, lensPosition: Double) {
+        guard let device = videoDeviceInput?.device else { return }
+        
+        sessionQueue.async {
+            do {
+                try device.lockForConfiguration()
+                
+                if isAutoFocus {
+                    if device.isFocusModeSupported(.continuousAutoFocus) {
+                        device.focusMode = .continuousAutoFocus
+                    }
+                } else {
+                    if device.isFocusModeSupported(.locked) {
+                        device.focusMode = .locked
+                        device.setFocusModeLocked(withLensPosition: Float(lensPosition), completionHandler: nil)
+                    }
+                }
+                
+                device.unlockForConfiguration()
+            } catch {
+                print("CameraManager: Failed to configure focus: \(error)")
             }
         }
     }
@@ -312,7 +343,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             return existing
         }
         let newLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
-        newLayer.videoGravity = .resizeAspectFill
+        newLayer.videoGravity = .resizeAspect
         self.previewLayer = newLayer
         return newLayer
     }
@@ -326,7 +357,7 @@ class PreviewView: UIView {
         self.previewLayer = previewLayer
         super.init(frame: .zero)
         self.previewLayer.frame = self.bounds
-        self.previewLayer.videoGravity = .resizeAspectFill
+        self.previewLayer.videoGravity = .resizeAspect
         self.layer.addSublayer(previewLayer)
     }
     

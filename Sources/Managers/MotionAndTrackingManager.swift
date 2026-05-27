@@ -116,6 +116,19 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         appState = "Foreground (ARKit VIO + LiDAR)"
     }
     
+    func resumeARKitSession() {
+        let configuration = ARWorldTrackingConfiguration()
+        configuration.worldAlignment = .gravityAndHeading
+        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
+            configuration.sceneReconstruction = .mesh
+        }
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
+            configuration.frameSemantics.insert(.sceneDepth)
+        }
+        arSession.run(configuration, options: [])
+        appState = "Foreground (ARKit VIO + LiDAR)"
+    }
+    
     private func stopARKitSession() {
         arSession.pause()
     }
