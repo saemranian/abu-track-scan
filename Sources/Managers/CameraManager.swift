@@ -1,13 +1,14 @@
 import Foundation
 import AVFoundation
 import UIKit
+import SwiftUI
 
 protocol CameraManagerDelegate: AnyObject {
     func cameraManager(_ manager: CameraManager, didCapturePhotoAt url: URL, timestamp: Double, filename: String)
     func cameraManager(_ manager: CameraManager, didFailWithError error: Error)
 }
 
-class CameraManager: NSObject, AVCapturePhotoCaptureDelegate {
+class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     private let captureSession = AVCaptureSession()
     private var photoOutput: AVCapturePhotoOutput?
     private var videoDeviceInput: AVCaptureDeviceInput?
@@ -197,7 +198,13 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate {
             
             // Resolve format constraints: DNG (RAW), HEIF, JPG
             if format == "DNG" && !photoOutput.availableRawPhotoPixelFormatTypes.isEmpty {
-                let rawFormatType = photoOutput.availableRawPhotoPixelFormatTypes.first!.uint32Value
+                let firstRawType = photoOutput.availableRawPhotoPixelFormatTypes.first!
+                let rawFormatType: OSType
+                if let nsNum = firstRawType as? NSNumber {
+                    rawFormatType = nsNum.uint32Value
+                } else {
+                    rawFormatType = firstRawType as! OSType
+                }
                 photoSettings = AVCapturePhotoSettings(rawPixelFormatType: rawFormatType, processedFormat: [AVVideoCodecKey: AVVideoCodecType.jpeg])
             } else if format == "HEIF" && photoOutput.availablePhotoCodecTypes.contains(.hevc) {
                 photoSettings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.hevc])
@@ -271,7 +278,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate {
     // Get preview layer for live viewport overlay in SwiftUI
     func getPreviewLayer() -> AVCaptureVideoPreviewLayer {
         let previewLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
-        previewLayer.videoGravity = .videoGravityResizeAspectFill
+        previewLayer.videoGravity = .resizeAspectFill
         return previewLayer
     }
 }

@@ -228,216 +228,7 @@ struct DashboardView: View {
                         
                         // Integrated Viewfinder preview, Circular shutter, and Pro manual sliders config
                         if captureMode == .singleDevice {
-                            VStack(spacing: 8) {
-                                HStack {
-                                    Label("01 // IN-APP DSLR SHUTTER VIEWPORT", systemImage: "camera.fill")
-                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                        .foregroundColor(.red)
-                                    Spacer()
-                                    if !shutterFeedbackMessage.isEmpty {
-                                        Text(shutterFeedbackMessage)
-                                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                                            .foregroundColor(.green)
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                                
-                                ZStack(alignment: .bottom) {
-                                    if isCameraReady {
-                                        CameraPreviewContainer(previewLayer: cameraManager.getPreviewLayer())
-                                            .frame(height: 210)
-                                            .cornerRadius(12)
-                                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15), lineWidth: 1))
-                                    } else {
-                                        VStack(spacing: 12) {
-                                            Image(systemName: "camera.fill")
-                                                .font(.largeTitle)
-                                                .foregroundColor(.gray)
-                                            Text("Initializing lens fusion drivers...")
-                                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                                .foregroundColor(.gray)
-                                        }
-                                        .frame(height: 210)
-                                        .frame(maxWidth: .infinity)
-                                        .background(Color(red: 0.05, green: 0.06, blue: 0.12))
-                                        .cornerRadius(12)
-                                    }
-                                    
-                                    // Circular DSLR Shutter Button overlay
-                                    Button(action: {
-                                        cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
-                                    }) {
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.white.opacity(0.2))
-                                                .frame(width: 58, height: 58)
-                                                .blur(radius: 1)
-                                            Circle()
-                                                .stroke(Color.white, lineWidth: 3)
-                                                .frame(width: 52, height: 52)
-                                            Circle()
-                                                .fill(trackingManager.isTrackingActive ? Color.red : Color.gray)
-                                                .frame(width: 42, height: 42)
-                                        }
-                                    }
-                                    .padding(.bottom, 12)
-                                    .disabled(!trackingManager.isTrackingActive) // Trigger captures only during continuous georeferencing
-                                }
-                                .padding(.horizontal)
-                                
-                                // PRO MANUAL CAMERA OVERLAYS
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Text("PRO MANUAL SHUTTER & LENS SETTINGS")
-                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                        .foregroundColor(.gray)
-                                        .padding(.horizontal, 4)
-                                    
-                                    VStack(spacing: 12) {
-                                        // 1. Picture format selection and 48MP high-res sensor toggler
-                                        HStack {
-                                            Text("FORMAT")
-                                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                .foregroundColor(.gray)
-                                            Spacer()
-                                            Picker("Format", selection: $pictureFormat) {
-                                                Text("JPG").tag("JPG")
-                                                Text("HEIF").tag("HEIF")
-                                                Text("RAW (DNG)").tag("DNG")
-                                            }
-                                            .pickerStyle(.segmented)
-                                            .frame(width: 160)
-                                            
-                                            Toggle("48MP", isOn: $is48MP)
-                                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                .toggleStyle(SwitchToggleStyle(tint: .red))
-                                                .frame(width: 80)
-                                        }
-                                        
-                                        Divider().background(Color.gray.opacity(0.1))
-                                        
-                                        // Lens & Digital Zoom Selector (0.5x Ultra Wide, 1.0x Wide, 5.0x Telephoto, and Digital Zoom options)
-                                        VStack(spacing: 6) {
-                                            HStack {
-                                                Text("LENS ZOOM")
-                                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                    .foregroundColor(.gray)
-                                                Spacer()
-                                                Text(String(format: "%.1fx", zoomFactor))
-                                                    .font(.system(size: 10, design: .monospaced))
-                                                    .foregroundColor(.cyan)
-                                            }
-                                            
-                                            HStack(spacing: 8) {
-                                                ForEach([0.5, 1.0, 2.0, 5.0, 10.0, 25.0], id: \.self) { factor in
-                                                    Button(action: {
-                                                        zoomFactor = factor
-                                                        cameraManager.setZoomFactor(zoomFactor)
-                                                    }) {
-                                                        Text(String(format: "%.1fx", factor))
-                                                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                            .foregroundColor(zoomFactor == factor ? .cyan : .white)
-                                                            .padding(.horizontal, 6)
-                                                            .padding(.vertical, 4)
-                                                            .background(zoomFactor == factor ? Color.cyan.opacity(0.15) : Color.white.opacity(0.05))
-                                                            .cornerRadius(4)
-                                                            .overlay(
-                                                                RoundedRectangle(cornerRadius: 4)
-                                                                    .stroke(zoomFactor == factor ? Color.cyan : Color.clear, lineWidth: 1)
-                                                            )
-                                                    }
-                                                }
-                                            }
-                                            .frame(maxWidth: .infinity)
-                                            
-                                            Slider(value: $zoomFactor, in: 0.5...25.0, step: 0.1)
-                                                .tint(.cyan)
-                                                .onChange(of: zoomFactor) { newValue in
-                                                    cameraManager.setZoomFactor(newValue)
-                                                }
-                                        }
-                                        
-                                        Divider().background(Color.gray.opacity(0.1))
-                                        
-                                        // 2. Shutter speed picker configuration
-                                        HStack {
-                                            Text("SHUTTER SPEED")
-                                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                .foregroundColor(.gray)
-                                            Spacer()
-                                            Picker("Shutter", selection: $shutterSpeedIndex) {
-                                                ForEach(0..<shutterLabels.count, id: \.self) { idx in
-                                                    Text(shutterLabels[idx]).tag(idx)
-                                                }
-                                            }
-                                            .pickerStyle(.wheel)
-                                            .frame(width: 160, height: 50)
-                                            .clipped()
-                                            .onChange(of: shutterSpeedIndex) { _ in
-                                                updateManualExposure()
-                                            }
-                                        }
-                                        
-                                        Divider().background(Color.gray.opacity(0.1))
-                                        
-                                        // 3. ISO Slider control
-                                        VStack(spacing: 4) {
-                                            HStack {
-                                                Text("ISO SENSITIVITY")
-                                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                    .foregroundColor(.gray)
-                                                Spacer()
-                                                Toggle("AUTO", isOn: $isAutoISO)
-                                                    .font(.system(size: 8, weight: .black, design: .monospaced))
-                                                    .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                                                    .onChange(of: isAutoISO) { _ in updateManualExposure() }
-                                                if !isAutoISO {
-                                                    Text(String(format: "%.0f", isoValue))
-                                                        .font(.system(size: 10, design: .monospaced))
-                                                        .foregroundColor(.cyan)
-                                                        .frame(width: 40, alignment: .trailing)
-                                                }
-                                            }
-                                            if !isAutoISO {
-                                                Slider(value: $isoValue, in: 50...3000, step: 50)
-                                                    .tint(.cyan)
-                                                    .onChange(of: isoValue) { _ in updateManualExposure() }
-                                            }
-                                        }
-                                        
-                                        Divider().background(Color.gray.opacity(0.1))
-                                        
-                                        // 4. White balance temperature slider control (Kelvin values)
-                                        VStack(spacing: 4) {
-                                            HStack {
-                                                Text("WHITE BALANCE (KELVIN)")
-                                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                    .foregroundColor(.gray)
-                                                Spacer()
-                                                Toggle("AUTO", isOn: $isAutoWB)
-                                                    .font(.system(size: 8, weight: .black, design: .monospaced))
-                                                    .toggleStyle(SwitchToggleStyle(tint: .yellow))
-                                                    .onChange(of: isAutoWB) { _ in updateManualExposure() }
-                                                if !isAutoWB {
-                                                    Text(String(format: "%.0fK", wbTemperature))
-                                                        .font(.system(size: 10, design: .monospaced))
-                                                        .foregroundColor(.yellow)
-                                                        .frame(width: 55, alignment: .trailing)
-                                                }
-                                            }
-                                            if !isAutoWB {
-                                                Slider(value: $wbTemperature, in: 2500...9000, step: 100)
-                                                    .tint(.yellow)
-                                                    .onChange(of: wbTemperature) { _ in updateManualExposure() }
-                                            }
-                                        }
-                                    }
-                                    .padding(12)
-                                    .background(Color(red: 0.06, green: 0.08, blue: 0.15))
-                                    .cornerRadius(10)
-                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.15), lineWidth: 1))
-                                }
-                                .padding(.horizontal)
-                            }
+                            singleDeviceViewfinder
                         }
                         
                         // Sleek, Minimal Action Button Row
@@ -813,6 +604,219 @@ struct DashboardView: View {
         }
         
         return (used: 0.0, total: 0.0)
+    }
+    
+    private var singleDeviceViewfinder: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Label("01 // IN-APP DSLR SHUTTER VIEWPORT", systemImage: "camera.fill")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundColor(.red)
+                Spacer()
+                if !shutterFeedbackMessage.isEmpty {
+                    Text(shutterFeedbackMessage)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundColor(.green)
+                }
+            }
+            .padding(.horizontal, 16)
+            
+            ZStack(alignment: .bottom) {
+                if isCameraReady {
+                    CameraPreviewContainer(previewLayer: cameraManager.getPreviewLayer())
+                        .frame(height: 210)
+                        .cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15), lineWidth: 1))
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "camera.fill")
+                            .font(.largeTitle)
+                            .foregroundColor(.gray)
+                        Text("Initializing lens fusion drivers...")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(.gray)
+                    }
+                    .frame(height: 210)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(red: 0.05, green: 0.06, blue: 0.12))
+                    .cornerRadius(12)
+                }
+                
+                // Circular DSLR Shutter Button overlay
+                Button(action: {
+                    cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.2))
+                            .frame(width: 58, height: 58)
+                            .blur(radius: 1)
+                        Circle()
+                            .stroke(Color.white, lineWidth: 3)
+                            .frame(width: 52, height: 52)
+                        Circle()
+                            .fill(trackingManager.isTrackingActive ? Color.red : Color.gray)
+                            .frame(width: 42, height: 42)
+                    }
+                }
+                .padding(.bottom, 12)
+                .disabled(!trackingManager.isTrackingActive) // Trigger captures only during continuous georeferencing
+            }
+            .padding(.horizontal)
+            
+            // PRO MANUAL CAMERA OVERLAYS
+            VStack(alignment: .leading, spacing: 10) {
+                Text("PRO MANUAL SHUTTER & LENS SETTINGS")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 4)
+                
+                VStack(spacing: 12) {
+                    // 1. Picture format selection and 48MP high-res sensor toggler
+                    HStack {
+                        Text("FORMAT")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(.gray)
+                        Spacer()
+                        Picker("Format", selection: $pictureFormat) {
+                            Text("JPG").tag("JPG")
+                            Text("HEIF").tag("HEIF")
+                            Text("RAW (DNG)").tag("DNG")
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 160)
+                        
+                        Toggle("48MP", isOn: $is48MP)
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .toggleStyle(SwitchToggleStyle(tint: .red))
+                            .frame(width: 80)
+                    }
+                    
+                    Divider().background(Color.gray.opacity(0.1))
+                    
+                    // Lens & Digital Zoom Selector (0.5x Ultra Wide, 1.0x Wide, 5.0x Telephoto, and Digital Zoom options)
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text("LENS ZOOM")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text(String(format: "%.1fx", zoomFactor))
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(.cyan)
+                        }
+                        
+                        HStack(spacing: 8) {
+                            ForEach([0.5, 1.0, 2.0, 5.0, 10.0, 25.0], id: \.self) { factor in
+                                Button(action: {
+                                    zoomFactor = factor
+                                    cameraManager.setZoomFactor(zoomFactor)
+                                }) {
+                                    Text(String(format: "%.1fx", factor))
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .foregroundColor(zoomFactor == factor ? .cyan : .white)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 4)
+                                        .background(zoomFactor == factor ? Color.cyan.opacity(0.15) : Color.white.opacity(0.05))
+                                        .cornerRadius(4)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .stroke(zoomFactor == factor ? Color.cyan : Color.clear, lineWidth: 1)
+                                        )
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        
+                        Slider(value: $zoomFactor, in: 0.5...25.0, step: 0.1)
+                            .tint(.cyan)
+                            .onChange(of: zoomFactor) { newValue in
+                                cameraManager.setZoomFactor(newValue)
+                            }
+                    }
+                    
+                    Divider().background(Color.gray.opacity(0.1))
+                    
+                    // 2. Shutter speed picker configuration
+                    HStack {
+                        Text("SHUTTER SPEED")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(.gray)
+                        Spacer()
+                        Picker("Shutter", selection: $shutterSpeedIndex) {
+                            ForEach(0..<shutterLabels.count, id: \.self) { idx in
+                                Text(shutterLabels[idx]).tag(idx)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(width: 160, height: 50)
+                        .clipped()
+                        .onChange(of: shutterSpeedIndex) { _ in
+                            updateManualExposure()
+                        }
+                    }
+                    
+                    Divider().background(Color.gray.opacity(0.1))
+                    
+                    // 3. ISO Slider control
+                    VStack(spacing: 4) {
+                        HStack {
+                            Text("ISO SENSITIVITY")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Toggle("AUTO", isOn: $isAutoISO)
+                                .font(.system(size: 8, weight: .black, design: .monospaced))
+                                .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                                .onChange(of: isAutoISO) { _ in updateManualExposure() }
+                            if !isAutoISO {
+                                Text(String(format: "%.0f", isoValue))
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.cyan)
+                                    .frame(width: 40, alignment: .trailing)
+                            }
+                        }
+                        if !isAutoISO {
+                            Slider(value: $isoValue, in: 50...3000, step: 50)
+                                .tint(.cyan)
+                                .onChange(of: isoValue) { _ in updateManualExposure() }
+                        }
+                    }
+                    
+                    Divider().background(Color.gray.opacity(0.1))
+                    
+                    // 4. White balance temperature slider control (Kelvin values)
+                    VStack(spacing: 4) {
+                        HStack {
+                            Text("WHITE BALANCE (KELVIN)")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Toggle("AUTO", isOn: $isAutoWB)
+                                .font(.system(size: 8, weight: .black, design: .monospaced))
+                                .toggleStyle(SwitchToggleStyle(tint: .yellow))
+                                .onChange(of: isAutoWB) { _ in updateManualExposure() }
+                            if !isAutoWB {
+                                Text(String(format: "%.0fK", wbTemperature))
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.yellow)
+                                    .frame(width: 55, alignment: .trailing)
+                            }
+                        }
+                        if !isAutoWB {
+                            Slider(value: $wbTemperature, in: 2500...9000, step: 100)
+                                .tint(.yellow)
+                                .onChange(of: wbTemperature) { _ in updateManualExposure() }
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color(red: 0.06, green: 0.08, blue: 0.15))
+                .cornerRadius(10)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.15), lineWidth: 1))
+            }
+            .padding(.horizontal)
+        }
     }
 }
 
