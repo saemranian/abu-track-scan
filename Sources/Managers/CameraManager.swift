@@ -94,7 +94,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 if #available(iOS 16.0, *) {
                     // Query the maximum dimensions supported by the active format of the back camera to avoid startup crash
                     if let videoDevice = self.videoDeviceInput?.device,
-                       let maxDim = videoDevice.activeFormat.supportedPhotoMaxDimensions.max(by: { $0.width * $0.height < $1.width * $1.height }) {
+                       let maxDim = videoDevice.activeFormat.supportedMaxPhotoDimensions.max(by: { $0.width * $0.height < $1.width * $1.height }) {
                         photoOutput.maxPhotoDimensions = maxDim
                     }
                 }
@@ -217,7 +217,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             // Bind sensor resolution safely: 12 MP vs 48 MP
             if #available(iOS 16.0, *) {
                 let maxDimensions: CMVideoDimensions
-                let supported = self.videoDeviceInput?.device.activeFormat.supportedPhotoMaxDimensions ?? []
+                let supported = self.videoDeviceInput?.device.activeFormat.supportedMaxPhotoDimensions ?? []
                 
                 let target48MP = CMVideoDimensions(width: 8064, height: 6048)
                 let target12MP = CMVideoDimensions(width: 4032, height: 3024)
