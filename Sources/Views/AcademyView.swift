@@ -90,50 +90,54 @@ struct AcademyView: View {
                             )
                             
                             LessonDisclosureGroup(
-                                title: "4. Agisoft Metashape Pipeline",
+                                title: "4. Agisoft Metashape Reference Import",
                                 icon: "arrow.up.doc.fill",
                                 color: .purple,
                                 content: """
-                                • **Export Metashape References:** Export the "Metashape CSV" from the app session manager. This file has columns ordered exactly for automatic camera reference matching:
+                                • **CSV Column Layout:** The exported `metashape_cameras.csv` contains:
                                   - Column 1: `label` (Matched image filename)
-                                  - Columns 2-4: Metric coordinate `local_x`, `local_y`, `local_z`
-                                  - Column 5: `baro_altitude` (Centimeter-level height change)
-                                  - Columns 6-8: Absolute `gps_latitude`, `gps_longitude`, `gps_altitude`
-                                  - Columns 9-11: Rotation `yaw`, `pitch`, `roll`
+                                  - Columns 2-4: Metric coordinate `local_x`, `local_y`, `local_z` (VIO meters)
+                                  - Column 5: `baro_altitude` (Centimeter-precision relative altitude)
+                                  - Columns 6-8: Absolute `gps_latitude`, `gps_longitude`, `gps_altitude` (GPS degrees)
+                                  - Columns 9-11: Attitude `yaw`, `pitch`, `roll`
                                 
-                                • **How to Import into Metashape:**
-                                  1. Import your matched DSLR/iPhone photos into a Metashape Chunk.
-                                  2. In the **Reference Panel**, click the **Import** button.
-                                  3. Choose your exported `metashape_cameras.csv` file.
-                                  4. Map the columns correctly: set X, Y, Z to the local metric coordinates, and Yaw, Pitch, Roll to the logged attitude angles.
-                                  5. Build your model! The reconstruction will be aligned, and absolutely scaled in centimeters!
+                                • **CRITICAL Metashape Import Rules (Avoid Pitfalls!):**
+                                  1. **Delimiter Mismatch:** In the Import CSV dialog, you MUST check **Comma** as the delimiter (uncheck Tab). Checking 'Tab' will fail to split columns, causing cameras to import in a single line.
+                                  2. **Coordinate System Selection:** 
+                                     - If you set X, Y, Z to local VIO columns (Columns 2, 3, 4), set the coordinate system to **Local Coordinates (m)**.
+                                     - If you set X, Y, Z to GPS columns (Columns 6, 7, 8), you MUST set the coordinate system to **WGS 84 (EPSG::4326)**! Importing GPS degrees as meters will pack cameras into a single wrong spot.
                                 """
                             )
                             
                             LessonDisclosureGroup(
-                                title: "5. RealityScan Absolute Scaling",
+                                title: "5. RealityScan & EXIF Metadata Injection",
                                 icon: "circle.grid.3x3.fill",
                                 color: .orange,
                                 content: """
-                                • **RealityScan Pipeline:**
-                                  1. Capture your object or room.
-                                  2. Export the `metashape_cameras.csv` file containing the georeferenced metric translations.
-                                  3. Import both the images and CSV into Epic's RealityScan pipeline.
-                                  4. The VIO spatial coordinates will automatically scale the sparse point cloud, allowing you to crop and align the bounding grid to exact real-world dimensions.
+                                • **The Trajectory Import Error [err:18003]:** 
+                                  Clicking 'Import Trajectory' in RealityScan/RealityCapture prompts for a proprietary alignment/flight-log format. Importing our metashape CSV directly here will fail.
+                                
+                                • **The EXIF Metadata Solution (Most Solid!):**
+                                  The absolute bulletproof way is to inject high-precision VIO coordinates and orientation angles directly into the EXIF/XMP tags of the image files (using our Python desktop script).
+                                
+                                • **Why EXIF is Superior:**
+                                  Once injected, you just drag and drop the photos folder directly into RealityScan or Metashape. The software reads the coordinates instantly without needing separate trajectory files or custom configuration settings!
                                 """
                             )
                             
                             LessonDisclosureGroup(
-                                title: "6. Utilizing Reconstructed PLY Point Clouds",
+                                title: "6. VIO Point Clouds vs. Dense LiDAR Scans",
                                 icon: "square.stack.3d.up.fill",
                                 color: .blue,
                                 content: """
-                                • **The PLY File:** Every session records a high-resolution `.ply` coverage point cloud by accumulating the structural feature points tracked during VIO.
+                                • **VIO Sparse Reference Point Cloud:**
+                                  Our persistent point cloud (`coverage_cloud.ply`) is a **sparse visual-inertial tracking aid** composed of high-contrast texture anchors used by ARKit to track camera position. It is meant as an operator coverage diagnostic, not as a finished 3D mesh model.
                                 
-                                • **How to Use:**
-                                  1. Share and download the `coverage_cloud.ply` file to your PC.
-                                  2. Open the file in **MeshLab**, **CloudCompare**, or **Blender**.
-                                  3. Use this point cloud as a highly accurate scale reference of the room to align, merge, or measure meshes created during photogrammetry.
+                                • **Why it Looks Messy/Spiky:**
+                                  These points are back-projected visually based on parallax. Panning fast or passing low-texture, reflective, or plain surfaces creates "outliers" (messy floating points).
+                                
+                                • **Dot3D / LiDAR Meshing:**
+                                  Apps like Dot3D build watertight, dense reconstructions by actively filtering continuous time-of-flight LiDAR depth frames, which is heavily GPU-intensive and not designed for sub-millimeter camera track logging.
                                 """
                             )
                         }

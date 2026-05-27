@@ -13,8 +13,8 @@ let package = Package(
             targets: ["App"],
             bundleIdentifier: "com.saemranian.camtrackpro",
             teamIdentifier: "",
-            displayVersion: "1.0",
-            bundleVersion: "1",
+            displayVersion: "0.0.3",
+            bundleVersion: "15",
             appIcon: .placeholder(icon: .camera),
             accentColor: .presetColor(.cyan),
             supportedDeviceFamilies: [

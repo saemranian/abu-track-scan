@@ -148,6 +148,45 @@ struct SettingsView: View {
                             .cornerRadius(14)
                             .padding(.horizontal)
                         }
+                        
+                        // Section 4: About CamTrack Pro
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("About CamTrack Pro")
+                                .font(.caption)
+                                .fontWeight(.black)
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal)
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "info.circle.fill")
+                                        .foregroundColor(.cyan)
+                                        .font(.title3)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("CamTrack Pro")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.white)
+                                        Text("Industrial Reality Capture Sync Engine")
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.bottom, 4)
+                                
+                                Divider().background(Color.gray.opacity(0.3))
+                                
+                                DiagnosticRow(label: "App Version", value: "0.0.3")
+                                DiagnosticRow(label: "Build Try", value: "15")
+                                DiagnosticRow(label: "Compile Date", value: "2026-05-27 11:50")
+                                DiagnosticRow(label: "Release State", value: "Active Development")
+                            }
+                            .padding()
+                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
+                            .cornerRadius(14)
+                            .padding(.horizontal)
+                        }
                     }
                     .padding(.bottom, 20)
                 }
