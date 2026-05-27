@@ -31,38 +31,46 @@ def print_banner():
 def load_exif_timestamp(img_path):
     """
     Reads EXIF tags using Pillow to retrieve the precise capture time with sub-seconds.
+    Falls back to filename parsing or filesystem modification time to guarantee a timestamp.
     Returns: Timestamp in milliseconds since Epoch (UTC).
     """
+    # Layer 1: EXIF Metadata
     try:
         with Image.open(img_path) as img:
             exif_data = img._getexif()
-            if not exif_data:
-                return None
+            if exif_data:
+                tags = {}
+                for tag_id, value in exif_data.items():
+                    tag_name = TAGS.get(tag_id, tag_id)
+                    tags[tag_name] = value
+                
+                date_str = tags.get('DateTimeOriginal') or tags.get('DateTime')
+                if date_str:
+                    subsec_str = tags.get('SubSecTimeOriginal') or tags.get('SubSecTime') or '0'
+                    dt = datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
+                    epoch_sec = dt.timestamp()
+                    subsec = float("0." + subsec_str) if subsec_str.isdigit() else 0.0
+                    return (epoch_sec + subsec) * 1000.0
+    except Exception:
+        pass
+        
+    # Layer 2: Filename Regex Fallback (e.g. 2026_05_27_10_02_IMG_1255.JPG)
+    p_name = os.path.basename(img_path)
+    import re
+    match = re.search(r'(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})?', p_name)
+    if match:
+        parts = match.groups()
+        try:
+            if parts[5]:
+                dt = datetime(int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5]))
+            else:
+                dt = datetime(int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]))
+            return dt.timestamp() * 1000.0
+        except ValueError:
+            pass
             
-            tags = {}
-            for tag_id, value in exif_data.items():
-                tag_name = TAGS.get(tag_id, tag_id)
-                tags[tag_name] = value
-            
-            # Extract main date time: '2026:05:26 15:30:45'
-            date_str = tags.get('DateTimeOriginal') or tags.get('DateTime')
-            if not date_str:
-                return None
-            
-            # Extract sub-second fraction: '450' (meaning 0.450 seconds)
-            subsec_str = tags.get('SubSecTimeOriginal') or tags.get('SubSecTime') or '0'
-            
-            # Parse main date string
-            dt = datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
-            epoch_sec = dt.timestamp()
-            
-            # Add subsecond fraction
-            subsec = float("0." + subsec_str) if subsec_str.isdigit() else 0.0
-            
-            return (epoch_sec + subsec) * 1000.0
-    except Exception as e:
-        print(f"  [!] Error reading EXIF for {os.path.basename(img_path)}: {e}")
-        return None
+    # Layer 3: Filesystem modification time fallback
+    return os.path.getmtime(img_path) * 1000.0
 
 def load_telemetry_csv(csv_path):
     """
@@ -275,19 +283,27 @@ def main():
         
     print(f"  [+] Found {len(images)} photos. Matching timestamps...")
     
+    # Dynamic Hour Offset Alignment calculation
+    first_p_time_ms = load_exif_timestamp(images[0])
+    tel_start_ms = records[0]['timestamp']
+    time_diff_hours = round((first_p_time_ms - tel_start_ms) / 3600000.0)
+    auto_tz_offset_ms = time_diff_hours * 3600000.0
+    
+    if abs(time_diff_hours) >= 1.0:
+        print(f"  [!] Large timezone/clock difference of {time_diff_hours:+.1f} hours detected.")
+        print(f"  [!] Auto-aligning clocks by subtracting {time_diff_hours:+.1f} hours ({auto_tz_offset_ms/1000.0:+.0f}s).")
+    else:
+        auto_tz_offset_ms = 0.0
+        
     # 4. Process matches
     matched_cameras = []
     missed_count = 0
     
     for img_path in images:
         filename = os.path.basename(img_path)
-        img_time_ms = load_exif_timestamp(img_path)
+        raw_time_ms = load_exif_timestamp(img_path)
+        img_time_ms = raw_time_ms - auto_tz_offset_ms
         
-        if not img_time_ms:
-            print(f"  [!] Skipped {filename} (No valid EXIF timestamp)")
-            missed_count += 1
-            continue
-            
         # Find spatial marker
         closest = find_telemetry_for_timestamp(img_time_ms, records)
         

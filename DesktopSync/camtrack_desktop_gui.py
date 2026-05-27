@@ -94,7 +94,7 @@ class CamTrackDesktopApp:
         title_frame = ttk.Frame(left_panel)
         title_frame.grid(row=0, column=0, sticky="w", pady=(0, 20))
         ttk.Label(title_frame, text="CAMTRACK PRO // DESKTOP CONSOLE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        ttk.Label(title_frame, text="Version 0.0.3 // Build 1 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(title_frame, text="Version 0.0.3 // Build 2 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
@@ -174,7 +174,7 @@ class CamTrackDesktopApp:
         
         # System Banner
         self.log("SYSTEM ACTIVE // DESKTOP GEODETIC DATA SYNCHRONIZER ENGINE")
-        self.log("Version: 0.0.3 // Build: 1 // OS Platform: Windows")
+        self.log("Version: 0.0.3 // Build: 2 // OS Platform: Windows")
         self.log("Standalone georeferencing suite ready for Metashape & RealityCapture...\n")
         
     def add_offset_input(self, parent, label, variable, col):
@@ -241,6 +241,26 @@ class CamTrackDesktopApp:
             self.log(f"Configured 3D Lever-Arm: [{lx:+.3f}m, {ly:+.3f}m, {lz:+.3f}m]")
             self.log(f"Configured Temporal delta: {dt:+.2f}s")
             
+            # Print diagnostic range info
+            tel_start = telemetry[0]["epoch"]
+            tel_end = telemetry[-1]["epoch"]
+            self.log(f"Telemetry GPS track range: {self.format_epoch(tel_start)} to {self.format_epoch(tel_end)}")
+            
+            # Pre-scan the first photo's raw timestamp
+            first_p_path = os.path.join(photo_dir, photo_files[0])
+            first_p_time = self.get_photo_timestamp(first_p_path)
+            self.log(f"First photo raw time:      {self.format_epoch(first_p_time)}")
+            
+            # Dynamic Hour Offset Alignment calculation
+            time_diff_hours = round((first_p_time - tel_start) / 3600.0)
+            auto_tz_offset = time_diff_hours * 3600.0
+            
+            if abs(time_diff_hours) >= 1.0:
+                self.log(f"WARN // Large timezone/clock difference of {time_diff_hours:+.1f} hours detected.")
+                self.log(f"WARN // Auto-aligning clocks by subtracting {time_diff_hours:+.1f} hours ({auto_tz_offset:+.0f}s).")
+            else:
+                auto_tz_offset = 0.0
+                
             matched = 0
             csv_lines = [
                 "label,local_x,local_y,local_z,baro_altitude,gps_latitude,gps_longitude,gps_altitude,yaw,pitch,roll,time_diff"
@@ -250,8 +270,9 @@ class CamTrackDesktopApp:
             for i, p_name in enumerate(photo_files):
                 p_path = os.path.join(photo_dir, p_name)
                 
-                # Image shutter creation timestamp + slider correction
-                p_epoch = os.path.getmtime(p_path) + dt
+                # Dynamic photo timestamp (EXIF -> Filename -> mtime)
+                raw_time = self.get_photo_timestamp(p_path)
+                p_epoch = raw_time - auto_tz_offset + dt
                 
                 # Locate nearest spatial odometry packet
                 record = self.match_epoch(p_epoch, telemetry)
@@ -281,7 +302,12 @@ class CamTrackDesktopApp:
                     if matched % 15 == 0 or matched == total:
                         self.log(f"Sync Match // {p_name} -> Lat: {lat:.6f}, Lon: {lon:.6f}, Alt: {alt:.2f}m (dt: {time_diff:+.3f}s)")
                 else:
-                    self.log(f"Skip // {p_name} [No matching telemetry epoch inside tolerance]")
+                    # Log skip with more diagnostic details on first and last failures to help user
+                    if i < 3 or i == total - 1:
+                        p_time_str = self.format_epoch(p_epoch)
+                        self.log(f"Skip // {p_name} (Aligned time: {p_time_str} - no matching telemetry epoch within tolerance)")
+                    elif i == 3:
+                        self.log("Skip // ... [suppressing subsequent mismatch logs for brevity] ...")
                     
                 self.progress["value"] = int(((i + 1) / total) * 100)
                 
@@ -396,6 +422,50 @@ class CamTrackDesktopApp:
         
         return (px + rx, py + ry, pz + rz)
         
+    def get_photo_timestamp(self, p_path):
+        try:
+            exif_dict = piexif.load(p_path)
+            date_str = None
+            if "Exif" in exif_dict and 36867 in exif_dict["Exif"]:
+                date_str = exif_dict["Exif"][36867].decode("utf-8")
+            elif "0th" in exif_dict and 306 in exif_dict["0th"]:
+                date_str = exif_dict["0th"][306].decode("utf-8")
+                
+            if date_str:
+                from datetime import datetime
+                dt = datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
+                epoch_sec = dt.timestamp()
+                
+                subsec = 0.0
+                if "Exif" in exif_dict and 37521 in exif_dict["Exif"]:
+                    sub_str = exif_dict["Exif"][37521].decode("utf-8")
+                    if sub_str.isdigit():
+                        subsec = float("0." + sub_str)
+                return epoch_sec + subsec
+        except Exception:
+            pass
+            
+        p_name = os.path.basename(p_path)
+        import re
+        match = re.search(r'(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})?', p_name)
+        if match:
+            parts = match.groups()
+            try:
+                from datetime import datetime
+                if parts[5]:
+                    dt = datetime(int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5]))
+                else:
+                    dt = datetime(int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4]))
+                return dt.timestamp()
+            except ValueError:
+                pass
+                
+        return os.path.getmtime(p_path)
+
+    def format_epoch(self, epoch):
+        from datetime import datetime
+        return datetime.fromtimestamp(epoch).strftime('%Y-%m-%d %H:%M:%S')
+
     def to_gps_coords(self, base_lat, base_lon, base_alt, dx, dy):
         if base_lat == 0.0 or base_lon == 0.0:
             return 0.0, 0.0, base_alt
