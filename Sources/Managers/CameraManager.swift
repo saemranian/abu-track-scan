@@ -87,12 +87,17 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 self.captureSession.addOutput(photoOutput)
                 self.photoOutput = photoOutput
                 
-                // Enable maximum high-resolution options
+                // Enable maximum high-resolution options safely
                 photoOutput.isHighResolutionCaptureEnabled = true
-                photoOutput.maxPhotoQualityPrioritization = .quality // DSLR-quality Deep Fusion/Smart HDR processing
+                if photoOutput.supportedQualityPrioritizations.contains(.quality) {
+                    photoOutput.maxPhotoQualityPrioritization = .quality // DSLR-quality Deep Fusion/Smart HDR processing
+                }
                 
                 if #available(iOS 16.0, *) {
-                    photoOutput.maxPhotoDimensions = CMVideoDimensions(width: 8064, height: 6048)
+                    // Query the maximum dimensions supported by the active format to avoid startup exception crash
+                    if let maxDim = photoOutput.supportedPhotoMaxDimensions.max(by: { $0.width * $0.height < $1.width * $1.height }) {
+                        photoOutput.maxPhotoDimensions = maxDim
+                    }
                 }
             } else {
                 print("CameraManager: Cannot add photo output")
@@ -212,17 +217,31 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 photoSettings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])
             }
             
-            // Set high-resolution options
+            // Set high-resolution options safely
             photoSettings.isHighResolutionPhotoEnabled = true
-            photoSettings.photoQualityPrioritization = .quality
+            if photoOutput.supportedQualityPrioritizations.contains(.quality) {
+                photoSettings.photoQualityPrioritization = .quality
+            }
             
-            // Bind sensor resolution: 12 MP vs 48 MP
+            // Bind sensor resolution safely: 12 MP vs 48 MP
             if #available(iOS 16.0, *) {
-                let maxDimensions = is48MP ? CMVideoDimensions(width: 8064, height: 6048) : CMVideoDimensions(width: 4032, height: 3024)
+                let maxDimensions: CMVideoDimensions
+                let supported = photoOutput.supportedPhotoMaxDimensions
+                
+                let target48MP = CMVideoDimensions(width: 8064, height: 6048)
+                let target12MP = CMVideoDimensions(width: 4032, height: 3024)
+                
+                if is48MP && supported.contains(where: { $0.width == 8064 && $0.height == 6048 }) {
+                    maxDimensions = target48MP
+                } else if supported.contains(where: { $0.width == 4032 && $0.height == 3024 }) {
+                    maxDimensions = target12MP
+                } else {
+                    maxDimensions = supported.max(by: { $0.width * $0.height < $1.width * $1.height }) ?? CMVideoDimensions(width: 4032, height: 3024)
+                }
                 photoSettings.maxPhotoDimensions = maxDimensions
             }
             
-            if self.videoDeviceInput?.device.isFlashAvailable == true {
+            if self.videoDeviceInput?.device.isFlashAvailable == true && photoOutput.supportedFlashModes.contains(.auto) {
                 photoSettings.flashMode = .auto
             }
             
