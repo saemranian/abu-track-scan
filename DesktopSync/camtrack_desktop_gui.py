@@ -53,9 +53,9 @@ class CamTrackDesktopApp:
         style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
         
         # Core Labels (Unified clean typography)
-        style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Consolas", 9.5))
+        style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Consolas", 9))
         style.configure("Header.TLabel", background=CARD_BG, foreground=ACCENT_CYAN, font=("Consolas", 11, "bold"))
-        style.configure("Muted.TLabel", background=CARD_BG, foreground=TEXT_MUTED, font=("Consolas", 8.5))
+        style.configure("Muted.TLabel", background=CARD_BG, foreground=TEXT_MUTED, font=("Consolas", 8))
         
         # Sleek Minimal Buttons
         style.configure("TButton", background=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Consolas", 9, "bold"))
@@ -94,7 +94,7 @@ class CamTrackDesktopApp:
         title_frame = ttk.Frame(left_panel)
         title_frame.grid(row=0, column=0, sticky="w", pady=(0, 20))
         ttk.Label(title_frame, text="CAMTRACK PRO // DESKTOP CONSOLE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        ttk.Label(title_frame, text="Version 0.0.5 // Build 16 // Active Release", font=("Consolas", 8.5), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(title_frame, text="Version 0.0.3 // Build 1 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
@@ -165,7 +165,7 @@ class CamTrackDesktopApp:
         ttk.Label(right_panel, text="CAMTRACK LOGS & MULTI-INTEGRITY ANALYSIS", font=("Consolas", 11, "bold"), background=BG_COLOR, foreground=ACCENT_CYAN).grid(row=0, column=0, sticky="w", pady=(0, 15))
         
         # Text box custom formatted to look like a high-end console
-        self.log_box = tk.Text(right_panel, wrap="word", bg=CARD_BG, fg=TEXT_PRIMARY, insertbackground=ACCENT_CYAN, font=("Consolas", 9.5), bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=ACCENT_CYAN, padx=15, pady=15)
+        self.log_box = tk.Text(right_panel, wrap="word", bg=CARD_BG, fg=TEXT_PRIMARY, insertbackground=ACCENT_CYAN, font=("Consolas", 9), bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=ACCENT_CYAN, padx=15, pady=15)
         self.log_box.grid(row=1, column=0, sticky="nsew")
         
         scroll = ttk.Scrollbar(right_panel, orient="vertical", command=self.log_box.yview)
@@ -174,7 +174,7 @@ class CamTrackDesktopApp:
         
         # System Banner
         self.log("SYSTEM ACTIVE // DESKTOP GEODETIC DATA SYNCHRONIZER ENGINE")
-        self.log("Version: 0.0.5 // Build: 16 // OS Platform: Windows")
+        self.log("Version: 0.0.3 // Build: 1 // OS Platform: Windows")
         self.log("Standalone georeferencing suite ready for Metashape & RealityCapture...\n")
         
     def add_offset_input(self, parent, label, variable, col):
@@ -324,24 +324,31 @@ class CamTrackDesktopApp:
                 except ValueError:
                     rec[h] = val
                     
-            if "epoch" in rec:
-                records.append({
-                    "epoch": rec.get("epoch", 0.0),
-                    "local_x": rec.get("local_x", 0.0),
-                    "local_y": rec.get("local_y", 0.0),
-                    "local_z": rec.get("local_z", 0.0),
-                    "q_w": rec.get("q_w", 1.0),
-                    "q_x": rec.get("q_x", 0.0),
-                    "q_y": rec.get("q_y", 0.0),
-                    "q_z": rec.get("q_z", 0.0),
-                    "gps_lat": rec.get("gps_latitude", 0.0),
-                    "gps_lon": rec.get("gps_longitude", 0.0),
-                    "gps_alt": rec.get("gps_altitude", 0.0),
-                    "baro_alt": rec.get("baro_altitude", 0.0),
-                    "yaw": rec.get("yaw", 0.0),
-                    "pitch": rec.get("pitch", 0.0),
-                    "roll": rec.get("roll", 0.0)
-                })
+            epoch = 0.0
+            if "timestamp_ms" in rec:
+                epoch = rec["timestamp_ms"] / 1000.0
+            elif "epoch" in rec:
+                epoch = rec["epoch"]
+            else:
+                continue
+                
+            records.append({
+                "epoch": epoch,
+                "local_x": rec.get("local_x_m", rec.get("local_x", 0.0)),
+                "local_y": rec.get("local_y_m", rec.get("local_y", 0.0)),
+                "local_z": rec.get("local_z_m", rec.get("local_z", 0.0)),
+                "q_w": rec.get("q_w", 1.0),
+                "q_x": rec.get("q_x", 0.0),
+                "q_y": rec.get("q_y", 0.0),
+                "q_z": rec.get("q_z", 0.0),
+                "gps_lat": rec.get("gps_lat", rec.get("gps_latitude", 0.0)),
+                "gps_lon": rec.get("gps_lon", rec.get("gps_longitude", 0.0)),
+                "gps_alt": rec.get("gps_alt_m", rec.get("gps_altitude", 0.0)),
+                "baro_alt": rec.get("baro_alt_m", rec.get("baro_altitude", 0.0)),
+                "yaw": rec.get("yaw_deg", rec.get("yaw", 0.0)),
+                "pitch": rec.get("pitch_deg", rec.get("pitch", 0.0)),
+                "roll": rec.get("roll_deg", rec.get("roll", 0.0))
+            })
         return sorted(records, key=lambda x: x["epoch"])
         
     def match_epoch(self, target_epoch, records, max_delta=2.0):

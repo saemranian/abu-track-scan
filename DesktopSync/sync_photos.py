@@ -67,40 +67,51 @@ def load_exif_timestamp(img_path):
 def load_telemetry_csv(csv_path):
     """
     Parses the CamTrack telemetry CSV and loads records sorted by timestamp.
+    Supports both legacy and upgraded header formats.
     """
     records = []
     try:
         with open(csv_path, 'r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            header = next(reader)
-            
-            for row in reader:
-                if len(row) < 19:
+            reader = csv.DictReader(f)
+            # Normalize fieldnames to lowercase for safe lookups
+            if reader.fieldnames:
+                reader.fieldnames = [fn.strip().lower() for fn in reader.fieldnames]
+            else:
+                return []
+                
+            for rec in reader:
+                # Resolve timestamp/epoch (in milliseconds since epoch)
+                raw_time = rec.get('timestamp_ms') or rec.get('epoch')
+                if raw_time is None:
                     continue
                 try:
-                    rec = {
-                        'timestamp': float(row[0]),
-                        'local_x': float(row[1]),
-                        'local_y': float(row[2]),
-                        'local_z': float(row[3]),
-                        'baro_alt': float(row[4]),
-                        'pressure': float(row[5]),
-                        'pitch': float(row[6]),
-                        'roll': float(row[7]),
-                        'yaw': float(row[8]),
-                        'q_w': float(row[9]),
-                        'q_x': float(row[10]),
-                        'q_y': float(row[11]),
-                        'q_z': float(row[12]),
-                        'gps_enabled': int(row[13]) == 1,
-                        'gps_lat': float(row[14]),
-                        'gps_lon': float(row[15]),
-                        'gps_alt': float(row[16]),
-                        'gps_acc_h': float(row[17]),
-                        'gps_acc_v': float(row[18])
-                    }
-                    records.append(rec)
+                    t_val = float(raw_time)
                 except ValueError:
+                    continue
+                    
+                try:
+                    records.append({
+                        'timestamp': t_val,
+                        'local_x': float(rec.get('local_x_m') or rec.get('local_x') or 0.0),
+                        'local_y': float(rec.get('local_y_m') or rec.get('local_y') or 0.0),
+                        'local_z': float(rec.get('local_z_m') or rec.get('local_z') or 0.0),
+                        'baro_alt': float(rec.get('baro_alt_m') or rec.get('baro_altitude') or 0.0),
+                        'pressure': float(rec.get('baro_press_kpa') or rec.get('pressure') or 0.0),
+                        'pitch': float(rec.get('pitch_deg') or rec.get('pitch') or 0.0),
+                        'roll': float(rec.get('roll_deg') or rec.get('roll') or 0.0),
+                        'yaw': float(rec.get('yaw_deg') or rec.get('yaw') or 0.0),
+                        'q_w': float(rec.get('q_w') or 1.0),
+                        'q_x': float(rec.get('q_x') or 0.0),
+                        'q_y': float(rec.get('q_y') or 0.0),
+                        'q_z': float(rec.get('q_z') or 0.0),
+                        'gps_enabled': int(float(rec.get('gps_enabled') or rec.get('gps_enabled') or 0.0)) == 1,
+                        'gps_lat': float(rec.get('gps_lat') or rec.get('gps_latitude') or 0.0),
+                        'gps_lon': float(rec.get('gps_lon') or rec.get('gps_longitude') or 0.0),
+                        'gps_alt': float(rec.get('gps_alt_m') or rec.get('gps_altitude') or 0.0),
+                        'gps_acc_h': float(rec.get('gps_acc_h_m') or rec.get('gps_acc_h') or 0.0),
+                        'gps_acc_v': float(rec.get('gps_acc_v_m') or rec.get('gps_acc_v') or 0.0)
+                    })
+                except (ValueError, TypeError):
                     continue
         # Sort by timestamp to ensure binary search validity
         records.sort(key=lambda x: x['timestamp'])
