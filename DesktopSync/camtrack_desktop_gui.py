@@ -40,6 +40,11 @@ class CamTrackDesktopApp:
         self.dy = tk.DoubleVar(value=5.0)
         self.dz = tk.DoubleVar(value=12.0)
         self.time_offset = tk.DoubleVar(value=0.0)
+        self.time_entry_var = tk.StringVar(value="0.00")
+        self._updating_offset = False
+        
+        self.time_offset.trace_add("write", self._on_slider_change)
+        self.time_entry_var.trace_add("write", self._on_entry_change)
         
         self.setup_styles()
         self.build_ui()
@@ -94,7 +99,7 @@ class CamTrackDesktopApp:
         title_frame = ttk.Frame(left_panel)
         title_frame.grid(row=0, column=0, sticky="w", pady=(0, 20))
         ttk.Label(title_frame, text="CAMTRACK PRO // DESKTOP CONSOLE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        ttk.Label(title_frame, text="Version 0.0.3 // Build 5 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(title_frame, text="Version 0.0.3 // Build 6 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
@@ -145,9 +150,10 @@ class CamTrackDesktopApp:
         slider = ttk.Scale(slider_frame, from_=-300.0, to=300.0, variable=self.time_offset, orient="horizontal")
         slider.grid(row=0, column=0, sticky="ew", padx=(0, 15))
         
-        self.time_lbl = ttk.Label(slider_frame, text="0.00s", style="Header.TLabel")
-        self.time_lbl.grid(row=0, column=1)
-        self.time_offset.trace_add("write", lambda *args: self.time_lbl.configure(text=f"{self.time_offset.get():+.2f}s"))
+        # Numeric entry for exact manual synchronization, bi-directionally bound to the slider
+        self.time_entry = ttk.Entry(slider_frame, textvariable=self.time_entry_var, font=("Consolas", 10), justify="center", width=10)
+        self.time_entry.grid(row=0, column=1, padx=(10, 2))
+        ttk.Label(slider_frame, text="sec", style="Muted.TLabel").grid(row=0, column=2, sticky="w")
         
         # Giant Sync Trigger
         self.sync_btn = ttk.Button(action_card, text="INJECT EXIF & EXPORT REFERENCE METADATA", style="Action.TButton", command=self.run_synchronization)
@@ -174,8 +180,38 @@ class CamTrackDesktopApp:
         
         # System Banner
         self.log("SYSTEM ACTIVE // DESKTOP GEODETIC DATA SYNCHRONIZER ENGINE")
-        self.log("Version: 0.0.3 // Build: 5 // OS Platform: Windows")
+        self.log("Version: 0.0.3 // Build: 6 // OS Platform: Windows")
         self.log("Standalone georeferencing suite ready for Metashape & RealityCapture...\n")
+
+    def _on_slider_change(self, *args):
+        if self._updating_offset:
+            return
+        self._updating_offset = True
+        try:
+            val = self.time_offset.get()
+            self.time_entry_var.set(f"{val:.2f}")
+        except Exception:
+            pass
+        self._updating_offset = False
+
+    def _on_entry_change(self, *args):
+        if self._updating_offset:
+            return
+        self._updating_offset = True
+        try:
+            val_str = self.time_entry_var.get()
+            if val_str == "" or val_str == "-" or val_str == "+":
+                pass
+            else:
+                val = float(val_str)
+                if val < -300.0:
+                    val = -300.0
+                elif val > 300.0:
+                    val = 300.0
+                self.time_offset.set(val)
+        except ValueError:
+            pass
+        self._updating_offset = False
         
     def add_offset_input(self, parent, label, variable, col):
         frame = ttk.Frame(parent)

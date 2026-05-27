@@ -265,9 +265,11 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             var currentFramePoints: [RawPoint3D] = []
             let lidarPoints = self.extractLiDARPoints(from: frame)
             
+            let hasLiDAR = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+            
             if !lidarPoints.isEmpty {
                 currentFramePoints = lidarPoints
-            } else if let rawFeaturePoints = frame.rawFeaturePoints {
+            } else if !hasLiDAR, let rawFeaturePoints = frame.rawFeaturePoints {
                 let points = rawFeaturePoints.points
                 let maxPoints = min(points.count, 200)
                 for i in 0..<maxPoints {
@@ -279,11 +281,12 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             // Limit points logged to sparsePointCloud to prevent memory overload in UI
             self.sparsePointCloud = Array(currentFramePoints.prefix(200))
             
-            // Accumulate unique points using 1cm grid keys
+            // Accumulate unique points using 3cm voxel grid keys to filter spatial tracking noise
+            let voxelSize: Float = 0.03
             for pt in currentFramePoints {
-                let gridX = Int(round(pt.x * 100.0))
-                let gridY = Int(round(pt.y * 100.0))
-                let gridZ = Int(round(pt.z * 100.0))
+                let gridX = Int(round(pt.x / voxelSize))
+                let gridY = Int(round(pt.y / voxelSize))
+                let gridZ = Int(round(pt.z / voxelSize))
                 let key = "\(gridX),\(gridY),\(gridZ)"
                 if !self.pointKeys.contains(key) {
                     self.pointKeys.insert(key)
@@ -358,7 +361,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                     let pixelIndex = y * (bytesPerRow / 4) + x
                     let depth = floatBuffer[pixelIndex]
                     
-                    if depth > 0.1 && depth < 5.0 {
+                    if depth > 0.2 && depth < 3.0 {
                         // Project back to 3D camera space using scaled image coordinates
                         let imgX = Float(x) * scaleX
                         let imgY = Float(y) * scaleY
@@ -380,7 +383,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                     let pixelIndex = y * (bytesPerRow / 2) + x
                     let depth = Float(halfBuffer[pixelIndex])
                     
-                    if depth > 0.1 && depth < 5.0 {
+                    if depth > 0.2 && depth < 3.0 {
                         let imgX = Float(x) * scaleX
                         let imgY = Float(y) * scaleY
                         let camPoint = SIMD4<Float>(

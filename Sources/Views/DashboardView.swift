@@ -1,4 +1,25 @@
 import SwiftUI
+import AVFoundation
+
+// Segmented device setup selector
+enum CaptureMode: String, CaseIterable, Identifiable {
+    case dualDevice = "DUAL-DEVICE (DSLR)"
+    case singleDevice = "SINGLE-DEVICE (IN-APP)"
+    var id: String { self.rawValue }
+}
+
+class CameraCoordinator: ObservableObject, CameraManagerDelegate {
+    var onPhotoCaptured: ((URL, Double, String) -> Void)?
+    var onCaptureError: ((Error) -> Void)?
+    
+    func cameraManager(_ manager: CameraManager, didCapturePhotoAt url: URL, timestamp: Double, filename: String) {
+        onPhotoCaptured?(url, timestamp, filename)
+    }
+    
+    func cameraManager(_ manager: CameraManager, didFailWithError error: Error) {
+        onCaptureError?(error)
+    }
+}
 
 struct DashboardView: View {
     @ObservedObject var locationManager: LocationManager
@@ -16,6 +37,7 @@ struct DashboardView: View {
     @State private var panX: Double = 0.0
     @State private var panY: Double = 0.0
     @State private var zoom: Double = 1.0
+    @State private var isFollowModeActive = true // Aligns viewport to active camera coordinate by default
     
     // Hardware Load Diagnostic State
     @State private var cpuUsage: Double = 0.0
@@ -25,6 +47,28 @@ struct DashboardView: View {
     // Toggles for Trajectory and Camera Position
     @State private var showTrajectory = true
     @State private var showCamera = true
+    
+    // Pro Camera Controls State
+    @State private var captureMode: CaptureMode = .dualDevice
+    @StateObject private var cameraManager = CameraManager()
+    @StateObject private var cameraCoordinator = CameraCoordinator()
+    
+    // Preset Arrays for Shutter Speeds
+    let shutterSpeeds: [Double] = [0.0, 1.0/8000.0, 1.0/4000.0, 1.0/2000.0, 1.0/1000.0, 1.0/500.0, 1.0/250.0, 1.0/125.0, 1.0/60.0, 1.0/30.0, 1.0/15.0, 1.0/8.0, 1.0/4.0, 1.0/2.0, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0]
+    let shutterLabels: [String] = ["AUTO", "1/8000", "1/4000", "1/2000", "1/1000", "1/500", "1/250", "1/125", "1/60", "1/30", "1/15", "1/8", "1/4", "1/2", "1.0s", "2.0s", "5.0s", "10s", "30s", "60s"]
+    
+    @State private var shutterSpeedIndex = 0 // Default AUTO
+    @State private var isoValue: Double = 200.0 // Range: 50.0 to 3000.0
+    @State private var isAutoISO = true
+    @State private var wbTemperature: Double = 5000.0 // Kelvin range: 2500.0 to 9000.0
+    @State private var isAutoWB = true
+    @State private var pictureFormat = "JPG" // options: JPG, HEIF, DNG
+    @State private var is48MP = false // false = 12MP, true = 48MP (Quad-Pixel sensor)
+    @State private var zoomFactor: Double = 1.0
+    
+    @State private var lastCapturedPhotoName = ""
+    @State private var shutterFeedbackMessage = ""
+    @State private var isCameraReady = false
     
     var body: some View {
         NavigationView {
@@ -43,6 +87,27 @@ struct DashboardView: View {
                 
                 ScrollView {
                     VStack(spacing: 16) {
+                        
+                        // 00 // DEVICE SETUP CONFIGURATION
+                        VStack(spacing: 8) {
+                            HStack {
+                                Label("00 // DEVICE SETUP CONFIGURATION", systemImage: "macbook.and.iphone")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.cyan)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            
+                            Picker("Capture Setup", selection: $captureMode) {
+                                ForEach(CaptureMode.allCases) { mode in
+                                    Text(mode.rawValue).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal, 16)
+                            .disabled(trackingManager.isTrackingActive) // Prevent shifting mode while recording
+                        }
+                        .padding(.top, 12)
                         
                         // Sleek, Expanded Hero 3D Point Cloud Viewport
                         VStack(spacing: 6) {
@@ -63,10 +128,10 @@ struct DashboardView: View {
                                     PointCloudVisualizerView(
                                         points: trackingManager.accumulatedPointCloud,
                                         isTracking: trackingManager.isTrackingActive,
-                                        rotX: rotX,
-                                        rotY: rotY,
-                                        panX: panX,
-                                        panY: panY,
+                                        rotX: isFollowModeActive ? -trackingManager.pitch * Double.pi / 180.0 : rotX,
+                                        rotY: isFollowModeActive ? -trackingManager.yaw * Double.pi / 180.0 : rotY,
+                                        panX: isFollowModeActive ? trackingManager.localX : panX,
+                                        panY: isFollowModeActive ? trackingManager.localY : panY,
                                         zoom: zoom,
                                         cameraPosition: (x: trackingManager.localX, y: trackingManager.localY, z: trackingManager.localZ),
                                         trajectory: trackingManager.cameraTrajectory,
@@ -79,7 +144,10 @@ struct DashboardView: View {
                                         rotY: $rotY,
                                         panX: $panX,
                                         panY: $panY,
-                                        zoom: $zoom
+                                        zoom: $zoom,
+                                        onInteractionBegan: {
+                                            isFollowModeActive = false
+                                        }
                                     )
                                 }
                                 .frame(height: 290)
@@ -92,7 +160,29 @@ struct DashboardView: View {
                                 
                                 // Floating HUD Controls
                                 HStack(spacing: 6) {
+                                    // 3D VR auto oriented viewfinder cockpit snap follow toggler
                                     Button(action: {
+                                        isFollowModeActive.toggle()
+                                        if isFollowModeActive {
+                                            rotX = -trackingManager.pitch * Double.pi / 180.0
+                                            rotY = -trackingManager.yaw * Double.pi / 180.0
+                                            panX = trackingManager.localX
+                                            panY = trackingManager.localY
+                                            zoom = 1.0
+                                        }
+                                    }) {
+                                        Text("FOLLOW")
+                                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                                            .foregroundColor(isFollowModeActive ? .cyan : .gray)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(4)
+                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(isFollowModeActive ? Color.cyan.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
+                                    }
+                                    
+                                    Button(action: {
+                                        isFollowModeActive = false
                                         rotX = -0.4
                                         rotY = -trackingManager.yaw * Double.pi / 180.0
                                         panX = trackingManager.localX
@@ -132,9 +222,223 @@ struct DashboardView: View {
                                     }
                                 }
                                 .padding(8)
-                            }
+                             }
                         }
                         .padding(.horizontal)
+                        
+                        // Integrated Viewfinder preview, Circular shutter, and Pro manual sliders config
+                        if captureMode == .singleDevice {
+                            VStack(spacing: 8) {
+                                HStack {
+                                    Label("01 // IN-APP DSLR SHUTTER VIEWPORT", systemImage: "camera.fill")
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                        .foregroundColor(.red)
+                                    Spacer()
+                                    if !shutterFeedbackMessage.isEmpty {
+                                        Text(shutterFeedbackMessage)
+                                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                
+                                ZStack(alignment: .bottom) {
+                                    if isCameraReady {
+                                        CameraPreviewContainer(previewLayer: cameraManager.getPreviewLayer())
+                                            .frame(height: 210)
+                                            .cornerRadius(12)
+                                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15), lineWidth: 1))
+                                    } else {
+                                        VStack(spacing: 12) {
+                                            Image(systemName: "camera.fill")
+                                                .font(.largeTitle)
+                                                .foregroundColor(.gray)
+                                            Text("Initializing lens fusion drivers...")
+                                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.gray)
+                                        }
+                                        .frame(height: 210)
+                                        .frame(maxWidth: .infinity)
+                                        .background(Color(red: 0.05, green: 0.06, blue: 0.12))
+                                        .cornerRadius(12)
+                                    }
+                                    
+                                    // Circular DSLR Shutter Button overlay
+                                    Button(action: {
+                                        cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
+                                    }) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.white.opacity(0.2))
+                                                .frame(width: 58, height: 58)
+                                                .blur(radius: 1)
+                                            Circle()
+                                                .stroke(Color.white, lineWidth: 3)
+                                                .frame(width: 52, height: 52)
+                                            Circle()
+                                                .fill(trackingManager.isTrackingActive ? Color.red : Color.gray)
+                                                .frame(width: 42, height: 42)
+                                        }
+                                    }
+                                    .padding(.bottom, 12)
+                                    .disabled(!trackingManager.isTrackingActive) // Trigger captures only during continuous georeferencing
+                                }
+                                .padding(.horizontal)
+                                
+                                // PRO MANUAL CAMERA OVERLAYS
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("PRO MANUAL SHUTTER & LENS SETTINGS")
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .foregroundColor(.gray)
+                                        .padding(.horizontal, 4)
+                                    
+                                    VStack(spacing: 12) {
+                                        // 1. Picture format selection and 48MP high-res sensor toggler
+                                        HStack {
+                                            Text("FORMAT")
+                                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.gray)
+                                            Spacer()
+                                            Picker("Format", selection: $pictureFormat) {
+                                                Text("JPG").tag("JPG")
+                                                Text("HEIF").tag("HEIF")
+                                                Text("RAW (DNG)").tag("DNG")
+                                            }
+                                            .pickerStyle(.segmented)
+                                            .frame(width: 160)
+                                            
+                                            Toggle("48MP", isOn: $is48MP)
+                                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                .toggleStyle(SwitchToggleStyle(tint: .red))
+                                                .frame(width: 80)
+                                        }
+                                        
+                                        Divider().background(Color.gray.opacity(0.1))
+                                        
+                                        // Lens & Digital Zoom Selector (0.5x Ultra Wide, 1.0x Wide, 5.0x Telephoto, and Digital Zoom options)
+                                        VStack(spacing: 6) {
+                                            HStack {
+                                                Text("LENS ZOOM")
+                                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                    .foregroundColor(.gray)
+                                                Spacer()
+                                                Text(String(format: "%.1fx", zoomFactor))
+                                                    .font(.system(size: 10, design: .monospaced))
+                                                    .foregroundColor(.cyan)
+                                            }
+                                            
+                                            HStack(spacing: 8) {
+                                                ForEach([0.5, 1.0, 2.0, 5.0, 10.0, 25.0], id: \.self) { factor in
+                                                    Button(action: {
+                                                        zoomFactor = factor
+                                                        cameraManager.setZoomFactor(zoomFactor)
+                                                    }) {
+                                                        Text(String(format: "%.1fx", factor))
+                                                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                            .foregroundColor(zoomFactor == factor ? .cyan : .white)
+                                                            .padding(.horizontal, 6)
+                                                            .padding(.vertical, 4)
+                                                            .background(zoomFactor == factor ? Color.cyan.opacity(0.15) : Color.white.opacity(0.05))
+                                                            .cornerRadius(4)
+                                                            .overlay(
+                                                                RoundedRectangle(cornerRadius: 4)
+                                                                    .stroke(zoomFactor == factor ? Color.cyan : Color.clear, lineWidth: 1)
+                                                            )
+                                                    }
+                                                }
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                            
+                                            Slider(value: $zoomFactor, in: 0.5...25.0, step: 0.1)
+                                                .tint(.cyan)
+                                                .onChange(of: zoomFactor) { newValue in
+                                                    cameraManager.setZoomFactor(newValue)
+                                                }
+                                        }
+                                        
+                                        Divider().background(Color.gray.opacity(0.1))
+                                        
+                                        // 2. Shutter speed picker configuration
+                                        HStack {
+                                            Text("SHUTTER SPEED")
+                                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.gray)
+                                            Spacer()
+                                            Picker("Shutter", selection: $shutterSpeedIndex) {
+                                                ForEach(0..<shutterLabels.count, id: \.self) { idx in
+                                                    Text(shutterLabels[idx]).tag(idx)
+                                                }
+                                            }
+                                            .pickerStyle(.wheel)
+                                            .frame(width: 160, height: 50)
+                                            .clipped()
+                                            .onChange(of: shutterSpeedIndex) { _ in
+                                                updateManualExposure()
+                                            }
+                                        }
+                                        
+                                        Divider().background(Color.gray.opacity(0.1))
+                                        
+                                        // 3. ISO Slider control
+                                        VStack(spacing: 4) {
+                                            HStack {
+                                                Text("ISO SENSITIVITY")
+                                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                    .foregroundColor(.gray)
+                                                Spacer()
+                                                Toggle("AUTO", isOn: $isAutoISO)
+                                                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                                                    .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                                                    .onChange(of: isAutoISO) { _ in updateManualExposure() }
+                                                if !isAutoISO {
+                                                    Text(String(format: "%.0f", isoValue))
+                                                        .font(.system(size: 10, design: .monospaced))
+                                                        .foregroundColor(.cyan)
+                                                        .frame(width: 40, alignment: .trailing)
+                                                }
+                                            }
+                                            if !isAutoISO {
+                                                Slider(value: $isoValue, in: 50...3000, step: 50)
+                                                    .tint(.cyan)
+                                                    .onChange(of: isoValue) { _ in updateManualExposure() }
+                                            }
+                                        }
+                                        
+                                        Divider().background(Color.gray.opacity(0.1))
+                                        
+                                        // 4. White balance temperature slider control (Kelvin values)
+                                        VStack(spacing: 4) {
+                                            HStack {
+                                                Text("WHITE BALANCE (KELVIN)")
+                                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                    .foregroundColor(.gray)
+                                                Spacer()
+                                                Toggle("AUTO", isOn: $isAutoWB)
+                                                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                                                    .toggleStyle(SwitchToggleStyle(tint: .yellow))
+                                                    .onChange(of: isAutoWB) { _ in updateManualExposure() }
+                                                if !isAutoWB {
+                                                    Text(String(format: "%.0fK", wbTemperature))
+                                                        .font(.system(size: 10, design: .monospaced))
+                                                        .foregroundColor(.yellow)
+                                                        .frame(width: 55, alignment: .trailing)
+                                                }
+                                            }
+                                            if !isAutoWB {
+                                                Slider(value: $wbTemperature, in: 2500...9000, step: 100)
+                                                    .tint(.yellow)
+                                                    .onChange(of: wbTemperature) { _ in updateManualExposure() }
+                                            }
+                                        }
+                                    }
+                                    .padding(12)
+                                    .background(Color(red: 0.06, green: 0.08, blue: 0.15))
+                                    .cornerRadius(10)
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.15), lineWidth: 1))
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
                         
                         // Sleek, Minimal Action Button Row
                         HStack(spacing: 12) {
@@ -220,6 +524,24 @@ struct DashboardView: View {
         .onAppear {
             locationManager.isGPSEnabled = RigSettings.isGPSEnabled
             
+            // Wire up camera driver delegate callbacks
+            cameraManager.delegate = cameraCoordinator
+            cameraCoordinator.onPhotoCaptured = { url, timestamp, filename in
+                self.handleInAppPhotoCaptured(url: url, timestamp: timestamp, filename: filename)
+            }
+            cameraCoordinator.onCaptureError = { error in
+                DispatchQueue.main.async {
+                    self.shutterFeedbackMessage = "CAPTURE FAILED"
+                }
+            }
+            
+            cameraManager.setupCamera { success in
+                DispatchQueue.main.async {
+                    self.isCameraReady = success
+                    print("CameraManager Setup: \(success)")
+                }
+            }
+            
             // Periodic Hardware Diagnostics Timer (CPU / RAM Load monitoring)
             hardwareTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
                 self.cpuUsage = getCPUUsage()
@@ -241,9 +563,17 @@ struct DashboardView: View {
         self.entryCount = 0
         self.sessionDuration = 0.0
         
+        // Prevent screen auto-lock to keep tracking active
+        UIApplication.shared.isIdleTimerDisabled = true
+        
         // Start physical managers
         locationManager.startUpdates()
         trackingManager.startTracking(frequency: RigSettings.captureRate)
+        
+        // Start in-app camera session if active
+        if captureMode == .singleDevice {
+            cameraManager.startSession(sessionID: sessionID)
+        }
         
         // Automatically snap viewport to active camera coordinate
         self.panX = trackingManager.localX
@@ -287,6 +617,14 @@ struct DashboardView: View {
         sessionTimer?.invalidate()
         sessionTimer = nil
         
+        // Restore standard screen auto-lock behavior
+        UIApplication.shared.isIdleTimerDisabled = false
+        
+        // Stop in-app camera session
+        if captureMode == .singleDevice {
+            cameraManager.stopSession()
+        }
+        
         // Write details to history index in UserDefaults
         if let sessionID = activeSessionID, let start = startTime {
             let sessionInfo: [String: Any] = [
@@ -308,6 +646,104 @@ struct DashboardView: View {
         
         self.activeSessionID = nil
         self.startTime = nil
+    }
+    
+    // Live microsecond-accurate photo georeferencer for Single-Device In-App RAW captures
+    private func handleInAppPhotoCaptured(url: URL, timestamp: Double, filename: String) {
+        let lx = Double(RigSettings.leverArmX) / 100.0
+        let ly = Double(RigSettings.leverArmY) / 100.0
+        let lz = Double(RigSettings.leverArmZ) / 100.0
+        
+        let qw = trackingManager.q_w
+        let qx = trackingManager.q_x
+        let qy = trackingManager.q_y
+        let qz = trackingManager.q_z
+        
+        // 3D vector rotation by unit quaternion
+        let num1 = qx * 2.0
+        let num2 = qy * 2.0
+        let num3 = qz * 2.0
+        let num4 = qx * num1
+        let num5 = qy * num2
+        let num6 = qz * num3
+        let num7 = qx * num2
+        let num8 = qx * num3
+        let num9 = qy * num3
+        let num10 = qw * num1
+        let num11 = qw * num2
+        let num12 = qw * num3
+        
+        let rx = (1.0 - (num5 + num6)) * lx + (num7 - num12) * ly + (num8 + num11) * lz
+        let ry = (num7 + num12) * lx + (1.0 - (num4 + num6)) * ly + (num9 - num10) * lz
+        let rz = (num8 - num11) * lx + (num9 + num10) * ly + (1.0 - (num4 + num5)) * lz
+        
+        let correctedX = trackingManager.localX + rx
+        let correctedY = trackingManager.localY + ry
+        let correctedZ = trackingManager.localZ + rz
+        
+        var correctedLat = locationManager.latitude
+        var correctedLon = locationManager.longitude
+        let correctedGpsAlt = locationManager.altitude + rz
+        
+        if locationManager.isGPSEnabled && locationManager.latitude != 0.0 {
+            let latOffsetDeg = ry / 111111.0
+            let lonOffsetDeg = rx / (111111.0 * cos(locationManager.latitude * .pi / 180.0))
+            correctedLat += latOffsetDeg
+            correctedLon += lonOffsetDeg
+        }
+        
+        let row = String(
+            format: "%@,%.6f,%.6f,%.6f,%.6f,%.8f,%.8f,%.6f,%.4f,%.4f,%.4f,%.3f\n",
+            filename,
+            correctedX,
+            correctedY,
+            correctedZ,
+            trackingManager.relativeAltitude + rz,
+            correctedLat,
+            correctedLon,
+            correctedGpsAlt,
+            trackingManager.yaw,
+            trackingManager.pitch,
+            trackingManager.roll,
+            0.0 // time difference is 0.0s since it's perfectly synchronized on-device!
+        )
+        
+        if let sessionID = activeSessionID {
+            let fileManager = FileManager.default
+            guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+            let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
+            let metashapeCSVURL = sessionFolderURL.appendingPathComponent("metashape_cameras.csv")
+            
+            if !fileManager.fileExists(atPath: metashapeCSVURL.path) {
+                let header = "label,x_local_m,y_local_m,z_local_m,baro_alt_m,latitude,longitude,gps_alt_m,yaw,pitch,roll,time_diff_sec\n"
+                try? (header + row).write(to: metashapeCSVURL, atomically: true, encoding: .utf8)
+            } else {
+                if let fileHandle = try? FileHandle(forWritingTo: metashapeCSVURL) {
+                    fileHandle.seekToEndOfFile()
+                    if let data = row.data(using: .utf8) {
+                        fileHandle.write(data)
+                    }
+                    fileHandle.closeFile()
+                }
+            }
+        }
+        
+        // Set tactile shutter HUD confirmation
+        DispatchQueue.main.async {
+            self.shutterFeedbackMessage = "SAVED: \(filename)"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                if self.shutterFeedbackMessage == "SAVED: \(filename)" {
+                    self.shutterFeedbackMessage = ""
+                }
+            }
+        }
+    }
+    
+    private func updateManualExposure() {
+        let selectedShutter = shutterSpeeds[shutterSpeedIndex]
+        let targetISO = isAutoISO ? 0.0 : isoValue
+        let targetWB = isAutoWB ? 0.0 : wbTemperature
+        cameraManager.updateExposureAndWB(shutterSpeed: selectedShutter, iso: targetISO, wbTemperature: targetWB)
     }
     
     private func formatDuration(_ interval: TimeInterval) -> String {
@@ -454,41 +890,61 @@ struct PointCloudVisualizerView: View {
                 )
             }
             
-            // Project and draw the 3D points
+            // Project and draw the 3D points in combined paths to avoid 100% CPU lock
+            var greenPath = Path()
+            var yellowPath = Path()
+            var redPath = Path()
+            
             for pt in points {
                 let pt3D = (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z))
                 let proj = project(point: pt3D, center: center, rotX: rotX, rotY: rotY)
                 
-                // Determine color based on reconstruction depth quality (distance from camera)
-                var pointColor = Color.green
+                // Rapid viewport bounds check to ignore off-screen projections
+                guard proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height else {
+                    continue
+                }
+                
+                // Pre-sort by distance utilizing squared-distances to skip heavy sqrt math
+                var pointColorType = 0 // 0 = Green, 1 = Yellow, 2 = Red
                 if let cam = cameraPosition {
                     let dx = Double(pt.x) - cam.x
                     let dy = Double(pt.y) - cam.y
                     let dz = Double(pt.z) - cam.z
-                    let dist = sqrt(dx*dx + dy*dy + dz*dz)
+                    let distSq = dx*dx + dy*dy + dz*dz
                     
-                    if dist <= 1.8 {
-                        pointColor = .green
-                    } else if dist <= 3.2 {
-                        pointColor = .yellow
+                    if distSq <= 3.24 { // 1.8m^2
+                        pointColorType = 0
+                    } else if distSq <= 10.24 { // 3.2m^2
+                        pointColorType = 1
                     } else {
-                        pointColor = .red
+                        pointColorType = 2
                     }
                 } else {
-                    let distFromOrigin = sqrt(pt3D.x*pt3D.x + pt3D.y*pt3D.y + pt3D.z*pt3D.z)
-                    if distFromOrigin <= 2.0 {
-                        pointColor = .green
-                    } else if distFromOrigin <= 4.0 {
-                        pointColor = .yellow
+                    let distFromOriginSq = pt3D.x*pt3D.x + pt3D.y*pt3D.y + pt3D.z*pt3D.z
+                    if distFromOriginSq <= 4.0 { // 2.0m^2
+                        pointColorType = 0
+                    } else if distFromOriginSq <= 16.0 { // 4.0m^2
+                        pointColorType = 1
                     } else {
-                        pointColor = .red
+                        pointColorType = 2
                     }
                 }
                 
-                // Draw each point as a glowing particle (4x smaller: width 0.75, height 0.75)
+                // Draw as sharp micro-squares (extremely fast, visually identical to circles at 0.75 size)
                 let rect = CGRect(x: proj.x - 0.375, y: proj.y - 0.375, width: 0.75, height: 0.75)
-                context.fill(Path(ellipseIn: rect), with: .color(pointColor.opacity(0.8)))
+                if pointColorType == 0 {
+                    greenPath.addRect(rect)
+                } else if pointColorType == 1 {
+                    yellowPath.addRect(rect)
+                } else {
+                    redPath.addRect(rect)
+                }
             }
+            
+            // Execute drawing exactly 3 times (huge CPU optimization)
+            context.fill(greenPath, with: .color(Color.green.opacity(0.8)))
+            context.fill(yellowPath, with: .color(Color.yellow.opacity(0.8)))
+            context.fill(redPath, with: .color(Color.red.opacity(0.8)))
             
             // Draw Trajectory Path
             if showTrajectory, let pathPoints = trajectory, pathPoints.count > 1 {
@@ -614,28 +1070,50 @@ struct MultiTouchGestureOverlay: UIViewRepresentable {
     @Binding var panX: Double
     @Binding var panY: Double
     @Binding var zoom: Double
+    var onInteractionBegan: (() -> Void)? = nil
     
-    class Coordinator: NSObject {
+    class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var parent: MultiTouchGestureOverlay
         
         init(_ parent: MultiTouchGestureOverlay) {
             self.parent = parent
         }
         
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            return true
+        }
+        
         @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
-            let translation = gesture.translation(in: gesture.view)
-            
-            if gesture.numberOfTouches == 1 {
-                // 1-finger orbit
-                parent.rotY += Double(translation.x) * 0.005
-                parent.rotX += Double(translation.y) * 0.005
-            } else if gesture.numberOfTouches == 2 {
-                // 2-finger translation pan
-                parent.panX -= Double(translation.x) * 0.005
-                parent.panY += Double(translation.y) * 0.005
+            // Traverse view hierarchy to find parent UIScrollView and intercept scrolling
+            var currentView = gesture.view
+            var parentScroll: UIScrollView? = nil
+            while currentView != nil {
+                if let sv = currentView as? UIScrollView {
+                    parentScroll = sv
+                    break
+                }
+                currentView = currentView?.superview
             }
             
-            gesture.setTranslation(.zero, in: gesture.view)
+            switch gesture.state {
+            case .began:
+                parentScroll?.isScrollEnabled = false // Lock scrolling!
+                parent.onInteractionBegan?() // Disable auto-follow
+            case .changed:
+                let translation = gesture.translation(in: gesture.view)
+                if gesture.numberOfTouches == 1 {
+                    parent.rotY += Double(translation.x) * 0.005
+                    parent.rotX += Double(translation.y) * 0.005
+                } else if gesture.numberOfTouches == 2 {
+                    parent.panX -= Double(translation.x) * 0.005
+                    parent.panY += Double(translation.y) * 0.005
+                }
+                gesture.setTranslation(.zero, in: gesture.view)
+            case .ended, .cancelled:
+                parentScroll?.isScrollEnabled = true // Restore scrolling!
+            default:
+                break
+            }
         }
         
         @objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
@@ -656,6 +1134,7 @@ struct MultiTouchGestureOverlay: UIViewRepresentable {
         let panGesture = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
         panGesture.minimumNumberOfTouches = 1
         panGesture.maximumNumberOfTouches = 2
+        panGesture.delegate = context.coordinator
         view.addGestureRecognizer(panGesture)
         
         let pinchGesture = UIPinchGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePinch(_:)))

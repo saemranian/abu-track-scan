@@ -138,46 +138,49 @@ class PhotoSyncManager: ObservableObject {
             let closest = self.findClosestTelemetry(timestamp: photoTimeMs, in: telemetryRows)
             let timeDiff = (photoTimeMs - closest.timestamp) / 1000.0 // in seconds
             
-            // Rotate the lever arm offset using the logged quaternion (3D orientation)
-            let q = (w: closest.q_w, x: closest.q_x, y: closest.q_y, z: closest.q_z)
-            let rotatedOffset = self.rotateVector(vector: (lx, ly, lz), q: q)
-            
-            // Apply translation correction to Local Coordinates
-            let correctedX = closest.localX + rotatedOffset.0
-            let correctedY = closest.localY + rotatedOffset.1
-            let correctedZ = closest.localZ + rotatedOffset.2
-            
-            // Apply correction to GPS if enabled (Decimal Degrees translation)
-            var correctedLat = closest.latitude
-            var correctedLon = closest.longitude
-            let correctedGpsAlt = closest.gpsAltitude + rotatedOffset.2
-            
-            if closest.isGPSEnabled && closest.latitude != 0.0 {
-                // Approximations in meters to degrees
-                let latOffsetDeg = rotatedOffset.1 / 111111.0
-                let lonOffsetDeg = rotatedOffset.0 / (111111.0 * cos(closest.latitude * .pi / 180.0))
+            // Only synchronize if photo timestamp falls within 10.0s of the closest telemetry entry (filters out background gaps)
+            if abs(timeDiff) <= 10.0 {
+                // Rotate the lever arm offset using the logged quaternion (3D orientation)
+                let q = (w: closest.q_w, x: closest.q_x, y: closest.q_y, z: closest.q_z)
+                let rotatedOffset = self.rotateVector(vector: (lx, ly, lz), q: q)
                 
-                correctedLat += latOffsetDeg
-                correctedLon += lonOffsetDeg
+                // Apply translation correction to Local Coordinates
+                let correctedX = closest.localX + rotatedOffset.0
+                let correctedY = closest.localY + rotatedOffset.1
+                let correctedZ = closest.localZ + rotatedOffset.2
+                
+                // Apply correction to GPS if enabled (Decimal Degrees translation)
+                var correctedLat = closest.latitude
+                var correctedLon = closest.longitude
+                let correctedGpsAlt = closest.gpsAltitude + rotatedOffset.2
+                
+                if closest.isGPSEnabled && closest.latitude != 0.0 {
+                    // Approximations in meters to degrees
+                    let latOffsetDeg = rotatedOffset.1 / 111111.0
+                    let lonOffsetDeg = rotatedOffset.0 / (111111.0 * cos(closest.latitude * .pi / 180.0))
+                    
+                    correctedLat += latOffsetDeg
+                    correctedLon += lonOffsetDeg
+                }
+                
+                let record = SyncedPhotoRecord(
+                    imageName: filename,
+                    timestamp: photoTimeMs,
+                    localX: correctedX,
+                    localY: correctedY,
+                    localZ: correctedZ,
+                    baroAlt: closest.relativeAltitude + rotatedOffset.2,
+                    pitch: closest.pitch,
+                    roll: closest.roll,
+                    yaw: closest.yaw,
+                    latitude: correctedLat,
+                    longitude: correctedLon,
+                    gpsAltitude: correctedGpsAlt,
+                    timeDifferenceSec: timeDiff
+                )
+                
+                tempRecords.append(record)
             }
-            
-            let record = SyncedPhotoRecord(
-                imageName: filename,
-                timestamp: photoTimeMs,
-                localX: correctedX,
-                localY: correctedY,
-                localZ: correctedZ,
-                baroAlt: closest.relativeAltitude + rotatedOffset.2,
-                pitch: closest.pitch,
-                roll: closest.roll,
-                yaw: closest.yaw,
-                latitude: correctedLat,
-                longitude: correctedLon,
-                gpsAltitude: correctedGpsAlt,
-                timeDifferenceSec: timeDiff
-            )
-            
-            tempRecords.append(record)
             dispatchGroup.leave()
         }
         
