@@ -89,7 +89,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 
                 // Enable maximum high-resolution options safely
                 photoOutput.isHighResolutionCaptureEnabled = true
-                if photoOutput.supportedQualityPrioritizations.contains(.quality) {
+                if photoOutput.supportedPhotoQualityPrioritizations.contains(.quality) {
                     photoOutput.maxPhotoQualityPrioritization = .quality // DSLR-quality Deep Fusion/Smart HDR processing
                 }
                 
@@ -203,13 +203,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             
             // Resolve format constraints: DNG (RAW), HEIF, JPG
             if format == "DNG" && !photoOutput.availableRawPhotoPixelFormatTypes.isEmpty {
-                let firstRawType = photoOutput.availableRawPhotoPixelFormatTypes.first!
-                let rawFormatType: OSType
-                if let nsNum = firstRawType as? NSNumber {
-                    rawFormatType = nsNum.uint32Value
-                } else {
-                    rawFormatType = firstRawType as! OSType
-                }
+                let rawFormatType = photoOutput.availableRawPhotoPixelFormatTypes.first!
                 photoSettings = AVCapturePhotoSettings(rawPixelFormatType: rawFormatType, processedFormat: [AVVideoCodecKey: AVVideoCodecType.jpeg])
             } else if format == "HEIF" && photoOutput.availablePhotoCodecTypes.contains(.hevc) {
                 photoSettings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.hevc])
@@ -219,7 +213,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             
             // Set high-resolution options safely
             photoSettings.isHighResolutionPhotoEnabled = true
-            if photoOutput.supportedQualityPrioritizations.contains(.quality) {
+            if photoOutput.supportedPhotoQualityPrioritizations.contains(.quality) {
                 photoSettings.photoQualityPrioritization = .quality
             }
             
