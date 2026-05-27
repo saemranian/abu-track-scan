@@ -396,7 +396,8 @@ struct SessionDetailView: View {
                             .cornerRadius(8)
                         }
                     }
-                    .padding(.horizontal)
+                }
+                .padding(.horizontal)
             }
         }
     }
