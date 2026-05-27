@@ -232,6 +232,9 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         guard isTrackingActive else { return }
         
+        // Absolute precision: only process frame updates when visual-inertial tracking state is normal
+        guard case .normal = frame.camera.trackingState else { return }
+        
         let transform = frame.camera.transform
         let columns = transform.columns
         
@@ -341,7 +344,24 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         CVPixelBufferLockBaseAddress(depthMap, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(depthMap, .readOnly) }
         
+        let confidenceMap = sceneDepth.confidenceMap
+        if let confidenceMap = confidenceMap {
+            CVPixelBufferLockBaseAddress(confidenceMap, .readOnly)
+        }
+        defer {
+            if let confidenceMap = confidenceMap {
+                CVPixelBufferUnlockBaseAddress(confidenceMap, .readOnly)
+            }
+        }
+        
         guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else { return [] }
+        
+        var confidenceBuffer: UnsafeMutablePointer<UInt8>? = nil
+        var confidenceBytesPerRow = 0
+        if let confidenceMap = confidenceMap, let addr = CVPixelBufferGetBaseAddress(confidenceMap) {
+            confidenceBuffer = addr.assumingMemoryBound(to: UInt8.self)
+            confidenceBytesPerRow = CVPixelBufferGetBytesPerRow(confidenceMap)
+        }
         
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
@@ -374,7 +394,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                     let pixelIndex = y * (bytesPerRow / 4) + x
                     let depth = floatBuffer[pixelIndex]
                     
-                    if depth > 0.2 && depth < 3.0 {
+                    var confidenceValue: UInt8 = 2 // Default to high confidence if missing
+                    if let confBuf = confidenceBuffer {
+                        confidenceValue = confBuf[y * confidenceBytesPerRow + x]
+                    }
+                    
+                    // Filter out low confidence points (0) or only allow high (2) and medium (1)
+                    if depth > 0.2 && depth < 3.0 && confidenceValue >= 1 {
                         // Project back to 3D camera space using scaled image coordinates
                         let imgX = Float(x) * scaleX
                         let imgY = Float(y) * scaleY
@@ -396,7 +422,12 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                     let pixelIndex = y * (bytesPerRow / 2) + x
                     let depth = Float(halfBuffer[pixelIndex])
                     
-                    if depth > 0.2 && depth < 3.0 {
+                    var confidenceValue: UInt8 = 2 // Default to high confidence if missing
+                    if let confBuf = confidenceBuffer {
+                        confidenceValue = confBuf[y * confidenceBytesPerRow + x]
+                    }
+                    
+                    if depth > 0.2 && depth < 3.0 && confidenceValue >= 1 {
                         let imgX = Float(x) * scaleX
                         let imgY = Float(y) * scaleY
                         let camPoint = SIMD4<Float>(

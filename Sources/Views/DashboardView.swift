@@ -646,7 +646,6 @@ struct DashboardView: View {
             let usedBytes = Double(stats.resident_size)
             let totalBytes = Double(ProcessInfo.processInfo.physicalMemory)
             
-            let usedMB = usedBytes / 1024.0 / 1024.0
             let totalGB = totalBytes / 1024.0 / 1024.0 / 1024.0
             
             let pct = (usedBytes / totalBytes) * 100.0

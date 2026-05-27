@@ -216,7 +216,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 } else {
                     if device.isFocusModeSupported(.locked) {
                         device.focusMode = .locked
-                        device.setFocusModeLocked(withLensPosition: Float(lensPosition), completionHandler: nil)
+                        device.setFocusModeLocked(lensPosition: Float(lensPosition), completionHandler: nil)
                     }
                 }
                 
