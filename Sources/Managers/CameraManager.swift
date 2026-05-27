@@ -89,13 +89,12 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 
                 // Enable maximum high-resolution options safely
                 photoOutput.isHighResolutionCaptureEnabled = true
-                if photoOutput.supportedPhotoQualityPrioritizations.contains(.quality) {
-                    photoOutput.maxPhotoQualityPrioritization = .quality // DSLR-quality Deep Fusion/Smart HDR processing
-                }
+                photoOutput.maxPhotoQualityPrioritization = .quality // DSLR-quality Deep Fusion/Smart HDR processing
                 
                 if #available(iOS 16.0, *) {
-                    // Query the maximum dimensions supported by the active format to avoid startup exception crash
-                    if let maxDim = photoOutput.supportedPhotoMaxDimensions.max(by: { $0.width * $0.height < $1.width * $1.height }) {
+                    // Query the maximum dimensions supported by the active format of the back camera to avoid startup crash
+                    if let videoDevice = self.videoDeviceInput?.device,
+                       let maxDim = videoDevice.activeFormat.supportedPhotoMaxDimensions.max(by: { $0.width * $0.height < $1.width * $1.height }) {
                         photoOutput.maxPhotoDimensions = maxDim
                     }
                 }
@@ -213,14 +212,12 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             
             // Set high-resolution options safely
             photoSettings.isHighResolutionPhotoEnabled = true
-            if photoOutput.supportedPhotoQualityPrioritizations.contains(.quality) {
-                photoSettings.photoQualityPrioritization = .quality
-            }
+            photoSettings.photoQualityPrioritization = .quality
             
             // Bind sensor resolution safely: 12 MP vs 48 MP
             if #available(iOS 16.0, *) {
                 let maxDimensions: CMVideoDimensions
-                let supported = photoOutput.supportedPhotoMaxDimensions
+                let supported = self.videoDeviceInput?.device.activeFormat.supportedPhotoMaxDimensions ?? []
                 
                 let target48MP = CMVideoDimensions(width: 8064, height: 6048)
                 let target12MP = CMVideoDimensions(width: 4032, height: 3024)
@@ -230,7 +227,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                 } else if supported.contains(where: { $0.width == 4032 && $0.height == 3024 }) {
                     maxDimensions = target12MP
                 } else {
-                    maxDimensions = supported.max(by: { $0.width * $0.height < $1.width * $1.height }) ?? CMVideoDimensions(width: 4032, height: 3024)
+                    maxDimensions = supported.max(by: { $0.width * $0.height < $1.width * $1.height }) ?? target12MP
                 }
                 photoSettings.maxPhotoDimensions = maxDimensions
             }
