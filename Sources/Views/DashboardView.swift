@@ -15,6 +15,10 @@ struct DashboardView: View {
     @State private var rotY: Double = 0.5
     @GestureState private var dragOffset = CGSize.zero
     
+    // Toggles for Trajectory and Camera Position
+    @State private var showTrajectory = true
+    @State private var showCamera = true
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -41,7 +45,7 @@ struct DashboardView: View {
                                     .fontWeight(.bold)
                                     .foregroundColor(.cyan)
                                 Spacer()
-                                Text(trackingManager.isTrackingActive ? "\(trackingManager.sparsePointCloud.count) points" : "Inactive")
+                                Text(trackingManager.isTrackingActive ? "\(trackingManager.accumulatedPointCloud.count) points" : "Inactive")
                                     .font(.caption2)
                                     .foregroundColor(.gray)
                             }
@@ -49,29 +53,73 @@ struct DashboardView: View {
                             .padding(.top, 10)
                             
                             // Visualizer Box
-                            PointCloudVisualizerView(
-                                points: trackingManager.sparsePointCloud,
-                                isTracking: trackingManager.isTrackingActive,
-                                rotX: rotX + Double(dragOffset.height) * 0.01,
-                                rotY: rotY + Double(dragOffset.width) * 0.01
-                            )
-                            .frame(height: 220)
-                            .background(Color.black.opacity(0.4))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
-                            )
-                            .gesture(
-                                DragGesture()
-                                    .updating($dragOffset) { value, state, _ in
-                                        state = value.translation
+                            ZStack(alignment: .bottomTrailing) {
+                                PointCloudVisualizerView(
+                                    points: trackingManager.accumulatedPointCloud,
+                                    isTracking: trackingManager.isTrackingActive,
+                                    rotX: rotX + Double(dragOffset.height) * 0.01,
+                                    rotY: rotY + Double(dragOffset.width) * 0.01,
+                                    cameraPosition: (x: trackingManager.localX, y: trackingManager.localY, z: trackingManager.localZ),
+                                    trajectory: trackingManager.cameraTrajectory,
+                                    showTrajectory: showTrajectory,
+                                    showCamera: showCamera
+                                )
+                                .frame(height: 220)
+                                .background(Color.black.opacity(0.4))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
+                                )
+                                .gesture(
+                                    DragGesture()
+                                        .updating($dragOffset) { value, state, _ in
+                                            state = value.translation
+                                        }
+                                        .onEnded { value in
+                                            rotX += Double(value.translation.height) * 0.01
+                                            rotY += Double(value.translation.width) * 0.01
+                                        }
+                                )
+                                
+                                // Overlay HUD Buttons for Trajectory and Camera
+                                HStack(spacing: 8) {
+                                    Button(action: { showTrajectory.toggle() }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: showTrajectory ? "point.topleft.down.to.point.bottomright.curvepath" : "point.topleft.down.to.point.bottomright.curvepath.fill")
+                                            Text("PATH")
+                                        }
+                                        .font(.system(size: 9, weight: .black))
+                                        .foregroundColor(showTrajectory ? .yellow : .gray)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.black.opacity(0.6))
+                                        .cornerRadius(6)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(showTrajectory ? Color.yellow.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 1)
+                                        )
                                     }
-                                    .onEnded { value in
-                                        rotX += Double(value.translation.height) * 0.01
-                                        rotY += Double(value.translation.width) * 0.01
+                                    
+                                    Button(action: { showCamera.toggle() }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: showCamera ? "camera.fill" : "camera")
+                                            Text("CAM")
+                                        }
+                                        .font(.system(size: 9, weight: .black))
+                                        .foregroundColor(showCamera ? .red : .gray)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.black.opacity(0.6))
+                                        .cornerRadius(6)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(showCamera ? Color.red.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 1)
+                                        )
                                     }
-                            )
+                                }
+                                .padding(8)
+                            }
                         }
                         .padding(.horizontal)
                         
@@ -282,7 +330,7 @@ struct DashboardView: View {
         
         trackingManager.stopTracking()
         locationManager.stopUpdates()
-        TelemetryLogger.shared.stopSession(sparsePointCloud: trackingManager.sparsePointCloud)
+        TelemetryLogger.shared.stopSession(sparsePointCloud: trackingManager.accumulatedPointCloud)
         
         self.activeSessionID = nil
         self.startTime = nil
@@ -303,6 +351,12 @@ struct PointCloudVisualizerView: View {
     let isTracking: Bool
     let rotX: Double
     let rotY: Double
+    
+    // Optional parameters for rendering current position and trajectory
+    var cameraPosition: (x: Double, y: Double, z: Double)? = nil
+    var trajectory: [RawPoint3D]? = nil
+    var showTrajectory: Bool = true
+    var showCamera: Bool = true
     
     var body: some View {
         Canvas { context, size in
@@ -369,6 +423,36 @@ struct PointCloudVisualizerView: View {
                 // Draw each point as a glowing particle
                 let rect = CGRect(x: proj.x - 1.5, y: proj.y - 1.5, width: 3, height: 3)
                 context.fill(Path(ellipseIn: rect), with: .color(.cyan.opacity(0.8)))
+            }
+            
+            // Draw Trajectory Path
+            if showTrajectory, let pathPoints = trajectory, pathPoints.count > 1 {
+                context.stroke(
+                    Path { path in
+                        let firstPt = pathPoints[0]
+                        let projFirst = project(point: (x: Double(firstPt.x), y: Double(firstPt.y), z: Double(firstPt.z)), center: center, rotX: rotX, rotY: rotY)
+                        path.move(to: projFirst)
+                        
+                        for i in 1..<pathPoints.count {
+                            let pt = pathPoints[i]
+                            let proj = project(point: (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z)), center: center, rotX: rotX, rotY: rotY)
+                            path.addLine(to: proj)
+                        }
+                    },
+                    with: .color(Color.yellow.opacity(0.85)),
+                    lineWidth: 1.5
+                )
+            }
+            
+            // Draw Camera Position
+            if showCamera, let camPos = cameraPosition {
+                let projCam = project(point: camPos, center: center, rotX: rotX, rotY: rotY)
+                
+                let outerRect = CGRect(x: projCam.x - 7, y: projCam.y - 7, width: 14, height: 14)
+                let innerRect = CGRect(x: projCam.x - 3, y: projCam.y - 3, width: 6, height: 6)
+                
+                context.stroke(Path(ellipseIn: outerRect), with: .color(.yellow), lineWidth: 1.5)
+                context.fill(Path(ellipseIn: innerRect), with: .color(.red))
             }
         }
     }

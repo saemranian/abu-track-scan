@@ -47,6 +47,13 @@ struct ContentView: View {
                     Text("Calibration")
                 }
                 .tag(2)
+            
+            AcademyView()
+                .tabItem {
+                    Image(systemName: "graduationcap.fill")
+                    Text("Academy")
+                }
+                .tag(3)
         }
         .preferredColorScheme(.dark)
         .onAppear {

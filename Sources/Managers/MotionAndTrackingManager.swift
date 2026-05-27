@@ -47,6 +47,11 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     // Sparse point cloud for live 3D coverage mapping
     @Published var sparsePointCloud: [RawPoint3D] = []
     
+    // Accumulated point cloud and camera trajectory path for reconstruction review
+    @Published var accumulatedPointCloud: [RawPoint3D] = []
+    @Published var cameraTrajectory: [RawPoint3D] = []
+    private var pointKeys = Set<String>()
+    
     private var cancellables = Set<AnyCancellable>()
     private var isAltimeterRunning = false
     
@@ -66,6 +71,10 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     
     func startTracking(frequency: Double = 30.0) {
         isTrackingActive = true
+        accumulatedPointCloud.removeAll()
+        cameraTrajectory.removeAll()
+        pointKeys.removeAll()
+        
         startAltimeter()
         
         if UIApplication.shared.applicationState == .active {
@@ -237,6 +246,16 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             
             self.appState = "Foreground (ARKit VIO + LiDAR)"
             
+            // Record camera trajectory if it has moved at least 2cm from the last position
+            let lastPoint = self.cameraTrajectory.last
+            let dx = Float(tx) - (lastPoint?.x ?? 999.0)
+            let dy = Float(ty) - (lastPoint?.y ?? 999.0)
+            let dz = Float(tz) - (lastPoint?.z ?? 999.0)
+            let dist = sqrt(dx*dx + dy*dy + dz*dz)
+            if dist > 0.02 {
+                self.cameraTrajectory.append(RawPoint3D(x: Float(tx), y: Float(ty), z: Float(tz)))
+            }
+            
             // Extract the sparse tracking point cloud for our visualizer
             if let rawFeaturePoints = frame.rawFeaturePoints {
                 let points = rawFeaturePoints.points
@@ -246,6 +265,16 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                 for i in 0..<maxPoints {
                     let pt = points[i]
                     newPoints.append(RawPoint3D(x: pt.x, y: pt.y, z: pt.z))
+                    
+                    // Accumulate unique points using 1cm grid keys
+                    let gridX = Int(round(pt.x * 100.0))
+                    let gridY = Int(round(pt.y * 100.0))
+                    let gridZ = Int(round(pt.z * 100.0))
+                    let key = "\(gridX),\(gridY),\(gridZ)"
+                    if !self.pointKeys.contains(key) {
+                        self.pointKeys.insert(key)
+                        self.accumulatedPointCloud.append(RawPoint3D(x: pt.x, y: pt.y, z: pt.z))
+                    }
                 }
                 self.sparsePointCloud = newPoints
             }

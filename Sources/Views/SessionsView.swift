@@ -42,6 +42,7 @@ struct SessionsView: View {
                         ForEach(sessionListItems) { item in
                             Button(action: {
                                 self.selectedSession = item.rawSession
+                                self.selectedSessionItem = IdentifiableSession(id: item.id, session: item.rawSession)
                             }) {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 6) {
@@ -79,7 +80,9 @@ struct SessionsView: View {
                 }
             }
             .navigationTitle("SESSION LOGS")
-            .sheet(item: $selectedSessionItem) { item in
+            .sheet(item: $selectedSessionItem, onDismiss: {
+                self.selectedSession = nil
+            }) { item in
                 SessionDetailView(session: item.session) {
                     loadHistory()
                 }
@@ -165,6 +168,16 @@ struct SessionDetailView: View {
     @State private var metashapeCSVURL: URL?
     @State private var plyURL: URL?
     
+    // 3D Historical Map variables
+    @State private var historicalPoints: [RawPoint3D] = []
+    @State private var historicalTrajectory: [RawPoint3D] = []
+    @State private var loading3DData = false
+    @State private var rotX: Double = -0.5
+    @State private var rotY: Double = 0.5
+    @State private var showTrajectory = true
+    @State private var showCamera = true
+    @State private var dragOffset = CGSize.zero
+    
     private var id: String { session["id"] as? String ?? "" }
     private var entries: Int { session["entryCount"] as? Int ?? 0 }
     private var isGPS: Bool { session["isGPSEnabled"] as? Bool ?? true }
@@ -177,12 +190,15 @@ struct SessionDetailView: View {
                 Color(red: 0.02, green: 0.03, blue: 0.08)
                     .ignoresSafeArea()
                 
-                VStack(spacing: 20) {
-                    detailsCard
-                    syncControlsCard
-                    exportLinksCard
-                    matchedPhotosCard
-                    Spacer()
+                ScrollView {
+                    VStack(spacing: 20) {
+                        detailsCard
+                        historicalMapCard
+                        syncControlsCard
+                        exportLinksCard
+                        matchedPhotosCard
+                    }
+                    .padding(.vertical)
                 }
             }
             .navigationTitle("SESSION MANAGER")
@@ -196,6 +212,7 @@ struct SessionDetailView: View {
             }
             .onAppear {
                 checkFilesExist()
+                loadHistorical3DData()
             }
             .alert("Post Processing", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
@@ -383,8 +400,183 @@ struct SessionDetailView: View {
             }
         }
     }
+    
+    @ViewBuilder
+    private var historicalMapCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("3D Reconstructed Map & Path")
+                .font(.caption)
+                .fontWeight(.black)
+                .foregroundColor(.cyan)
+                .padding(.horizontal)
+            
+            if loading3DData {
+                VStack {
+                    ProgressView()
+                        .tint(.cyan)
+                    Text("Loading 3D telemetry cloud...")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .padding(.top, 4)
+                }
+                .frame(height: 180)
+                .frame(maxWidth: .infinity)
+                .background(Color.black.opacity(0.2))
+                .cornerRadius(12)
+                .padding(.horizontal)
+            } else if historicalPoints.isEmpty && historicalTrajectory.isEmpty {
+                VStack {
+                    Image(systemName: "circle.slash")
+                        .font(.title)
+                        .foregroundColor(.gray)
+                    Text("No 3D spatial points logged in this session")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .padding(.top, 4)
+                }
+                .frame(height: 180)
+                .frame(maxWidth: .infinity)
+                .background(Color.black.opacity(0.2))
+                .cornerRadius(12)
+                .padding(.horizontal)
+            } else {
+                ZStack(alignment: .bottomTrailing) {
+                    // Interactive 3D Canvas
+                    PointCloudVisualizerView(
+                        points: historicalPoints,
+                        isTracking: true,
+                        rotX: rotX + Double(dragOffset.height) * 0.01,
+                        rotY: rotY + Double(dragOffset.width) * 0.01,
+                        cameraPosition: historicalTrajectory.last.map { (x: Double($0.x), y: Double($0.y), z: Double($0.z)) },
+                        trajectory: historicalTrajectory,
+                        showTrajectory: showTrajectory,
+                        showCamera: showCamera
+                    )
+                    .frame(height: 180)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.black.opacity(0.3))
+                    .cornerRadius(12)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                dragOffset = value.translation
+                            }
+                            .onEnded { value in
+                                rotX += Double(value.translation.height) * 0.01
+                                rotY += Double(value.translation.width) * 0.01
+                                dragOffset = .zero
+                            }
+                    )
+                    
+                    // Interactive Buttons
+                    HStack(spacing: 8) {
+                        Button(action: { showTrajectory.toggle() }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: showTrajectory ? "point.topleft.down.to.point.bottomright.curvepath" : "point.topleft.down.to.point.bottomright.curvepath.fill")
+                                Text("PATH")
+                            }
+                            .font(.system(size: 8, weight: .black))
+                            .foregroundColor(showTrajectory ? .yellow : .gray)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(4)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(showTrajectory ? Color.yellow.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                        
+                        Button(action: { showCamera.toggle() }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: showCamera ? "camera.fill" : "camera")
+                                Text("CAM")
+                            }
+                            .font(.system(size: 8, weight: .black))
+                            .foregroundColor(showCamera ? .red : .gray)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(4)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(showCamera ? Color.red.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                    }
+                    .padding(8)
+                }
+                .padding(.horizontal)
+            }
         }
-
+    }
+    
+    private func loadHistorical3DData() {
+        guard let csvURL = csvURL else { return }
+        loading3DData = true
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            var loadedPoints: [RawPoint3D] = []
+            var loadedTrajectory: [RawPoint3D] = []
+            
+            // 1. Try to load points from PLY if exists
+            if let plyURL = plyURL,
+               let plyString = try? String(contentsOf: plyURL, encoding: .utf8) {
+                let lines = plyString.components(separatedBy: .newlines)
+                var headerPassed = false
+                for line in lines {
+                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmed.isEmpty { continue }
+                    if trimmed == "end_header" {
+                        headerPassed = true
+                        continue
+                    }
+                    if headerPassed {
+                        let comps = trimmed.components(separatedBy: .whitespaces)
+                        if comps.count >= 3,
+                           let x = Float(comps[0]),
+                           let y = Float(comps[1]),
+                           let z = Float(comps[2]) {
+                            loadedPoints.append(RawPoint3D(x: x, y: y, z: z))
+                        }
+                    }
+                }
+            }
+            
+            // 2. Load trajectory from CSV
+            if let csvString = try? String(contentsOf: csvURL, encoding: .utf8) {
+                let lines = csvString.components(separatedBy: .newlines)
+                var isFirst = true
+                var step = 0
+                for line in lines {
+                    if isFirst {
+                        isFirst = false
+                        continue
+                    }
+                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmed.isEmpty { continue }
+                    
+                    step += 1
+                    // Read every 15th line to keep rendering fast
+                    if step % 15 == 0 {
+                        let comps = trimmed.components(separatedBy: ",")
+                        if comps.count >= 4,
+                           let tx = Float(comps[1]),
+                           let ty = Float(comps[2]),
+                           let tz = Float(comps[3]) {
+                            loadedTrajectory.append(RawPoint3D(x: tx, y: ty, z: tz))
+                        }
+                    }
+                }
+            }
+            
+            DispatchQueue.main.async {
+                self.historicalPoints = loadedPoints
+                self.historicalTrajectory = loadedTrajectory
+                self.loading3DData = false
+            }
+        }
+    }
     
     private func checkFilesExist() {
         let fileManager = FileManager.default
