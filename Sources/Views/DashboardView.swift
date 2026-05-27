@@ -1010,17 +1010,22 @@ struct PointCloudVisualizerView: View {
         let py = point.y - panY
         let pz = point.z - panZ
         
-        // 1. Rotate around Y-axis
+        // Rotate 90 degrees around X-axis: mapping ARKit space (Y-up) to Metashape/GIS space (Z-up)
+        let rx = px
+        let ry = -pz
+        let rz = py
+        
+        // 1. Rotate around Y-axis using rotated coordinates
         let cosY = cos(rotY)
         let sinY = sin(rotY)
-        let x1 = px * cosY - pz * sinY
-        let z1 = px * sinY + pz * cosY
+        let x1 = rx * cosY - rz * sinY
+        let z1 = rx * sinY + rz * cosY
         
         // 2. Rotate around X-axis
         let cosX = cos(rotX)
         let sinX = sin(rotX)
-        let y2 = py * cosX - z1 * sinX
-        let z2 = py * sinX + z1 * cosX
+        let y2 = ry * cosX - z1 * sinX
+        let z2 = ry * sinX + z1 * cosX
         
         // 3. Perspective Projection
         let fov = 3.0 // Focus distance/zoom

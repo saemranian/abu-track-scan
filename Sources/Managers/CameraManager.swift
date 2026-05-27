@@ -19,6 +19,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     private var activeSessionID: String?
     private var photoCounter = 1255 // Match system photos starting index
     private var isConfigured = false
+    private var previewLayer: AVCaptureVideoPreviewLayer?
     
     override init() {
         super.init()
@@ -307,9 +308,13 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     
     // Get preview layer for live viewport overlay in SwiftUI
     func getPreviewLayer() -> AVCaptureVideoPreviewLayer {
-        let previewLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
-        previewLayer.videoGravity = .resizeAspectFill
-        return previewLayer
+        if let existing = self.previewLayer {
+            return existing
+        }
+        let newLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
+        newLayer.videoGravity = .resizeAspectFill
+        self.previewLayer = newLayer
+        return newLayer
     }
 }
 

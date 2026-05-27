@@ -179,7 +179,16 @@ struct SettingsView: View {
                                 
                                 DiagnosticRow(label: "App Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.5")
                                 DiagnosticRow(label: "Build Number", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "16")
-                                DiagnosticRow(label: "Compile Date", value: "2026-05-27 18:15")
+                                DiagnosticRow(label: "Compile Date", value: {
+                                    let formatter = DateFormatter()
+                                    formatter.dateFormat = "yyyy-MM-dd HH:mm"
+                                    if let path = Bundle.main.path(forResource: nil, ofType: nil),
+                                       let attribs = try? FileManager.default.attributesOfItem(atPath: path),
+                                       let date = attribs[.creationDate] as? Date {
+                                        return formatter.string(from: date)
+                                    }
+                                    return formatter.string(from: Date())
+                                }())
                                 DiagnosticRow(label: "Release State", value: "Active Development")
                             }
                             .padding()
