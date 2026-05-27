@@ -10,10 +10,12 @@ struct DashboardView: View {
     @State private var activeSessionID: String?
     @State private var startTime: Date?
     
-    // 3D Visualizer Drag Rotation State
+    // 3D Visualizer Drag Navigation State (Orbit, Pan, Zoom)
     @State private var rotX: Double = -0.4
     @State private var rotY: Double = 0.5
-    @GestureState private var dragOffset = CGSize.zero
+    @State private var panX: Double = 0.0
+    @State private var panY: Double = 0.0
+    @State private var zoom: Double = 1.0
     
     // Toggles for Trajectory and Camera Position
     @State private var showTrajectory = true
@@ -54,32 +56,36 @@ struct DashboardView: View {
                             
                             // Visualizer Box
                             ZStack(alignment: .bottomTrailing) {
-                                PointCloudVisualizerView(
-                                    points: trackingManager.accumulatedPointCloud,
-                                    isTracking: trackingManager.isTrackingActive,
-                                    rotX: rotX + Double(dragOffset.height) * 0.01,
-                                    rotY: rotY + Double(dragOffset.width) * 0.01,
-                                    cameraPosition: (x: trackingManager.localX, y: trackingManager.localY, z: trackingManager.localZ),
-                                    trajectory: trackingManager.cameraTrajectory,
-                                    showTrajectory: showTrajectory,
-                                    showCamera: showCamera
-                                )
+                                ZStack {
+                                    PointCloudVisualizerView(
+                                        points: trackingManager.accumulatedPointCloud,
+                                        isTracking: trackingManager.isTrackingActive,
+                                        rotX: rotX,
+                                        rotY: rotY,
+                                        panX: panX,
+                                        panY: panY,
+                                        zoom: zoom,
+                                        cameraPosition: (x: trackingManager.localX, y: trackingManager.localY, z: trackingManager.localZ),
+                                        trajectory: trackingManager.cameraTrajectory,
+                                        showTrajectory: showTrajectory,
+                                        showCamera: showCamera
+                                    )
+                                    
+                                    // Transparent multi-touch overlay
+                                    MultiTouchGestureOverlay(
+                                        rotX: $rotX,
+                                        rotY: $rotY,
+                                        panX: $panX,
+                                        panY: $panY,
+                                        zoom: $zoom
+                                    )
+                                }
                                 .frame(height: 220)
                                 .background(Color.black.opacity(0.4))
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
-                                )
-                                .gesture(
-                                    DragGesture()
-                                        .updating($dragOffset) { value, state, _ in
-                                            state = value.translation
-                                        }
-                                        .onEnded { value in
-                                            rotX += Double(value.translation.height) * 0.01
-                                            rotY += Double(value.translation.width) * 0.01
-                                        }
                                 )
                                 
                                 // Overlay HUD Buttons for Trajectory and Camera
@@ -351,6 +357,9 @@ struct PointCloudVisualizerView: View {
     let isTracking: Bool
     let rotX: Double
     let rotY: Double
+    let panX: Double
+    let panY: Double
+    let zoom: Double
     
     // Optional parameters for rendering current position and trajectory
     var cameraPosition: (x: Double, y: Double, z: Double)? = nil
@@ -459,26 +468,31 @@ struct PointCloudVisualizerView: View {
     
     // 3D Perspective Projection Mathematics
     private func project(point: (x: Double, y: Double, z: Double), center: CGPoint, rotX: Double, rotY: Double) -> CGPoint {
+        // Shift point by panning coordinates
+        let px = point.x - panX
+        let py = point.y - panY
+        let pz = point.z
+        
         // 1. Rotate around Y-axis
         let cosY = cos(rotY)
         let sinY = sin(rotY)
-        let x1 = point.x * cosY - point.z * sinY
-        let z1 = point.x * sinY + point.z * cosY
+        let x1 = px * cosY - pz * sinY
+        let z1 = px * sinY + pz * cosY
         
         // 2. Rotate around X-axis
         let cosX = cos(rotX)
         let sinX = sin(rotX)
-        let y2 = point.y * cosX - z1 * sinX
-        let z2 = point.y * sinX + z1 * cosX
+        let y2 = py * cosX - z1 * sinX
+        let z2 = py * sinX + z1 * cosX
         
         // 3. Perspective Projection
         let fov = 3.0 // Focus distance/zoom
         let distance = 4.0 // Distance from camera
-        let zoom = 140.0
+        let zoomAmount = 140.0 * zoom
         
         let scale = fov / (fov + z2 + distance)
-        let screenX = center.x + CGFloat(x1 * scale * zoom)
-        let screenY = center.y - CGFloat(y2 * scale * zoom)
+        let screenX = center.x + CGFloat(x1 * scale * zoomAmount)
+        let screenY = center.y - CGFloat(y2 * scale * zoomAmount)
         
         return CGPoint(x: screenX, y: screenY)
     }
@@ -535,4 +549,64 @@ struct SensorCard: View {
 struct SensorRow: Hashable {
     let label: String
     let value: String
+}
+
+// Transparent multi-touch receiver for 1-finger orbit, 2-finger panning, and pinch zoom
+struct MultiTouchGestureOverlay: UIViewRepresentable {
+    @Binding var rotX: Double
+    @Binding var rotY: Double
+    @Binding var panX: Double
+    @Binding var panY: Double
+    @Binding var zoom: Double
+    
+    class Coordinator: NSObject {
+        var parent: MultiTouchGestureOverlay
+        
+        init(_ parent: MultiTouchGestureOverlay) {
+            self.parent = parent
+        }
+        
+        @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
+            let translation = gesture.translation(in: gesture.view)
+            
+            if gesture.numberOfTouches == 1 {
+                // 1-finger orbit
+                parent.rotY += Double(translation.x) * 0.005
+                parent.rotX += Double(translation.y) * 0.005
+            } else if gesture.numberOfTouches == 2 {
+                // 2-finger translation pan
+                parent.panX -= Double(translation.x) * 0.005
+                parent.panY += Double(translation.y) * 0.005
+            }
+            
+            gesture.setTranslation(.zero, in: gesture.view)
+        }
+        
+        @objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+            parent.zoom *= Double(gesture.scale)
+            parent.zoom = max(0.2, min(5.0, parent.zoom))
+            gesture.scale = 1.0
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        
+        let panGesture = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
+        panGesture.minimumNumberOfTouches = 1
+        panGesture.maximumNumberOfTouches = 2
+        view.addGestureRecognizer(panGesture)
+        
+        let pinchGesture = UIPinchGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePinch(_:)))
+        view.addGestureRecognizer(pinchGesture)
+        
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {}
 }

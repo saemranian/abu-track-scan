@@ -174,9 +174,11 @@ struct SessionDetailView: View {
     @State private var loading3DData = false
     @State private var rotX: Double = -0.5
     @State private var rotY: Double = 0.5
+    @State private var panX: Double = 0.0
+    @State private var panY: Double = 0.0
+    @State private var zoom: Double = 1.0
     @State private var showTrajectory = true
     @State private var showCamera = true
-    @State private var dragOffset = CGSize.zero
     
     private var id: String { session["id"] as? String ?? "" }
     private var entries: Int { session["entryCount"] as? Int ?? 0 }
@@ -442,32 +444,35 @@ struct SessionDetailView: View {
                 .padding(.horizontal)
             } else {
                 ZStack(alignment: .bottomTrailing) {
-                    // Interactive 3D Canvas
-                    PointCloudVisualizerView(
-                        points: historicalPoints,
-                        isTracking: true,
-                        rotX: rotX + Double(dragOffset.height) * 0.01,
-                        rotY: rotY + Double(dragOffset.width) * 0.01,
-                        cameraPosition: historicalTrajectory.last.map { (x: Double($0.x), y: Double($0.y), z: Double($0.z)) },
-                        trajectory: historicalTrajectory,
-                        showTrajectory: showTrajectory,
-                        showCamera: showCamera
-                    )
+                    // Interactive 3D Canvas with Multi-Touch Overlay
+                    ZStack {
+                        PointCloudVisualizerView(
+                            points: historicalPoints,
+                            isTracking: true,
+                            rotX: rotX,
+                            rotY: rotY,
+                            panX: panX,
+                            panY: panY,
+                            zoom: zoom,
+                            cameraPosition: historicalTrajectory.last.map { (x: Double($0.x), y: Double($0.y), z: Double($0.z)) },
+                            trajectory: historicalTrajectory,
+                            showTrajectory: showTrajectory,
+                            showCamera: showCamera
+                        )
+                        
+                        // Transparent multi-touch overlay
+                        MultiTouchGestureOverlay(
+                            rotX: $rotX,
+                            rotY: $rotY,
+                            panX: $panX,
+                            panY: $panY,
+                            zoom: $zoom
+                        )
+                    }
                     .frame(height: 180)
                     .frame(maxWidth: .infinity)
                     .background(Color.black.opacity(0.3))
                     .cornerRadius(12)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                dragOffset = value.translation
-                            }
-                            .onEnded { value in
-                                rotX += Double(value.translation.height) * 0.01
-                                rotY += Double(value.translation.width) * 0.01
-                                dragOffset = .zero
-                            }
-                    )
                     
                     // Interactive Buttons
                     HStack(spacing: 8) {

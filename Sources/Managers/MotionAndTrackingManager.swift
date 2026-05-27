@@ -107,6 +107,11 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             configuration.sceneReconstruction = .mesh
         }
         
+        // Enable scene depth frame semantics for ToF LiDAR depth projection
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
+            configuration.frameSemantics.insert(.sceneDepth)
+        }
+        
         arSession.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         appState = "Foreground (ARKit VIO + LiDAR)"
     }
@@ -256,27 +261,34 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                 self.cameraTrajectory.append(RawPoint3D(x: Float(tx), y: Float(ty), z: Float(tz)))
             }
             
-            // Extract the sparse tracking point cloud for our visualizer
-            if let rawFeaturePoints = frame.rawFeaturePoints {
+            // Extract high-precision LiDAR depth points (or fall back to sparse VIO points if unavailable)
+            var currentFramePoints: [RawPoint3D] = []
+            let lidarPoints = self.extractLiDARPoints(from: frame)
+            
+            if !lidarPoints.isEmpty {
+                currentFramePoints = lidarPoints
+            } else if let rawFeaturePoints = frame.rawFeaturePoints {
                 let points = rawFeaturePoints.points
-                // Limit the points logged to prevent memory overload in UI
                 let maxPoints = min(points.count, 200)
-                var newPoints: [RawPoint3D] = []
                 for i in 0..<maxPoints {
                     let pt = points[i]
-                    newPoints.append(RawPoint3D(x: pt.x, y: pt.y, z: pt.z))
-                    
-                    // Accumulate unique points using 1cm grid keys
-                    let gridX = Int(round(pt.x * 100.0))
-                    let gridY = Int(round(pt.y * 100.0))
-                    let gridZ = Int(round(pt.z * 100.0))
-                    let key = "\(gridX),\(gridY),\(gridZ)"
-                    if !self.pointKeys.contains(key) {
-                        self.pointKeys.insert(key)
-                        self.accumulatedPointCloud.append(RawPoint3D(x: pt.x, y: pt.y, z: pt.z))
-                    }
+                    currentFramePoints.append(RawPoint3D(x: pt.x, y: pt.y, z: pt.z))
                 }
-                self.sparsePointCloud = newPoints
+            }
+            
+            // Limit points logged to sparsePointCloud to prevent memory overload in UI
+            self.sparsePointCloud = Array(currentFramePoints.prefix(200))
+            
+            // Accumulate unique points using 1cm grid keys
+            for pt in currentFramePoints {
+                let gridX = Int(round(pt.x * 100.0))
+                let gridY = Int(round(pt.y * 100.0))
+                let gridZ = Int(round(pt.z * 100.0))
+                let key = "\(gridX),\(gridY),\(gridZ)"
+                if !self.pointKeys.contains(key) {
+                    self.pointKeys.insert(key)
+                    self.accumulatedPointCloud.append(pt)
+                }
             }
         }
     }
@@ -303,6 +315,79 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                 self.appState = "ARKit Active (LiDAR VIO)"
             }
         }
+    }
+    
+    // Project scene depth map (LiDAR) into 3D world coordinates
+    private func extractLiDARPoints(from frame: ARFrame) -> [RawPoint3D] {
+        guard let sceneDepth = frame.sceneDepth else { return [] }
+        
+        let depthMap = sceneDepth.depthMap
+        CVPixelBufferLockBaseAddress(depthMap, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(depthMap, .readOnly) }
+        
+        guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else { return [] }
+        
+        let width = CVPixelBufferGetWidth(depthMap)
+        let height = CVPixelBufferGetHeight(depthMap)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(depthMap)
+        let pixelFormat = CVPixelBufferGetPixelFormatType(depthMap)
+        
+        var points: [RawPoint3D] = []
+        
+        let intrinsics = frame.camera.intrinsics
+        let fx = intrinsics[0][0]
+        let fy = intrinsics[1][1]
+        let cx = intrinsics[2][0]
+        let cy = intrinsics[2][1]
+        
+        let transform = frame.camera.transform
+        
+        // Subsample rate (sample every 12th pixel in x/y to prevent UI rendering lag)
+        let stepX = 12
+        let stepY = 12
+        
+        if pixelFormat == kCVPixelFormatType_DepthFloat32 {
+            let floatBuffer = baseAddress.assumingMemoryBound(to: Float32.self)
+            for y in stride(from: 0, to: height, by: stepY) {
+                for x in stride(from: 0, to: width, by: stepX) {
+                    let pixelIndex = y * (bytesPerRow / 4) + x
+                    let depth = floatBuffer[pixelIndex]
+                    
+                    if depth > 0.1 && depth < 5.0 {
+                        // Project back to 3D camera space (Z is negative forward in ARKit camera space)
+                        let camPoint = SIMD4<Float>(
+                            (Float(x) - cx) * depth / fx,
+                            (Float(y) - cy) * depth / fy,
+                            -depth,
+                            1.0
+                        )
+                        let worldPoint = transform * camPoint
+                        points.append(RawPoint3D(x: worldPoint.x, y: worldPoint.y, z: worldPoint.z))
+                    }
+                }
+            }
+        } else if pixelFormat == kCVPixelFormatType_DepthFloat16 {
+            let halfBuffer = baseAddress.assumingMemoryBound(to: Float16.self)
+            for y in stride(from: 0, to: height, by: stepY) {
+                for x in stride(from: 0, to: width, by: stepX) {
+                    let pixelIndex = y * (bytesPerRow / 2) + x
+                    let depth = Float(halfBuffer[pixelIndex])
+                    
+                    if depth > 0.1 && depth < 5.0 {
+                        let camPoint = SIMD4<Float>(
+                            (Float(x) - cx) * depth / fx,
+                            (Float(y) - cy) * depth / fy,
+                            -depth,
+                            1.0
+                        )
+                        let worldPoint = transform * camPoint
+                        points.append(RawPoint3D(x: worldPoint.x, y: worldPoint.y, z: worldPoint.z))
+                    }
+                }
+            }
+        }
+        
+        return points
     }
 }
 

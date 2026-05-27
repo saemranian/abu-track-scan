@@ -50,11 +50,13 @@ struct AcademyView: View {
                                 icon: "gyroscope",
                                 color: .cyan,
                                 content: """
-                                • **Foreground Tracking (ARKit VIO):** Uses your iPhone's camera and **LiDAR scanner** to track physical structures in the room. This calculates local metric (X, Y, Z) coordinates with sub-millimeter relative precision.
+                                • **Foreground VIO (Maximum Precision):** ARKit Visual-Inertial-LiDAR Odometry tracks visual anchors and fuses them with high-frequency IMU sensors to provide sub-millimeter tracking accuracy. For maximum results, keep the app in the foreground.
                                 
-                                • **Background Tracking (CoreMotion IMU):** When you lock your screen or switch to the default camera app, the app falls back to logging high-frequency gyroscope/accelerometer data to prevent iOS from terminating the sensor stream.
+                                • **The App-Switching Conflict:** iOS suspends visual camera polling when switching to the native Camera app. Although we fall back to IMU dead-reckoning, tracking will slowly drift.
                                 
-                                • **Barometric Height Calibration:** Integrates the CMAltimeter to measure relative altitude changes using barometric pressure. This provides vertical centimeter-level height changes free of standard GPS vertical drift.
+                                • **Solutions to Eliminate Drift:**
+                                  1. **Hot-Shoe Rig Mounting:** Mount the phone on your DSLR. Leave CamTrack Pro active in the foreground while you shoot with the DSLR normally.
+                                  2. **In-App Shutter Shutter:** In our upcoming version, shoot photos directly inside CamTrack Pro using the ARKit high-res shutter—retaining absolute VIO truth!
                                 """
                             )
                             
@@ -80,12 +82,11 @@ struct AcademyView: View {
                                 icon: "arrow.triangle.2.circlepath.camera",
                                 color: .green,
                                 content: """
-                                • **Timestamp Matching:** Every time you click a photo, the app syncs and matches DSLR or iPhone camera images to the logged spatial coordinates using sub-second epoch millisecond timestamps.
+                                • **Timestamp Matching:** Matches DSLR or iPhone camera images to the logged spatial coordinates using sub-second epoch millisecond timestamps.
                                 
                                 • **In-App Photo Library Matcher:** Inside the "Sessions" tab, tap "SYNC CAMERA IMAGES" to match photos in your iPhone's photo library automatically.
                                 
-                                • **Desktop Post-Processing:** If using a DSLR/Mirrorless camera, copy the photos to your PC, get the `telemetry_log.csv` file, and run our standalone python script:
-                                  python sync_photos.py --photos /path/to/photos --csv /path/to/telemetry_log.csv
+                                • **Desktop Post-Processing (New GUI):** Run our standalone GUI desktop control panel (`DesktopSync/camtrack_desktop_gui.py`) on Windows to browse directories, set clock offsets, and georeference raw DSLR images instantly!
                                 """
                             )
                             
@@ -97,15 +98,14 @@ struct AcademyView: View {
                                 • **CSV Column Layout:** The exported `metashape_cameras.csv` contains:
                                   - Column 1: `label` (Matched image filename)
                                   - Columns 2-4: Metric coordinate `local_x`, `local_y`, `local_z` (VIO meters)
-                                  - Column 5: `baro_altitude` (Centimeter-precision relative altitude)
+                                  - Column 5: `baro_altitude` (Barometric altitude)
                                   - Columns 6-8: Absolute `gps_latitude`, `gps_longitude`, `gps_altitude` (GPS degrees)
                                   - Columns 9-11: Attitude `yaw`, `pitch`, `roll`
                                 
-                                • **CRITICAL Metashape Import Rules (Avoid Pitfalls!):**
-                                  1. **Delimiter Mismatch:** In the Import CSV dialog, you MUST check **Comma** as the delimiter (uncheck Tab). Checking 'Tab' will fail to split columns, causing cameras to import in a single line.
-                                  2. **Coordinate System Selection:** 
-                                     - If you set X, Y, Z to local VIO columns (Columns 2, 3, 4), set the coordinate system to **Local Coordinates (m)**.
-                                     - If you set X, Y, Z to GPS columns (Columns 6, 7, 8), you MUST set the coordinate system to **WGS 84 (EPSG::4326)**! Importing GPS degrees as meters will pack cameras into a single wrong spot.
+                                • **Crucial Rules for Metashape Import:**
+                                  1. **Delimiter:** In the Import CSV window, choose **Comma** (uncheck Tab).
+                                  2. **If GPS is ENABLED:** Set the Coordinate System to **WGS 84 (EPSG::4326)** and map X, Y, Z coordinates to columns 6, 7, and 8.
+                                  3. **If GPS is DISABLED (Indoor Mode):** The CSV still prints GPS headers, but holds dummy values. You **MUST** select **Local Coordinates (m)** and map X, Y, and Z to columns 2, 3, and 4 (`local_x`, `local_y`, `local_z` VIO meters)!
                                 """
                             )
                             
@@ -114,30 +114,30 @@ struct AcademyView: View {
                                 icon: "circle.grid.3x3.fill",
                                 color: .orange,
                                 content: """
-                                • **The Trajectory Import Error [err:18003]:** 
-                                  Clicking 'Import Trajectory' in RealityScan/RealityCapture prompts for a proprietary alignment/flight-log format. Importing our metashape CSV directly here will fail.
+                                • **The Trajectory Import Error [err:18003]:**
+                                  Clicking 'Import Trajectory' in RealityScan expects a proprietary binary trajectory format. Selecting our CSV file here will fail.
                                 
-                                • **The EXIF Metadata Solution (Most Solid!):**
-                                  The absolute bulletproof way is to inject high-precision VIO coordinates and orientation angles directly into the EXIF/XMP tags of the image files (using our Python desktop script).
+                                • **How to Import CSV trajectories regardless of EXIF:**
+                                  In **RealityCapture (the PC app)**, select **Alignment > Import > Flight Log**. Load the CSV and map: Column 1 to Name, Column 2 to X (local) or Column 6 to Lon (GPS), Column 3 to Y (local) or Column 7 to Lat (GPS), Column 4 to Z (local) or Column 8 to Alt (GPS).
                                 
-                                • **Why EXIF is Superior:**
-                                  Once injected, you just drag and drop the photos folder directly into RealityScan or Metashape. The software reads the coordinates instantly without needing separate trajectory files or custom configuration settings!
+                                • **The Bulletproof EXIF Method:**
+                                  Use our new Desktop GUI tool to inject VIO coordinates directly into your photos' EXIF tags. Then drag and drop the folder into RealityScan. It reads the trajectory natively without needing CSV files!
                                 """
                             )
                             
                             LessonDisclosureGroup(
-                                title: "6. VIO Point Clouds vs. Dense LiDAR Scans",
+                                title: "6. Dense ToF/LiDAR Depth Point Clouds",
                                 icon: "square.stack.3d.up.fill",
                                 color: .blue,
                                 content: """
-                                • **VIO Sparse Reference Point Cloud:**
-                                  Our persistent point cloud (`coverage_cloud.ply`) is a **sparse visual-inertial tracking aid** composed of high-contrast texture anchors used by ARKit to track camera position. It is meant as an operator coverage diagnostic, not as a finished 3D mesh model.
+                                • **LiDAR Back-Projection Engine:**
+                                  Starting in version **0.0.5**, CamTrack Pro now captures high-accuracy active depth maps (`frame.sceneDepth`) from the iPhone's **ToF LiDAR scanner**.
                                 
-                                • **Why it Looks Messy/Spiky:**
-                                  These points are back-projected visually based on parallax. Panning fast or passing low-texture, reflective, or plain surfaces creates "outliers" (messy floating points).
+                                • **How it Works:**
+                                  We back-project depth pixels using the camera intrinsics and 3D transform into world space coordinates. Decimation filters are applied to decimate points (e.g. sampling grids) to keep performance high and fluid.
                                 
-                                • **Dot3D / LiDAR Meshing:**
-                                  Apps like Dot3D build watertight, dense reconstructions by actively filtering continuous time-of-flight LiDAR depth frames, which is heavily GPU-intensive and not designed for sub-millimeter camera track logging.
+                                • **The Result:**
+                                  You get a dense, watertight 3D surface point cloud (previewed live and exported as `.ply`) showing real geometry (walls, tables, objects) completely free of visual-inertial parallax noise and spikes!
                                 """
                             )
                         }
