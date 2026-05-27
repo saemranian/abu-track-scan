@@ -31,9 +31,14 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = kCLDistanceFilterNone
         
-        // Allows background operations
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.showsBackgroundLocationIndicator = true
+        // Allows background operations safely to avoid crashes if UIBackgroundModes lacks 'location'
+        if let backgroundModes = Bundle.main.infoDictionary?["UIBackgroundModes"] as? [String],
+           backgroundModes.contains("location") {
+            locationManager.allowsBackgroundLocationUpdates = true
+            locationManager.showsBackgroundLocationIndicator = true
+        } else {
+            NSLog("Warning: Background location updates not enabled in Info.plist / UIBackgroundModes")
+        }
         locationManager.pausesLocationUpdatesAutomatically = false
         
         self.authorizationStatus = locationManager.authorizationStatus

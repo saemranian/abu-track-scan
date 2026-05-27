@@ -24,6 +24,7 @@ let package = Package(
             supportedInterfaceOrientations: [
                 .portrait
             ],
+            additionalInfoPlistContentFilePath: "Info.plist",
             capabilities: [
                 .camera(purposeString: "CamTrack Pro uses the camera and LiDAR scanner to run real-time Visual-Inertial-LiDAR Odometry."),
                 .locationAlwaysAndWhenInUse(purposeString: "CamTrack Pro requires always-on background location tracking to log GPS coordinates while the screen is off or while taking photos inside the default camera app."),
