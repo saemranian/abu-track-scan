@@ -94,7 +94,7 @@ class CamTrackDesktopApp:
         title_frame = ttk.Frame(left_panel)
         title_frame.grid(row=0, column=0, sticky="w", pady=(0, 20))
         ttk.Label(title_frame, text="CAMTRACK PRO // DESKTOP CONSOLE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        ttk.Label(title_frame, text="Version 0.0.3 // Build 4 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(title_frame, text="Version 0.0.3 // Build 5 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
@@ -174,7 +174,7 @@ class CamTrackDesktopApp:
         
         # System Banner
         self.log("SYSTEM ACTIVE // DESKTOP GEODETIC DATA SYNCHRONIZER ENGINE")
-        self.log("Version: 0.0.3 // Build: 4 // OS Platform: Windows")
+        self.log("Version: 0.0.3 // Build: 5 // OS Platform: Windows")
         self.log("Standalone georeferencing suite ready for Metashape & RealityCapture...\n")
         
     def add_offset_input(self, parent, label, variable, col):
@@ -382,7 +382,7 @@ class CamTrackDesktopApp:
             })
         return sorted(records, key=lambda x: x["epoch"])
         
-    def match_epoch(self, target_epoch, records, max_delta=2.0):
+    def match_epoch(self, target_epoch, records, max_delta=10.0):
         low = 0
         high = len(records) - 1
         closest = None
