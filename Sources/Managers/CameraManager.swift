@@ -18,6 +18,7 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     
     private var activeSessionID: String?
     private var photoCounter = 1255 // Match system photos starting index
+    private var isConfigured = false
     
     override init() {
         super.init()
@@ -25,6 +26,14 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     
     func setupCamera(completion: @escaping (Bool) -> Void) {
         sessionQueue.async {
+            if self.isConfigured {
+                if !self.captureSession.isRunning {
+                    self.captureSession.startRunning()
+                }
+                completion(true)
+                return
+            }
+            
             self.captureSession.beginConfiguration()
             self.captureSession.sessionPreset = .photo // Maximum resolution
             
@@ -106,6 +115,10 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             }
             
             self.captureSession.commitConfiguration()
+            if !self.captureSession.isRunning {
+                self.captureSession.startRunning()
+            }
+            self.isConfigured = true
             completion(true)
         }
     }
@@ -113,23 +126,19 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     func startSession(sessionID: String) {
         self.activeSessionID = sessionID
         self.photoCounter = 1255 // Reset photo count index per run
-        
-        sessionQueue.async {
-            if !self.captureSession.isRunning {
-                self.captureSession.startRunning()
-                print("CameraManager: Capture session started running")
-            }
-        }
     }
     
     func stopSession() {
+        self.activeSessionID = nil
+    }
+    
+    func stopHardwareSession() {
         sessionQueue.async {
             if self.captureSession.isRunning {
                 self.captureSession.stopRunning()
-                print("CameraManager: Capture session stopped running")
+                print("CameraManager: Hardware session stopped")
             }
         }
-        self.activeSessionID = nil
     }
     
     // Sets camera manual exposure & Kelvin white balance temperature dynamically
@@ -159,13 +168,24 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
                     let tempAndTint = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: Float(wbTemperature), tint: 0.0)
                     let gains = device.deviceWhiteBalanceGains(for: tempAndTint)
                     
+                    var red = gains.redGain
+                    var green = gains.greenGain
+                    var blue = gains.blueGain
+                    
+                    if red.isNaN || red.isInfinite { red = 1.0 }
+                    if green.isNaN || green.isInfinite { green = 1.0 }
+                    if blue.isNaN || blue.isInfinite { blue = 1.0 }
+                    
                     let maxGain = device.maxWhiteBalanceGain
                     let clampedGains = AVCaptureDevice.WhiteBalanceGains(
-                        redGain: max(1.0, min(maxGain, gains.redGain)),
-                        greenGain: max(1.0, min(maxGain, gains.greenGain)),
-                        blueGain: max(1.0, min(maxGain, gains.blueGain))
+                        redGain: max(1.0, min(maxGain, red)),
+                        greenGain: max(1.0, min(maxGain, green)),
+                        blueGain: max(1.0, min(maxGain, blue))
                     )
-                    device.setWhiteBalanceModeLocked(with: clampedGains, completionHandler: nil)
+                    
+                    if device.isWhiteBalanceModeSupported(.locked) {
+                        device.setWhiteBalanceModeLocked(with: clampedGains, completionHandler: nil)
+                    }
                 }
                 
                 device.unlockForConfiguration()

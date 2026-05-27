@@ -342,6 +342,7 @@ struct DashboardView: View {
         .onDisappear {
             hardwareTimer?.invalidate()
             hardwareTimer = nil
+            cameraManager.stopHardwareSession()
         }
     }
     
