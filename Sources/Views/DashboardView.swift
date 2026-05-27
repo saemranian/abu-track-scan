@@ -37,24 +37,22 @@ struct DashboardView: View {
                 .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 16) {
                         
-                        // Interactive 3D Point Cloud Coverage Map
-                        VStack(spacing: 5) {
+                        // Sleek, Expanded Hero 3D Point Cloud Viewport
+                        VStack(spacing: 6) {
                             HStack {
-                                Label("Live 3D Coverage Point Cloud", systemImage: "circle.grid.3x3.fill")
-                                    .font(.caption)
-                                    .fontWeight(.bold)
+                                Label("LiDAR Depth 3D Projected Canvas", systemImage: "circle.grid.3x3.fill")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                                     .foregroundColor(.cyan)
                                 Spacer()
-                                Text(trackingManager.isTrackingActive ? "\(trackingManager.accumulatedPointCloud.count) points" : "Inactive")
-                                    .font(.caption2)
+                                Text(trackingManager.isTrackingActive ? "\(trackingManager.accumulatedPointCloud.count) pts" : "System Standby")
+                                    .font(.system(size: 10, design: .monospaced))
                                     .foregroundColor(.gray)
                             }
-                            .padding(.horizontal, 15)
-                            .padding(.top, 10)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
                             
-                            // Visualizer Box
                             ZStack(alignment: .bottomTrailing) {
                                 ZStack {
                                     PointCloudVisualizerView(
@@ -71,7 +69,6 @@ struct DashboardView: View {
                                         showCamera: showCamera
                                     )
                                     
-                                    // Transparent multi-touch overlay
                                     MultiTouchGestureOverlay(
                                         rotX: $rotX,
                                         rotY: $rotY,
@@ -80,48 +77,36 @@ struct DashboardView: View {
                                         zoom: $zoom
                                     )
                                 }
-                                .frame(height: 220)
-                                .background(Color.black.opacity(0.4))
+                                .frame(height: 290)
+                                .background(Color(red: 0.03, green: 0.04, blue: 0.08))
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
+                                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
                                 )
                                 
-                                // Overlay HUD Buttons for Trajectory and Camera
-                                HStack(spacing: 8) {
+                                // Floating HUD Controls
+                                HStack(spacing: 6) {
                                     Button(action: { showTrajectory.toggle() }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: showTrajectory ? "point.topleft.down.to.point.bottomright.curvepath" : "point.topleft.down.to.point.bottomright.curvepath.fill")
-                                            Text("PATH")
-                                        }
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundColor(showTrajectory ? .yellow : .gray)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.black.opacity(0.6))
-                                        .cornerRadius(6)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .stroke(showTrajectory ? Color.yellow.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 1)
-                                        )
+                                        Text("PATH")
+                                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                                            .foregroundColor(showTrajectory ? .yellow : .gray)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(4)
+                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(showTrajectory ? Color.yellow.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
                                     }
                                     
                                     Button(action: { showCamera.toggle() }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: showCamera ? "camera.fill" : "camera")
-                                            Text("CAM")
-                                        }
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundColor(showCamera ? .red : .gray)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.black.opacity(0.6))
-                                        .cornerRadius(6)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .stroke(showCamera ? Color.red.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 1)
-                                        )
+                                        Text("CAM")
+                                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                                            .foregroundColor(showCamera ? .red : .gray)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(4)
+                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(showCamera ? Color.red.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
                                     }
                                 }
                                 .padding(8)
@@ -129,9 +114,9 @@ struct DashboardView: View {
                         }
                         .padding(.horizontal)
                         
-                        // Active Record Button Grid
-                        HStack(spacing: 15) {
-                            // Start/Stop Record Button
+                        // Sleek, Minimal Action Button Row
+                        HStack(spacing: 12) {
+                            // Primary Start/Stop Shutter Button
                             Button(action: {
                                 if trackingManager.isTrackingActive {
                                     stopSession()
@@ -139,125 +124,69 @@ struct DashboardView: View {
                                     startSession()
                                 }
                             }) {
-                                HStack {
-                                    ZStack {
-                                        Circle()
-                                            .fill(trackingManager.isTrackingActive ? Color.red.opacity(0.2) : Color.cyan.opacity(0.2))
-                                            .frame(width: 42, height: 42)
-                                        
-                                        Circle()
-                                            .fill(trackingManager.isTrackingActive ? Color.red : Color.cyan)
-                                            .frame(width: 18, height: 18)
-                                            .scaleEffect(trackingManager.isTrackingActive ? 1.2 : 1.0)
-                                            .animation(trackingManager.isTrackingActive ? Animation.easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default, value: trackingManager.isTrackingActive)
-                                    }
+                                HStack(spacing: 10) {
+                                    Circle()
+                                        .fill(trackingManager.isTrackingActive ? Color.red : Color.cyan)
+                                        .frame(width: 10, height: 10)
+                                        .scaleEffect(trackingManager.isTrackingActive ? 1.2 : 1.0)
+                                        .animation(trackingManager.isTrackingActive ? Animation.easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default, value: trackingManager.isTrackingActive)
                                     
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(trackingManager.isTrackingActive ? "STOP LOGGING" : "START LOGGING")
-                                            .font(.footnote)
-                                            .fontWeight(.heavy)
-                                            .foregroundColor(.white)
-                                        Text(trackingManager.isTrackingActive ? formatDuration(sessionDuration) : "Ready to record")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
+                                    Text(trackingManager.isTrackingActive ? "STOP CAPTURE RUN" : "START CAPTURE RUN")
+                                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                                        .foregroundColor(.white)
+                                    
                                     Spacer()
+                                    
+                                    Text(trackingManager.isTrackingActive ? formatDuration(sessionDuration) : "STANDBY")
+                                        .font(.system(size: 10, design: .monospaced))
+                                        .foregroundColor(trackingManager.isTrackingActive ? .red : .gray)
                                 }
                                 .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(Color(red: 0.05, green: 0.08, blue: 0.18))
-                                        .shadow(color: trackingManager.isTrackingActive ? Color.red.opacity(0.15) : Color.cyan.opacity(0.15), radius: 10, x: 0, y: 4)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(trackingManager.isTrackingActive ? Color.red.opacity(0.3) : Color.cyan.opacity(0.3), lineWidth: 1)
-                                )
+                                .background(Color(red: 0.06, green: 0.08, blue: 0.15))
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(trackingManager.isTrackingActive ? Color.red.opacity(0.4) : Color.cyan.opacity(0.3), lineWidth: 1))
                             }
                             
-                            // GPS Mode Toggle Button
+                            // High-End GPS Status / Mode Switcher
                             Button(action: {
                                 RigSettings.isGPSEnabled.toggle()
                                 locationManager.isGPSEnabled = RigSettings.isGPSEnabled
                             }) {
-                                VStack(spacing: 6) {
-                                    Image(systemName: locationManager.isGPSEnabled ? "location.fill" : "location.slash")
-                                        .font(.title3)
-                                        .foregroundColor(locationManager.isGPSEnabled ? .green : .orange)
-                                    
-                                    Text(locationManager.isGPSEnabled ? "GPS ON (Outdoor)" : "GPS OFF (Indoor)")
-                                        .font(.caption2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                }
-                                .frame(width: 100, height: 76)
-                                .background(Color(red: 0.05, green: 0.08, blue: 0.18))
-                                .cornerRadius(16)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(locationManager.isGPSEnabled ? Color.green.opacity(0.2) : Color.orange.opacity(0.2), lineWidth: 1)
-                                )
+                                Image(systemName: locationManager.isGPSEnabled ? "location.fill" : "location.slash")
+                                    .font(.footnote)
+                                    .foregroundColor(locationManager.isGPSEnabled ? .green : .orange)
+                                    .frame(width: 48, height: 48)
+                                    .background(Color(red: 0.06, green: 0.08, blue: 0.15))
+                                    .cornerRadius(10)
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(locationManager.isGPSEnabled ? Color.green.opacity(0.3) : Color.orange.opacity(0.3), lineWidth: 1))
                             }
                         }
                         .padding(.horizontal)
                         
-                        // Live Diagnostics Grid
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
+                        // Unified Pro Telemetry Console Table (Sleek Slate-Minimal Styling)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("TELEMETRIC CORE DIAGNOSTIC STREAM")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.gray)
+                                .padding(.horizontal, 4)
                             
-                            // Card 1: GPS Diagnostics
-                            SensorCard(
-                                title: "GPS System (RTK Enabled)",
-                                icon: "location.fill",
-                                color: locationManager.isGPSEnabled ? .green : .orange,
-                                content: [
-                                    SensorRow(label: "Status", value: locationManager.isGPSEnabled ? "Active" : "Disabled (Indoor)"),
-                                    SensorRow(label: "Lat", value: locationManager.isGPSEnabled ? String(format: "%.6f", locationManager.latitude) : "N/A"),
-                                    SensorRow(label: "Lon", value: locationManager.isGPSEnabled ? String(format: "%.6f", locationManager.longitude) : "N/A"),
-                                    SensorRow(label: "Precision", value: locationManager.isGPSEnabled ? String(format: "±%.1fm", locationManager.horizontalAccuracy) : "N/A")
-                                ]
-                            )
-                            
-                            // Card 2: IMU Sensor Fusion
-                            SensorCard(
-                                title: "CoreMotion IMU Hub",
-                                icon: "gyroscope",
-                                color: .cyan,
-                                content: [
-                                    SensorRow(label: "State", value: trackingManager.appState.contains("Background") ? "BG Logger" : "VIO Active"),
-                                    SensorRow(label: "Yaw", value: String(format: "%.1f°", trackingManager.yaw)),
-                                    SensorRow(label: "Pitch", value: String(format: "%.1f°", trackingManager.pitch)),
-                                    SensorRow(label: "Roll", value: String(format: "%.1f°", trackingManager.roll))
-                                ]
-                            )
-                            
-                            // Card 3: Barometric Altimeter
-                            SensorCard(
-                                title: "Barometric Altimeter",
-                                icon: "barometer",
-                                color: .purple,
-                                content: [
-                                    SensorRow(label: "State", value: trackingManager.barometerActive ? "Polling" : "No Baro"),
-                                    SensorRow(label: "Relative Height", value: String(format: "%+.2fm", trackingManager.relativeAltitude)),
-                                    SensorRow(label: "Pressure", value: String(format: "%.3fkPa", trackingManager.pressureInKPa)),
-                                    SensorRow(label: "Calibration", value: trackingManager.magneticCalibration)
-                                ]
-                            )
-                            
-                            // Card 4: Session Metrics
-                            SensorCard(
-                                title: "Active Logging Stats",
-                                icon: "doc.text.fill",
-                                color: .yellow,
-                                content: [
-                                    SensorRow(label: "Active ID", value: activeSessionID != nil ? String(activeSessionID!.suffix(8)) : "None"),
-                                    SensorRow(label: "Records", value: "\(entryCount)"),
-                                    SensorRow(label: "VIO Coords", value: String(format: "%.1f, %.1f, %.1f", trackingManager.localX, trackingManager.localY, trackingManager.localZ)),
-                                    SensorRow(label: "Rate Setting", value: String(format: "%.0fHz", RigSettings.captureRate))
-                                ]
-                            )
+                            VStack(spacing: 0) {
+                                TelemetryRow(label: "LOCAL TRACK X/Y/Z", value: String(format: "%+.3f, %+.3f, %+.3f m", trackingManager.localX, trackingManager.localY, trackingManager.localZ), highlight: .cyan)
+                                Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "DEVICE YAW/PITCH/ROLL", value: String(format: "%+.1f°, %+.1f°, %+.1f°", trackingManager.yaw, trackingManager.pitch, trackingManager.roll), highlight: .white)
+                                Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "BARO HEIGHT/PRESSURE", value: trackingManager.barometerActive ? String(format: "%+.3fm  (%.3f kPa)", trackingManager.relativeAltitude, trackingManager.pressureInKPa) : "NO BAROMETER ACCORD", highlight: .purple)
+                                Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "GNSS ABSOLUTE COORDS", value: locationManager.isGPSEnabled ? String(format: "%.6f, %.6f (±%.1fm)", locationManager.latitude, locationManager.longitude, locationManager.horizontalAccuracy) : "INDOOR GEODETIC FALLBACK", highlight: locationManager.isGPSEnabled ? .green : .orange)
+                                Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "SESSION TELEMETRY DATA", value: activeSessionID != nil ? "ID: \(String(activeSessionID!.suffix(8)))  [REC: \(entryCount)]" : "STREAM DISCONNECTED", highlight: .yellow)
+                            }
+                            .background(Color(red: 0.06, green: 0.08, blue: 0.15))
+                            .cornerRadius(10)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.15), lineWidth: 1))
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, 20)
+                        .padding(.bottom, 12)
                     }
                 }
             }
@@ -609,4 +538,24 @@ struct MultiTouchGestureOverlay: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UIView, context: Context) {}
+}
+
+struct TelemetryRow: View {
+    let label: String
+    let value: String
+    let highlight: Color
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(.gray)
+            Spacer()
+            Text(value)
+                .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                .foregroundColor(highlight)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
 }

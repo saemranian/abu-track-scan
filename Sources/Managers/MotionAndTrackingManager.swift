@@ -332,6 +332,11 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         let bytesPerRow = CVPixelBufferGetBytesPerRow(depthMap)
         let pixelFormat = CVPixelBufferGetPixelFormatType(depthMap)
         
+        let imgWidth = Float(CVPixelBufferGetWidth(frame.capturedImage))
+        let imgHeight = Float(CVPixelBufferGetHeight(frame.capturedImage))
+        let scaleX = imgWidth / Float(width)
+        let scaleY = imgHeight / Float(height)
+        
         var points: [RawPoint3D] = []
         
         let intrinsics = frame.camera.intrinsics
@@ -354,10 +359,12 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                     let depth = floatBuffer[pixelIndex]
                     
                     if depth > 0.1 && depth < 5.0 {
-                        // Project back to 3D camera space (Z is negative forward in ARKit camera space)
+                        // Project back to 3D camera space using scaled image coordinates
+                        let imgX = Float(x) * scaleX
+                        let imgY = Float(y) * scaleY
                         let camPoint = SIMD4<Float>(
-                            (Float(x) - cx) * depth / fx,
-                            (Float(y) - cy) * depth / fy,
+                            (imgX - cx) * depth / fx,
+                            -(imgY - cy) * depth / fy,
                             -depth,
                             1.0
                         )
@@ -374,9 +381,11 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                     let depth = Float(halfBuffer[pixelIndex])
                     
                     if depth > 0.1 && depth < 5.0 {
+                        let imgX = Float(x) * scaleX
+                        let imgY = Float(y) * scaleY
                         let camPoint = SIMD4<Float>(
-                            (Float(x) - cx) * depth / fx,
-                            (Float(y) - cy) * depth / fy,
+                            (imgX - cx) * depth / fx,
+                            -(imgY - cy) * depth / fy,
                             -depth,
                             1.0
                         )
