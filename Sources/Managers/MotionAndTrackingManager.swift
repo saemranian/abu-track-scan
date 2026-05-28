@@ -469,20 +469,6 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
 
 // ARKit Camera Extensions to extract Euler Angles and Quaternions easily
 extension ARCamera {
-    var eulerAngles: SIMD3<Float> {
-        let transform = self.transform
-        let r11 = transform.columns.0.x
-        let r21 = transform.columns.0.y
-        let r31 = transform.columns.0.z
-        let r32 = transform.columns.1.z
-        let r33 = transform.columns.2.z
-        
-        let pitch = atan2(-r32, r33)
-        let yaw = atan2(r31, sqrt(r11*r11 + r21*r21))
-        let roll = atan2(r21, r11)
-        
-        return SIMD3<Float>(pitch, yaw, roll)
-    }
     
     var quaternion: simd_quatd {
         // Convert simd_float4x4 rotation component to double-precision quaternion

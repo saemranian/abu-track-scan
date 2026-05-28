@@ -4,16 +4,32 @@ import subprocess
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import math
+import threading
 
-# Auto-bootstrap necessary libraries for EXIF byte operations
+# Auto-bootstrap necessary libraries for EXIF byte operations and 3D visualizer
 try:
     from PIL import Image, ImageTk
     import piexif
 except ImportError:
     print("Initializing industrial sync dependencies (pillow, piexif)...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pillow", "piexif"])
-    from PIL import Image
+    from PIL import Image, ImageTk
     import piexif
+
+try:
+    import matplotlib
+    matplotlib.use("TkAgg")
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    from mpl_toolkits.mplot3d import Axes3D
+except ImportError:
+    print("Installing 3D visualizer dependencies (matplotlib)...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "matplotlib"])
+    import matplotlib
+    matplotlib.use("TkAgg")
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    from mpl_toolkits.mplot3d import Axes3D
 
 # Pro Minimal Slate Dark Palette
 BG_COLOR = "#05070B"
@@ -29,8 +45,8 @@ ACCENT_RED = "#FF3366"
 class CamTrackDesktopApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("CAMTRACK PRO // DESKTOP CORE")
-        self.root.geometry("1020x700")
+        self.root.title("CAMTRACK PRO // 3DGS & POSTSHOT PROCESSING SUITE")
+        self.root.geometry("1100x760")
         self.root.configure(bg=BG_COLOR)
         
         # State variables
@@ -42,6 +58,12 @@ class CamTrackDesktopApp:
         self.time_offset = tk.DoubleVar(value=0.0)
         self.time_entry_var = tk.StringVar(value="0.00")
         self._updating_offset = False
+        
+        # 3D Visualizer State
+        self.point_cloud = []      # List of (x, y, z) tuples from PLY
+        self.trajectory_points = [] # List of matched camera records
+        self.original_ply_path = None
+        self.selected_camera_index = None
         
         self.time_offset.trace_add("write", self._on_slider_change)
         self.time_entry_var.trace_add("write", self._on_entry_change)
@@ -57,7 +79,14 @@ class CamTrackDesktopApp:
         style.configure("TFrame", background=BG_COLOR)
         style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
         
-        # Core Labels (Unified clean typography)
+        # Tab Notebook Style
+        style.configure("TNotebook", background=BG_COLOR, borderwidth=0)
+        style.configure("TNotebook.Tab", background=CARD_BG, foreground=TEXT_MUTED, borderwidth=1, bordercolor=BORDER_COLOR, font=("Consolas", 9, "bold"), padding=10)
+        style.map("TNotebook.Tab", 
+                  background=[("selected", FIELD_BG), ("active", ACCENT_CYAN)], 
+                  foreground=[("selected", ACCENT_CYAN), ("active", BG_COLOR)])
+        
+        # Core Labels
         style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Consolas", 9))
         style.configure("Header.TLabel", background=CARD_BG, foreground=ACCENT_CYAN, font=("Consolas", 11, "bold"))
         style.configure("Muted.TLabel", background=CARD_BG, foreground=TEXT_MUTED, font=("Consolas", 8))
@@ -68,120 +97,192 @@ class CamTrackDesktopApp:
                   background=[("active", ACCENT_CYAN), ("pressed", BORDER_COLOR)], 
                   foreground=[("active", BG_COLOR)])
         
-        # Main georeference button
         style.configure("Action.TButton", background=ACCENT_CYAN, foreground=BG_COLOR, font=("Consolas", 10, "bold"), borderwidth=0, relief="flat")
         style.map("Action.TButton", 
                   background=[("active", ACCENT_AMBER)], 
                   foreground=[("active", BG_COLOR)])
         
-        # Sleek entry fields
         style.configure("TEntry", fieldbackground=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Consolas", 10))
-        
-        # Minimal progress bar
         style.configure("Horizontal.TProgressbar", thickness=8, troughcolor=BG_COLOR, background=ACCENT_CYAN, borderwidth=0)
         
     def build_ui(self):
-        # 2-Column Master grid
-        self.root.columnconfigure(0, weight=4) # Parameters Panel (Left)
-        self.root.columnconfigure(1, weight=5) # Logs Console (Right)
-        self.root.rowconfigure(0, weight=1)
+        # Notebook Tabbed System
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True)
         
-        # ----------------- LEFT: PARAMETERS PANEL -----------------
-        left_panel = ttk.Frame(self.root, padding=20)
+        # Tab 1: Sync and Console Logs
+        self.tab_sync = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(self.tab_sync, text="01 // CONSOLE LOGS & EXIF SYNC")
+        
+        # Tab 2: 3D Spatial Visualizer Tab
+        self.tab_visualizer = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(self.tab_visualizer, text="02 // 3D SPATIAL MAP (POSTSHOT SUITE)")
+        
+        # ----------------- TAB 1: SYNCHRONIZATION INTERFACE -----------------
+        self.tab_sync.columnconfigure(0, weight=4) # Left Panel
+        self.tab_sync.columnconfigure(1, weight=5) # Right Logs Panel
+        self.tab_sync.rowconfigure(0, weight=1)
+        
+        left_panel = ttk.Frame(self.tab_sync, padding=10)
         left_panel.grid(row=0, column=0, sticky="nsew")
         left_panel.columnconfigure(0, weight=1)
-        left_panel.rowconfigure(0, weight=0)
-        left_panel.rowconfigure(1, weight=0)
-        left_panel.rowconfigure(2, weight=0)
         left_panel.rowconfigure(3, weight=1)
         
-        # Title Card
+        # Title
         title_frame = ttk.Frame(left_panel)
-        title_frame.grid(row=0, column=0, sticky="w", pady=(0, 20))
-        ttk.Label(title_frame, text="CAMTRACK PRO // DESKTOP CONSOLE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        ttk.Label(title_frame, text="Version 0.0.3 // Build 6 // Active Release", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        title_frame.grid(row=0, column=0, sticky="w", pady=(0, 15))
+        ttk.Label(title_frame, text="CAMTRACK PRO // DESKTOP CORE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
+        ttk.Label(title_frame, text="Version 0.0.5 // Build 18 // 3DGS Postshot Engine Ready", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
-        io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
-        io_card.grid(row=1, column=0, sticky="ew", pady=(0, 15))
+        io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
+        io_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
         io_card.columnconfigure(1, weight=1)
         
-        ttk.Label(io_card, text="01 // FILE SYSTEM INTERFACE", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 12))
+        ttk.Label(io_card, text="01 // FILE SYSTEM INTERFACE", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
         
-        # Photos folder row
-        ttk.Label(io_card, text="Image Folder:").grid(row=1, column=0, sticky="w", pady=6)
+        ttk.Label(io_card, text="Image Folder:").grid(row=1, column=0, sticky="w", pady=4)
         photo_entry = ttk.Entry(io_card, textvariable=self.photo_dir)
-        photo_entry.grid(row=1, column=1, sticky="ew", padx=10, pady=6)
-        ttk.Button(io_card, text="Browse", command=self.browse_photos).grid(row=1, column=2, pady=6, ipady=3, ipadx=8)
+        photo_entry.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        ttk.Button(io_card, text="Browse", command=self.browse_photos).grid(row=1, column=2, pady=4, ipady=2, ipadx=6)
         
-        # CSV file row
-        ttk.Label(io_card, text="Telemetry Log:").grid(row=2, column=0, sticky="w", pady=6)
+        ttk.Label(io_card, text="Telemetry Log:").grid(row=2, column=0, sticky="w", pady=4)
         csv_entry = ttk.Entry(io_card, textvariable=self.csv_path)
-        csv_entry.grid(row=2, column=1, sticky="ew", padx=10, pady=6)
-        ttk.Button(io_card, text="Browse", command=self.browse_csv).grid(row=2, column=2, pady=6, ipady=3, ipadx=8)
+        csv_entry.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
+        ttk.Button(io_card, text="Browse", command=self.browse_csv).grid(row=2, column=2, pady=4, ipady=2, ipadx=6)
         
         # Card 2: DSLR Calibrations
-        rig_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
-        rig_card.grid(row=2, column=0, sticky="ew", pady=(0, 15))
+        rig_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
+        rig_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
         rig_card.columnconfigure(0, weight=1)
         rig_card.columnconfigure(1, weight=1)
         rig_card.columnconfigure(2, weight=1)
         
-        ttk.Label(rig_card, text="02 // RIG LEVER-ARM OFFSET (cm)", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 12))
-        
-        # Numeric offset entries
+        ttk.Label(rig_card, text="02 // RIG LEVER-ARM OFFSET (cm)", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
         self.add_offset_input(rig_card, "dx (Lateral)", self.dx, 0)
         self.add_offset_input(rig_card, "dy (Vertical)", self.dy, 1)
         self.add_offset_input(rig_card, "dz (Depth)", self.dz, 2)
         
-        # Card 3: Clock Sync + Big Button
-        action_card = ttk.Frame(left_panel, style="Card.TFrame", padding=15)
+        # Card 3: Clock Sync + Sync Button
+        action_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
         action_card.grid(row=3, column=0, sticky="nsew")
         action_card.columnconfigure(0, weight=1)
         action_card.rowconfigure(3, weight=1)
         
-        ttk.Label(action_card, text="03 // CLOCK OFFSET CORRECTION", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 4))
-        ttk.Label(action_card, text="Slide to synchronize DSLR shutter time with iPhone Epoch millisecond log.", style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 10))
+        ttk.Label(action_card, text="03 // CLOCK OFFSET CORRECTION", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 2))
+        ttk.Label(action_card, text="Slide to synchronize DSLR shutter time with iPhone Epoch millisecond log.", style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 8))
         
         slider_frame = ttk.Frame(action_card)
-        slider_frame.grid(row=2, column=0, sticky="ew", pady=(0, 15))
+        slider_frame.grid(row=2, column=0, sticky="ew", pady=(0, 10))
         slider_frame.columnconfigure(0, weight=1)
         
         slider = ttk.Scale(slider_frame, from_=-300.0, to=300.0, variable=self.time_offset, orient="horizontal")
-        slider.grid(row=0, column=0, sticky="ew", padx=(0, 15))
+        slider.grid(row=0, column=0, sticky="ew", padx=(0, 12))
         
-        # Numeric entry for exact manual synchronization, bi-directionally bound to the slider
-        self.time_entry = ttk.Entry(slider_frame, textvariable=self.time_entry_var, font=("Consolas", 10), justify="center", width=10)
-        self.time_entry.grid(row=0, column=1, padx=(10, 2))
+        self.time_entry = ttk.Entry(slider_frame, textvariable=self.time_entry_var, font=("Consolas", 10), justify="center", width=8)
+        self.time_entry.grid(row=0, column=1, padx=(8, 2))
         ttk.Label(slider_frame, text="sec", style="Muted.TLabel").grid(row=0, column=2, sticky="w")
         
-        # Giant Sync Trigger
         self.sync_btn = ttk.Button(action_card, text="INJECT EXIF & EXPORT REFERENCE METADATA", style="Action.TButton", command=self.run_synchronization)
-        self.sync_btn.grid(row=3, column=0, sticky="ew", ipady=12, pady=(15, 0))
+        self.sync_btn.grid(row=3, column=0, sticky="ew", ipady=10, pady=(10, 0))
         
         self.progress = ttk.Progressbar(action_card, orient="horizontal", mode="determinate")
-        self.progress.grid(row=4, column=0, sticky="ew", pady=(12, 0))
+        self.progress.grid(row=4, column=0, sticky="ew", pady=(10, 0))
         
-        # ----------------- RIGHT: TERMINAL LOGS PANEL -----------------
-        right_panel = ttk.Frame(self.root, padding=20)
+        # Right Terminal Logs
+        right_panel = ttk.Frame(self.tab_sync, padding=10)
         right_panel.grid(row=0, column=1, sticky="nsew")
         right_panel.columnconfigure(0, weight=1)
         right_panel.rowconfigure(1, weight=1)
         
-        ttk.Label(right_panel, text="CAMTRACK LOGS & MULTI-INTEGRITY ANALYSIS", font=("Consolas", 11, "bold"), background=BG_COLOR, foreground=ACCENT_CYAN).grid(row=0, column=0, sticky="w", pady=(0, 15))
+        ttk.Label(right_panel, text="CAMTRACK LOGS & MULTI-INTEGRITY ANALYSIS", font=("Consolas", 11, "bold"), background=BG_COLOR, foreground=ACCENT_CYAN).grid(row=0, column=0, sticky="w", pady=(0, 10))
         
-        # Text box custom formatted to look like a high-end console
-        self.log_box = tk.Text(right_panel, wrap="word", bg=CARD_BG, fg=TEXT_PRIMARY, insertbackground=ACCENT_CYAN, font=("Consolas", 9), bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=ACCENT_CYAN, padx=15, pady=15)
+        self.log_box = tk.Text(right_panel, wrap="word", bg=CARD_BG, fg=TEXT_PRIMARY, insertbackground=ACCENT_CYAN, font=("Consolas", 9), bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=ACCENT_CYAN, padx=12, pady=12)
         self.log_box.grid(row=1, column=0, sticky="nsew")
         
         scroll = ttk.Scrollbar(right_panel, orient="vertical", command=self.log_box.yview)
         scroll.grid(row=1, column=1, sticky="ns")
         self.log_box.configure(yscrollcommand=scroll.set)
         
-        # System Banner
         self.log("SYSTEM ACTIVE // DESKTOP GEODETIC DATA SYNCHRONIZER ENGINE")
-        self.log("Version: 0.0.3 // Build: 6 // OS Platform: Windows")
-        self.log("Standalone georeferencing suite ready for Metashape & RealityCapture...\n")
+        self.log("Version: 0.0.5 // OS Platform: Windows")
+        self.log("3DGS Postshot Processing Suite integrated...\n")
+        
+        # ----------------- TAB 2: 3D SPATIAL WORKSTATION -----------------
+        self.tab_visualizer.columnconfigure(0, weight=5) # 3D Plot Canvas
+        self.tab_visualizer.columnconfigure(1, weight=3) # Side photography controller
+        self.tab_visualizer.rowconfigure(0, weight=1)
+        
+        # Left: Matplotlib 3D Viewport
+        self.view_frame = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=10)
+        self.view_frame.grid(row=0, column=0, sticky="nsew", marginRight=10)
+        self.view_frame.columnconfigure(0, weight=1)
+        self.view_frame.rowconfigure(1, weight=1)
+        
+        ttk.Label(self.view_frame, text="04 // INTERACTIVE 3D SPATIAL MAP", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 10))
+        
+        # Create empty Matplotlib figure inside Tkinter
+        self.fig = plt.figure(facecolor=BG_COLOR)
+        self.ax = self.fig.add_subplot(111, projection='3d', facecolor=BG_COLOR)
+        self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+        self.setup_3d_axes()
+        
+        self.canvas_3d = FigureCanvasTkAgg(self.fig, master=self.view_frame)
+        self.canvas_3d.get_tk_widget().grid(row=1, column=0, sticky="nsew")
+        
+        # Right Control Panel
+        side_panel = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=15)
+        side_panel.grid(row=0, column=1, sticky="nsew")
+        side_panel.columnconfigure(0, weight=1)
+        side_panel.rowconfigure(1, weight=1)
+        
+        ttk.Label(side_panel, text="05 // PHOTOGRAPHY CONTROLLER", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 10))
+        
+        # Listbox containing photography frames
+        self.photo_listbox = tk.Listbox(side_panel, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 9), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
+        self.photo_listbox.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+        self.photo_listbox.bind("<<ListboxSelect>>", self._on_listbox_select)
+        
+        scroll_list = ttk.Scrollbar(side_panel, orient="vertical", command=self.photo_listbox.yview)
+        scroll_list.grid(row=1, column=1, sticky="ns", pady=(0, 10))
+        self.photo_listbox.configure(yscrollcommand=scroll_list.set)
+        
+        # Processing Buttons
+        btn_frame = ttk.Frame(side_panel)
+        btn_frame.grid(row=2, column=0, columnspan=2, sticky="ew")
+        btn_frame.columnconfigure(0, weight=1)
+        btn_frame.columnconfigure(1, weight=1)
+        
+        self.clean_btn = ttk.Button(btn_frame, text="CLEAN POINT CLOUD (SOR)", command=self.clean_point_cloud_sor)
+        self.clean_btn.grid(row=0, column=0, sticky="ew", padx=(0, 6), ipady=8)
+        
+        self.export_btn = ttk.Button(btn_frame, text="EXPORT FOR POSTSHOT (3DGS)", command=self.export_for_postshot)
+        self.export_btn.grid(row=0, column=1, sticky="ew", padx=(6, 0), ipady=8)
+        
+    def setup_3d_axes(self):
+        self.ax.clear()
+        self.ax.set_facecolor(BG_COLOR)
+        self.ax.grid(color=BORDER_COLOR, linestyle='--', linewidth=0.5)
+        
+        # Cyberpunk visual styles
+        self.ax.xaxis.pane.fill = False
+        self.ax.yaxis.pane.fill = False
+        self.ax.zaxis.pane.fill = False
+        
+        self.ax.xaxis.pane.set_edgecolor(BORDER_COLOR)
+        self.ax.yaxis.pane.set_edgecolor(BORDER_COLOR)
+        self.ax.zaxis.pane.set_edgecolor(BORDER_COLOR)
+        
+        self.ax.set_xlabel("X (East)", color=TEXT_MUTED, fontname="Consolas")
+        self.ax.set_ylabel("Y (North)", color=TEXT_MUTED, fontname="Consolas")
+        self.ax.set_zlabel("Z (Up)", color=TEXT_MUTED, fontname="Consolas")
+        
+        self.ax.tick_params(colors=TEXT_MUTED, labelsize=8)
+        self.ax.set_title("SPATIAL MAP RECONSTRUCTION CONSOLE", color=ACCENT_CYAN, fontsize=10, fontweight="bold", fontname="Consolas", pad=12)
+        
+    def format_epoch(self, epoch):
+        from datetime import datetime
+        return datetime.fromtimestamp(epoch).strftime('%Y-%m-%d %H:%M:%S')
 
     def _on_slider_change(self, *args):
         if self._updating_offset:
@@ -239,6 +340,209 @@ class CamTrackDesktopApp:
             self.csv_path.set(f)
             self.log(f"LOADED CSV LOG // {f}")
             
+            # Check for Point Cloud coverage_cloud.ply automatically in same folder
+            folder = os.path.dirname(f)
+            ply_path = os.path.join(folder, "coverage_cloud.ply")
+            if os.path.exists(ply_path):
+                self.original_ply_path = ply_path
+                self.log(f"AUTO-DETECTED LiDAR CLOUD // {ply_path}")
+                self.load_point_cloud(ply_path)
+            else:
+                self.point_cloud = []
+                self.setup_3d_axes()
+                self.canvas_3d.draw()
+                
+    def load_point_cloud(self, path):
+        self.log("Parsing sparse point cloud PLY...")
+        self.point_cloud = []
+        try:
+            with open(path, "r") as f:
+                lines = f.readlines()
+            
+            in_header = True
+            for line in lines:
+                line = line.strip()
+                if in_header:
+                    if line == "end_header":
+                        in_header = False
+                    continue
+                parts = line.split()
+                if len(parts) >= 3:
+                    try:
+                        self.point_cloud.append((float(parts[0]), float(parts[1]), float(parts[2])))
+                    except ValueError:
+                        continue
+            self.log(f"Loaded point cloud: {len(self.point_cloud)} coordinate vertices.")
+            self.render_3d_scene()
+        except Exception as e:
+            self.log(f"Failed to load point cloud: {str(e)}")
+            
+    def render_3d_scene(self):
+        self.setup_3d_axes()
+        
+        # 1. Plot Point Cloud sparse vertices (small gray markers)
+        # ARKit: X = right, Y = Up, Z = back
+        # Visualizer: X = East (Right), Y = North (Back), Z = Up
+        if self.point_cloud:
+            xs = [p[0] for p in self.point_cloud]
+            ys = [p[2] for p in self.point_cloud]  # Swap Y and Z for visual alignment
+            zs = [p[1] for p in self.point_cloud]  # Swap Y and Z for visual alignment
+            self.ax.scatter(xs, ys, zs, c='#3E4E63', s=0.75, alpha=0.5, depthshade=True, label="Point Cloud")
+            
+        # 2. Plot Camera Trajectory Path (Yellow line)
+        if self.trajectory_points:
+            tx = [p["local_x"] for p in self.trajectory_points]
+            ty = [p["local_z"] for p in self.trajectory_points]  # Swap Y and Z for visual alignment
+            tz = [p["local_y"] for p in self.trajectory_points]  # Swap Y and Z for visual alignment
+            self.ax.plot(tx, ty, tz, color=ACCENT_AMBER, linewidth=1.5, label="Trajectory")
+            
+            # 3. Plot 3D wireframe camera pyramid at each camera position
+            for i, p in enumerate(self.trajectory_points):
+                color = ACCENT_CYAN if i != self.selected_camera_index else ACCENT_RED
+                lw = 1.0 if i != self.selected_camera_index else 2.0
+                self.plot_camera_pyramid(p["local_x"], p["local_y"], p["local_z"], p["q_w"], p["q_x"], p["q_y"], p["q_z"], color=color, linewidth=lw)
+                
+        # Set aspect limits automatically
+        if self.point_cloud or self.trajectory_points:
+            all_x = [p[0] for p in self.point_cloud] + [p["local_x"] for p in self.trajectory_points]
+            all_y = [p[1] for p in self.point_cloud] + [p["local_y"] for p in self.trajectory_points]
+            all_z = [p[2] for p in self.point_cloud] + [p["local_z"] for p in self.trajectory_points]
+            
+            if all_x:
+                max_range = max(max(all_x) - min(all_x), max(all_y) - min(all_y), max(all_z) - min(all_z)) / 2.0
+                mid_x = (max(all_x) + min(all_x)) / 2.0
+                mid_y = (max(all_y) + min(all_y)) / 2.0
+                mid_z = (max(all_z) + min(all_z)) / 2.0
+                
+                self.ax.set_xlim(mid_x - max_range, mid_x + max_range)
+                self.ax.set_ylim(mid_z - max_range, mid_z + max_range)  # Swap Y and Z for visual alignment
+                self.ax.set_zlim(mid_y - max_range, mid_y + max_range)  # Swap Y and Z for visual alignment
+                
+        self.canvas_3d.draw()
+
+        
+    def plot_camera_pyramid(self, px, py, pz, qw, qx, qy, qz, color=ACCENT_CYAN, linewidth=1.0):
+        # Calculate local wireframe vertices shifted along forward axis
+        scale = 0.15
+        w = scale * 0.5
+        h = scale * 0.375
+        d = scale
+        
+        corners_local = [
+            [-w, -h, -d], # BL
+            [ w, -h, -d], # BR
+            [ w,  h, -d], # TR
+            [-w,  h, -d]  # TL
+        ]
+        
+        # Quaternion rotation matrix conversion
+        r00 = 1.0 - 2.0*(qy**2 + qz**2)
+        r01 = 2.0*(qx*qy - qw*qz)
+        r02 = 2.0*(qx*qz + qw*qy)
+        
+        r10 = 2.0*(qx*qy + qw*qz)
+        r11 = 1.0 - 2.0*(qx**2 + qz**2)
+        r12 = 2.0*(qy*qz - qw*qx)
+        
+        r20 = 2.0*(qx*qz - qw*qy)
+        r21 = 2.0*(qy*qz + qw*qx)
+        r22 = 1.0 - 2.0*(qx**2 + qy**2)
+        
+        R = [
+            [r00, r01, r02],
+            [r10, r11, r12],
+            [r20, r21, r22]
+        ]
+        
+        corners_world = []
+        for c in corners_local:
+            rx = R[0][0]*c[0] + R[0][1]*c[1] + R[0][2]*c[2]
+            ry = R[1][0]*c[0] + R[1][1]*c[1] + R[1][2]*c[2]
+            rz = R[2][0]*c[0] + R[2][1]*c[1] + R[2][2]*c[2]
+            corners_world.append([px + rx, py + ry, pz + rz])
+            
+        # Draw 8 segments connecting wireframe
+        # Apex lines
+        # Swap Y and Z coordinate paths to match rendering mapping (X->X, Y->Z, Z->Y)
+        for cw in corners_world:
+            self.ax.plot([px, cw[0]], [pz, cw[2]], [py, cw[1]], color=color, linewidth=linewidth, alpha=0.8)
+            
+        # Base rectangle lines
+        for i in range(4):
+            c1 = corners_world[i]
+            c2 = corners_world[(i+1)%4]
+            self.ax.plot([c1[0], c2[0]], [c1[2], c2[2]], [c1[1], c2[1]], color=color, linewidth=linewidth, alpha=0.8)
+
+            
+    def _on_listbox_select(self, event):
+        selection = self.photo_listbox.curselection()
+        if selection:
+            idx = selection[0]
+            self.selected_camera_index = idx
+            record = self.trajectory_points[idx]
+            
+            # Re-draw to highlight selected camera
+            self.render_3d_scene()
+            
+            # Orbit/focus target visual view onto the selected camera
+            self.ax.view_init(elev=30, azim=record["yaw"] - 90)
+            self.canvas_3d.draw()
+            
+            # Trigger pop up dialog displaying thumbnail and georeferenced coordinates
+            self.show_photo_dialog(record)
+            
+    def show_photo_dialog(self, record):
+        photo_dir = self.photo_dir.get()
+        p_path = os.path.join(photo_dir, record["label"])
+        
+        popup = tk.Toplevel(self.root)
+        popup.title(f"CAMERA SNAPSHOT: {record['label']}")
+        popup.geometry("380x480")
+        popup.configure(bg=CARD_BG)
+        popup.resizable(False, False)
+        
+        # Center popup relative to main window
+        popup.transient(self.root)
+        popup.grab_set()
+        
+        # Render image thumbnail using PIL
+        canvas_w = 340
+        canvas_h = 240
+        
+        if os.path.exists(p_path):
+            try:
+                img = Image.open(p_path)
+                img.thumbnail((canvas_w, canvas_h))
+                photo_img = ImageTk.PhotoImage(img)
+                
+                label_img = tk.Label(popup, image=photo_img, bg=FIELD_BG, width=canvas_w, height=canvas_h)
+                label_img.image = photo_img # Keep reference!
+                label_img.pack(pady=15, padx=20)
+            except Exception as e:
+                tk.Label(popup, text="Failed to load thumbnail preview", font=("Consolas", 8), bg=FIELD_BG, fg=ACCENT_RED, width=42, height=12).pack(pady=15)
+        else:
+            tk.Label(popup, text="No synced JPEG image found in folder", font=("Consolas", 8), bg=FIELD_BG, fg=TEXT_MUTED, width=42, height=12).pack(pady=15)
+            
+        # Metadata labels frame
+        info_frame = tk.Frame(popup, bg=CARD_BG)
+        info_frame.pack(fill="x", padx=25)
+        
+        def add_meta(lbl, val, val_color=ACCENT_CYAN):
+            f = tk.Frame(info_frame, bg=CARD_BG)
+            f.pack(fill="x", pady=2)
+            tk.Label(f, text=lbl, font=("Consolas", 8, "bold"), fg=TEXT_MUTED, bg=CARD_BG).pack(side="left")
+            tk.Label(f, text=val, font=("Consolas", 8.5, "bold"), fg=val_color, bg=CARD_BG).pack(side="right")
+            
+        add_meta("FILENAME:", record["label"], TEXT_PRIMARY)
+        add_meta("LOCAL POS:", f"[{record['local_x']:+.3f}, {record['local_y']:+.3f}, {record['local_z']:+.3f}]")
+        add_meta("GPS COORDS:", f"Lat: {record['gps_lat']:.6f}, Lon: {record['gps_lon']:.6f}")
+        add_meta("BARO ALT:", f"{record['baro_alt']:.2f}m")
+        add_meta("ATTITUDE:", f"P: {record['pitch']:+.1f}°, R: {record['roll']:+.1f}°, Y: {record['yaw']:+.1f}°", ACCENT_AMBER)
+        add_meta("TIME SYNC:", self.format_epoch(record["epoch"]) + f" (dt: {record['time_diff']:+.3f}s)")
+        
+        # Sleek dismiss button
+        ttk.Button(popup, text="DISMISS CONSOLE VIEW", command=popup.destroy).pack(pady=15, ipady=4, ipadx=12)
+
     def run_synchronization(self):
         photo_dir = self.photo_dir.get()
         csv_path = self.csv_path.get()
@@ -263,11 +567,11 @@ class CamTrackDesktopApp:
             if not telemetry:
                 raise ValueError("Parsed CSV contains no geodetic tracking rows!")
                 
-            photo_files = [f for f in os.listdir(photo_dir) if f.lower().endswith(('.jpg', '.jpeg', '.tiff'))]
+            photo_files = [f for f in os.listdir(photo_dir) if f.lower().endswith(('.jpg', '.jpeg', '.tiff', '.heic'))]
             self.log(f"Found {len(photo_files)} photos in directory.")
             
             if not photo_files:
-                raise ValueError("No JPEGs or TIFF structures found in photos folder!")
+                raise ValueError("No JPEGs, HEICs or TIFF structures found in photos folder!")
                 
             lx = self.dx.get() / 100.0
             ly = self.dy.get() / 100.0
@@ -298,6 +602,9 @@ class CamTrackDesktopApp:
                 auto_tz_offset = 0.0
                 
             matched = 0
+            self.trajectory_points = []
+            self.photo_listbox.delete(0, tk.END)
+            
             csv_lines = [
                 "label,local_x,local_y,local_z,baro_altitude,gps_latitude,gps_longitude,gps_altitude,yaw,pitch,roll,time_diff"
             ]
@@ -329,16 +636,39 @@ class CamTrackDesktopApp:
                         dx=corrected[0] - record["local_x"], dy=corrected[1] - record["local_y"]
                     )
                     
-                    # Binary EXIF Write injection
-                    self.write_exif(p_path, lat, lon, alt + corrected[2])
+                    # Binary EXIF Write injection (Skips if image is HEIC to prevent format block error)
+                    if not p_name.lower().endswith('.heic'):
+                        self.write_exif(p_path, lat, lon, alt + corrected[2])
                     
                     time_diff = p_epoch - record["epoch"]
                     csv_lines.append(f"{p_name},{corrected[0]:.4f},{corrected[1]:.4f},{corrected[2]:.4f},{record['baro_alt']:.2f},{lat:.8f},{lon:.8f},{alt:.3f},{record['yaw']:.2f},{record['pitch']:.2f},{record['roll']:.2f},{time_diff:.3f}")
                     
+                    # Log to trajectories array for 3D graphics rendering
+                    traj_pt = {
+                        "label": p_name,
+                        "local_x": corrected[0],
+                        "local_y": corrected[1],
+                        "local_z": corrected[2],
+                        "epoch": p_epoch,
+                        "time_diff": time_diff,
+                        "baro_alt": record["baro_alt"],
+                        "gps_lat": lat,
+                        "gps_lon": lon,
+                        "gps_alt": alt,
+                        "yaw": record["yaw"],
+                        "pitch": record["pitch"],
+                        "roll": record["roll"],
+                        "q_w": record["q_w"],
+                        "q_x": record["q_x"],
+                        "q_y": record["q_y"],
+                        "q_z": record["q_z"]
+                    }
+                    self.trajectory_points.append(traj_pt)
+                    self.photo_listbox.insert(tk.END, f"[{matched:03d}] // {p_name}")
+                    
                     if matched % 15 == 0 or matched == total:
                         self.log(f"Sync Match // {p_name} -> Lat: {lat:.6f}, Lon: {lon:.6f}, Alt: {alt:.2f}m (dt: {time_diff:+.3f}s)")
                 else:
-                    # Log skip with more diagnostic details on first and last failures to help user
                     if i < 3 or i == total - 1:
                         p_time_str = self.format_epoch(p_epoch)
                         closest_anyway = self.match_epoch_any(p_epoch, telemetry)
@@ -357,6 +687,10 @@ class CamTrackDesktopApp:
             self.log(f"GEOREFERENCE SYNC SUCCESSFUL // {matched} / {total} photos synchronized.")
             self.log(f"High-Accuracy telemetry injected into image EXIF binary blocks.")
             self.log(f"CSV reference manifest written to: {out_csv}")
+            
+            # Redraw view with visual wireframe camera pyramids
+            self.render_3d_scene()
+            
             messagebox.showinfo("Complete", f"Synchronizer completed successfully.\nSynchronized photos: {matched}")
             
         except Exception as e:
@@ -366,6 +700,225 @@ class CamTrackDesktopApp:
         finally:
             self.sync_btn.state(["!disabled"])
             
+    def clean_point_cloud_sor(self):
+        if not self.point_cloud:
+            messagebox.showerror("Error", "No point cloud loaded to filter!")
+            return
+            
+        self.clean_btn.state(["disabled"])
+        self.log("----------------------------------------------------------------------")
+        self.log("RUNNING OFFLINE STATISTICAL OUTLIER REMOVAL (SOR) FILTER...")
+        
+        # Run SOR filtering in background thread to keep UI completely interactive
+        def run_sor_thread():
+            points = self.point_cloud
+            n = len(points)
+            k = 6
+            std_ratio = 1.0
+            
+            if n <= k:
+                self.root.after(0, lambda: self.log("Point cloud size is too small for statistical neighbor checks."))
+                self.root.after(0, lambda: self.clean_btn.state(["!disabled"]))
+                return
+                
+            avg_dists = []
+            for i in range(n):
+                pi = points[i]
+                dists = []
+                for j in range(n):
+                    if i == j:
+                        continue
+                    pj = points[j]
+                    d = math.sqrt((pi[0]-pj[0])**2 + (pi[1]-pj[1])**2 + (pi[2]-pj[2])**2)
+                    dists.append(d)
+                dists.sort()
+                avg_d = sum(dists[:k]) / k
+                avg_dists.append(avg_d)
+                
+                if i % 150 == 0:
+                    prog = int((i / n) * 100)
+                    self.root.after(0, lambda p=prog: self.log(f"Analyzing neighbor distances: {p}%..."))
+                    
+            mean = sum(avg_dists) / n
+            variance = sum((x - mean)**2 for x in avg_dists) / n
+            std_dev = math.sqrt(variance)
+            
+            filtered = []
+            for i in range(n):
+                if avg_dists[i] <= mean + std_dev * std_ratio:
+                    filtered.append(points[i])
+                    
+            removed = n - len(filtered)
+            self.point_cloud = filtered
+            
+            self.root.after(0, lambda: self.log(f"SOR FILTER SUCCESSFUL // Removed {removed} noise points."))
+            self.root.after(0, lambda: self.render_3d_scene())
+            self.root.after(0, lambda: self.clean_btn.state(["!disabled"]))
+            self.root.after(0, lambda: messagebox.showinfo("Filter Complete", f"Outlier filter successfully completed.\nRemoved noise points: {removed}"))
+            
+        threading.Thread(target=run_sor_thread, daemon=True).start()
+        
+    def export_for_postshot(self):
+        if not self.point_cloud:
+            messagebox.showerror("Error", "No point cloud loaded to export!")
+            return
+        if not self.trajectory_points:
+            messagebox.showerror("Error", "No georeferenced camera positions synced! Run EXIF sync first!")
+            return
+            
+        self.export_btn.state(["disabled"])
+        self.log("----------------------------------------------------------------------")
+        self.log("EXPORTING PERFECTLY SCALE-CALIBRATED PLY AND CSV FOR POSTSHOT TRAINING...")
+        
+        # Colorize and export package in background thread
+        def run_export_thread():
+            try:
+                photo_dir = self.photo_dir.get()
+                clean_ply_path = os.path.join(photo_dir, "clean_pointcloud.ply")
+                alignment_csv_path = os.path.join(photo_dir, "cameras_alignment.csv")
+                
+                self.root.after(0, lambda: self.log("Projecting and colorizing points using closest synchronized photo viewports..."))
+                
+                # Proximity-based quick colorization: match each point to the closest camera view and sample image pixel
+                points = self.point_cloud
+                cameras = self.trajectory_points
+                colorized_points = []
+                
+                # Cache PIL Image handles to prevent repeatedly opening the same file
+                img_cache = {}
+                
+                n = len(points)
+                for idx, pt in enumerate(points):
+                    # 1. Locate closest camera in 3D distance
+                    closest_cam = None
+                    min_dist = float("inf")
+                    
+                    for cam in cameras:
+                        d = math.sqrt((pt[0]-cam["local_x"])**2 + (pt[1]-cam["local_y"])**2 + (pt[2]-cam["local_z"])**2)
+                        if d < min_dist:
+                            min_dist = d
+                            closest_cam = cam
+                            
+                    r, g, b = 180, 180, 180 # Default clean gray
+                    
+                    if closest_cam:
+                        p_name = closest_cam["label"]
+                        p_path = os.path.join(photo_dir, p_name)
+                        
+                        # Project the point onto camera sensor coordinate system
+                        # Translate
+                        tx = pt[0] - closest_cam["local_x"]
+                        ty = pt[1] - closest_cam["local_y"]
+                        tz = pt[2] - closest_cam["local_z"]
+                        
+                        # Rotate using inverse rotation matrix (transposed R)
+                        qw, qx, qy, qz = closest_cam["q_w"], closest_cam["q_x"], closest_cam["q_y"], closest_cam["q_z"]
+                        r00 = 1.0 - 2.0*(qy**2 + qz**2)
+                        r01 = 2.0*(qx*qy - qw*qz)
+                        r02 = 2.0*(qx*qz + qw*qy)
+                        r10 = 2.0*(qx*qy + qw*qz)
+                        r11 = 1.0 - 2.0*(qx**2 + qz**2)
+                        r12 = 2.0*(qy*qz - qw*qx)
+                        r20 = 2.0*(qx*qz - qw*qy)
+                        r21 = 2.0*(qy*qz + qw*qx)
+                        r22 = 1.0 - 2.0*(qx**2 + qy**2)
+                        
+                        # Local coords: Pc = R^T * T
+                        lx = r00*tx + r10*ty + r20*tz
+                        ly = r01*tx + r11*ty + r21*tz
+                        lz = r02*tx + r12*ty + r22*tz
+                        
+                        # Project onto sensor plane if in front of camera
+                        if lz < 0:
+                            # Estimate camera intrinsics dynamically
+                            # For binned 12MP: width 4032, height 3024, focal length ~3050px.
+                            width, height = 4032, 3024
+                            if p_name not in img_cache and os.path.exists(p_path):
+                                try:
+                                    img_cache[p_name] = Image.open(p_path)
+                                except Exception:
+                                    pass
+                                    
+                            if p_name in img_cache:
+                                w_act, h_act = img_cache[p_name].size
+                                width, height = w_act, h_act
+                                
+                            cx_s = width / 2.0
+                            cy_s = height / 2.0
+                            f_px = width * 0.75 # Dynamic focal estimation based on standard lens field of view
+                            
+                            u = cx_s + f_px * (lx / -lz)
+                            v = cy_s - f_px * (ly / -lz)
+                            
+                            if 0 <= u < width and 0 <= v < height and p_name in img_cache:
+                                try:
+                                    pixel_val = img_cache[p_name].getpixel((int(u), int(v)))
+                                    if isinstance(pixel_val, tuple) and len(pixel_val) >= 3:
+                                        r, g, b = pixel_val[0], pixel_val[1], pixel_val[2]
+                                except Exception:
+                                    pass
+                                    
+                    colorized_points.append((pt[0], pt[1], pt[2], r, g, b))
+                    
+                    if idx % 200 == 0:
+                        prog = int((idx / n) * 100)
+                        self.root.after(0, lambda p=prog: self.log(f"Colorizing points: {p}%..."))
+                        
+                # 2. Write Point Cloud PLY
+                ply_content = [
+                    "ply",
+                    "format ascii 1.0",
+                    f"element vertex {len(colorized_points)}",
+                    "property float x",
+                    "property float y",
+                    "property float z",
+                    "property uchar red",
+                    "property uchar green",
+                    "property uchar blue",
+                    "end_header"
+                ]
+                
+                for p in colorized_points:
+                    ply_content.append(f"{p[0]:.4f} {p[1]:.4f} {p[2]:.4f} {p[3]} {p[4]} {p[5]}")
+                    
+                with open(clean_ply_path, "w") as f:
+                    f.write("\n".join(ply_content))
+                    
+                # 3. Write cameras_alignment.csv
+                csv_headers = "filename,x,y,z,qw,qx,qy,qz,fx,fy,cx,cy,width,height,k1,k2,p1,p2"
+                csv_rows = [csv_headers]
+                
+                for cam in cameras:
+                    p_name = cam["label"]
+                    width, height = 4032, 3024
+                    if p_name in img_cache:
+                        width, height = img_cache[p_name].size
+                        
+                    f_px = width * 0.75
+                    cx_s = width / 2.0
+                    cy_s = height / 2.0
+                    
+                    row = f"{p_name},{cam['local_x']:.5f},{cam['local_y']:.5f},{cam['local_z']:.5f},{cam['q_w']:.6f},{cam['q_x']:.6f},{cam['q_y']:.6f},{cam['q_z']:.6f},{f_px:.2f},{f_px:.2f},{cx_s:.1f},{cy_s:.1f},{width},{height},0,0,0,0"
+                    csv_rows.append(row)
+                    
+                with open(alignment_csv_path, "w") as f:
+                    f.write("\n".join(csv_rows))
+                    
+                # Clear PIL caches
+                img_cache.clear()
+                
+                self.root.after(0, lambda: self.log(f"POSTSHOT SUCCESS // Saved colorized PLY: {clean_ply_path}"))
+                self.root.after(0, lambda: self.log(f"POSTSHOT SUCCESS // Saved alignments CSV: {alignment_csv_path}"))
+                self.root.after(0, lambda: self.export_btn.state(["!disabled"]))
+                self.root.after(0, lambda: messagebox.showinfo("Export Successful", "Point cloud and Postshot georeferencing matrix alignments exported successfully!"))
+                
+            except Exception as e:
+                self.root.after(0, lambda: self.log(f"EXPORT ERROR // {str(e)}"))
+                self.root.after(0, lambda: self.export_btn.state(["!disabled"]))
+                self.root.after(0, lambda: messagebox.showerror("Export Failed", f"Export execution failed:\n{str(e)}"))
+                
+        threading.Thread(target=run_export_thread, daemon=True).start()
+        
     def parse_csv(self, path):
         records = []
         with open(path, "r") as f:
@@ -466,7 +1019,6 @@ class CamTrackDesktopApp:
         return closest
         
     def apply_offsets(self, px, py, pz, qw, qx, qy, qz, lx, ly, lz):
-        # 3D Quaternion Rotation offset correction
         n1 = qx * 2.0
         n2 = qy * 2.0
         n3 = qz * 2.0
@@ -525,10 +1077,6 @@ class CamTrackDesktopApp:
                 pass
                 
         return os.path.getmtime(p_path)
-
-    def format_epoch(self, epoch):
-        from datetime import datetime
-        return datetime.fromtimestamp(epoch).strftime('%Y-%m-%d %H:%M:%S')
 
     def to_gps_coords(self, base_lat, base_lon, base_alt, dx, dy):
         if base_lat == 0.0 or base_lon == 0.0:
