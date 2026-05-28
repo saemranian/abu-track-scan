@@ -215,7 +215,8 @@ class CamTrackDesktopApp:
         
         # Left: Matplotlib 3D Viewport
         self.view_frame = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=10)
-        self.view_frame.grid(row=0, column=0, sticky="nsew", marginRight=10)
+        self.view_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+
         self.view_frame.columnconfigure(0, weight=1)
         self.view_frame.rowconfigure(1, weight=1)
         
@@ -384,10 +385,17 @@ class CamTrackDesktopApp:
         # ARKit: X = right, Y = Up, Z = back
         # Visualizer: X = East (Right), Y = North (Back), Z = Up
         if self.point_cloud:
-            xs = [p[0] for p in self.point_cloud]
-            ys = [p[2] for p in self.point_cloud]  # Swap Y and Z for visual alignment
-            zs = [p[1] for p in self.point_cloud]  # Swap Y and Z for visual alignment
+            # Subsample for rendering performance: standard Matplotlib 3D is extremely slow with >100k points.
+            # We subsample every Nth point to keep visual reviews buttery smooth, while keeping 100% of raw data for filters & exports!
+            n_pts = len(self.point_cloud)
+            step = max(1, n_pts // 8000) # Plot around 8000 points max for fluid interaction
+            subsampled = self.point_cloud[::step]
+            
+            xs = [p[0] for p in subsampled]
+            ys = [p[2] for p in subsampled]  # Swap Y and Z for visual alignment
+            zs = [p[1] for p in subsampled]  # Swap Y and Z for visual alignment
             self.ax.scatter(xs, ys, zs, c='#3E4E63', s=0.75, alpha=0.5, depthshade=True, label="Point Cloud")
+
             
         # 2. Plot Camera Trajectory Path (Yellow line)
         if self.trajectory_points:
@@ -709,7 +717,27 @@ class CamTrackDesktopApp:
         self.log("----------------------------------------------------------------------")
         self.log("RUNNING OFFLINE STATISTICAL OUTLIER REMOVAL (SOR) FILTER...")
         
-        # Run SOR filtering in background thread to keep UI completely interactive
+        # Create a sleek dark progress modal Toplevel
+        progress_win = tk.Toplevel(self.root)
+        progress_win.title("FILTERING POINT CLOUD")
+        progress_win.geometry("360x140")
+        progress_win.configure(bg=CARD_BG)
+        progress_win.resizable(False, False)
+        progress_win.transient(self.root)
+        progress_win.grab_set()
+        
+        # Center progress relative to main window
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 180
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 70
+        progress_win.geometry(f"+{x}+{y}")
+        
+        lbl_status = tk.Label(progress_win, text="Initializing SOR spatial voxel index...", font=("Consolas", 9, "bold"), fg=ACCENT_CYAN, bg=CARD_BG)
+        lbl_status.pack(pady=(20, 10))
+        
+        prog_bar = ttk.Progressbar(progress_win, orient="horizontal", length=300, mode="determinate")
+        prog_bar.pack(pady=5)
+        prog_bar["value"] = 0
+        
         def run_sor_thread():
             points = self.point_cloud
             n = len(points)
@@ -717,28 +745,69 @@ class CamTrackDesktopApp:
             std_ratio = 1.0
             
             if n <= k:
+                self.root.after(0, lambda: progress_win.destroy())
                 self.root.after(0, lambda: self.log("Point cloud size is too small for statistical neighbor checks."))
                 self.root.after(0, lambda: self.clean_btn.state(["!disabled"]))
                 return
                 
-            avg_dists = []
+            # Voxel Grid Spatial Partitioning (Optimizing neighbor sweeps to O(N) speed)
+            voxel_size = 0.15 # 15cm spatial voxel grid bins
+            grid = {}
+            
+            self.root.after(0, lambda: lbl_status.config(text="Voxelizing 3D point cloud coordinates..."))
+            for i, p in enumerate(points):
+                vx = int(p[0] / voxel_size)
+                vy = int(p[1] / voxel_size)
+                vz = int(p[2] / voxel_size)
+                key = (vx, vy, vz)
+                if key not in grid:
+                    grid[key] = []
+                grid[key].append(i)
+                
+            self.root.after(0, lambda: prog_bar.config(value=30))
+            self.root.after(0, lambda: lbl_status.config(text="Sweeping statistical neighbor distances..."))
+            
+            avg_dists = [0.0] * n
+            
             for i in range(n):
                 pi = points[i]
+                vx = int(pi[0] / voxel_size)
+                vy = int(pi[1] / voxel_size)
+                vz = int(pi[2] / voxel_size)
+                
+                # Query index coordinates across 27 neighboring voxel buckets
+                neighbor_indices = []
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        for dz in (-1, 0, 1):
+                            n_key = (vx + dx, vy + dy, vz + dz)
+                            if n_key in grid:
+                                neighbor_indices.extend(grid[n_key])
+                                
                 dists = []
-                for j in range(n):
-                    if i == j:
+                for idx in neighbor_indices:
+                    if idx == i:
                         continue
-                    pj = points[j]
+                    pj = points[idx]
                     d = math.sqrt((pi[0]-pj[0])**2 + (pi[1]-pj[1])**2 + (pi[2]-pj[2])**2)
                     dists.append(d)
-                dists.sort()
-                avg_d = sum(dists[:k]) / k
-                avg_dists.append(avg_d)
-                
-                if i % 150 == 0:
-                    prog = int((i / n) * 100)
-                    self.root.after(0, lambda p=prog: self.log(f"Analyzing neighbor distances: {p}%..."))
                     
+                if len(dists) >= k:
+                    dists.sort()
+                    avg_d = sum(dists[:k]) / k
+                elif dists:
+                    avg_d = sum(dists) / len(dists)
+                else:
+                    avg_d = voxel_size * 2.0  # Isolated outlier penalty distance
+                    
+                avg_dists[i] = avg_d
+                
+                if i % max(1, n // 100) == 0:
+                    prog_val = 30 + int((i / n) * 50)
+                    self.root.after(0, lambda v=prog_val: prog_bar.config(value=v))
+                    
+            self.root.after(0, lambda: lbl_status.config(text="Filtering statistical noise outliers..."))
+            
             mean = sum(avg_dists) / n
             variance = sum((x - mean)**2 for x in avg_dists) / n
             std_dev = math.sqrt(variance)
@@ -751,12 +820,16 @@ class CamTrackDesktopApp:
             removed = n - len(filtered)
             self.point_cloud = filtered
             
+            self.root.after(0, lambda: prog_bar.config(value=100))
+            self.root.after(0, lambda: progress_win.destroy())
+            
             self.root.after(0, lambda: self.log(f"SOR FILTER SUCCESSFUL // Removed {removed} noise points."))
             self.root.after(0, lambda: self.render_3d_scene())
             self.root.after(0, lambda: self.clean_btn.state(["!disabled"]))
-            self.root.after(0, lambda: messagebox.showinfo("Filter Complete", f"Outlier filter successfully completed.\nRemoved noise points: {removed}"))
+            self.root.after(0, lambda: messagebox.showinfo("Filter Complete", f"Statistical Outlier Removal (SOR) complete!\n\nPoints Analyzed: {n}\nOutliers Removed: {removed}\nClean Points Kept: {len(filtered)}"))
             
         threading.Thread(target=run_sor_thread, daemon=True).start()
+
         
     def export_for_postshot(self):
         if not self.point_cloud:
@@ -864,25 +937,27 @@ class CamTrackDesktopApp:
                         prog = int((idx / n) * 100)
                         self.root.after(0, lambda p=prog: self.log(f"Colorizing points: {p}%..."))
                         
-                # 2. Write Point Cloud PLY
-                ply_content = [
-                    "ply",
-                    "format ascii 1.0",
-                    f"element vertex {len(colorized_points)}",
-                    "property float x",
-                    "property float y",
-                    "property float z",
-                    "property uchar red",
-                    "property uchar green",
-                    "property uchar blue",
-                    "end_header"
-                ]
-                
-                for p in colorized_points:
-                    ply_content.append(f"{p[0]:.4f} {p[1]:.4f} {p[2]:.4f} {p[3]} {p[4]} {p[5]}")
+                # 2. Write Point Cloud PLY in binary little-endian format (required by Postshot)
+                import struct
+                with open(clean_ply_path, "wb") as f:
+                    header = (
+                        "ply\n"
+                        "format binary_little_endian 1.0\n"
+                        f"element vertex {len(colorized_points)}\n"
+                        "property float x\n"
+                        "property float y\n"
+                        "property float z\n"
+                        "property uchar red\n"
+                        "property uchar green\n"
+                        "property uchar blue\n"
+                        "end_header\n"
+                    ).encode("utf-8")
+                    f.write(header)
                     
-                with open(clean_ply_path, "w") as f:
-                    f.write("\n".join(ply_content))
+                    for p in colorized_points:
+                        # Pack float x, y, z (4 bytes each) and uchar r, g, b (1 byte each)
+                        f.write(struct.pack("<fffBBB", p[0], p[1], p[2], p[3], p[4], p[5]))
+
                     
                 # 3. Write cameras_alignment.csv
                 csv_headers = "filename,x,y,z,qw,qx,qy,qz,fx,fy,cx,cy,width,height,k1,k2,p1,p2"
