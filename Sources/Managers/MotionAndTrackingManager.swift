@@ -2,6 +2,7 @@ import Foundation
 import CoreMotion
 import ARKit
 import Combine
+import SceneKit
 
 struct RawPoint3D: Identifiable, Hashable {
     let id = UUID()
@@ -16,6 +17,15 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     
     // ARKit Session for Foreground VIO + LiDAR
     var arSession = ARSession()
+    
+    // Stable, persistent ARSCNView to prevent metal deadlocks / freezes during tab transitions
+    lazy var persistentARView: ARSCNView = {
+        let scnView = ARSCNView(frame: .zero)
+        scnView.session = arSession
+        scnView.antialiasingMode = .multisampling4X
+        scnView.autoenablesDefaultLighting = true
+        return scnView
+    }()
     
     @Published var isTrackingActive: Bool = false
     @Published var appState: String = "Foreground (ARKit VIO Active)"
@@ -271,27 +281,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         // Convert to Quaternions
         let quaternion = frame.camera.quaternion
         
-        // Real-time UDP network streaming down-sampled dynamically to RigSettings.captureRate
-        if UDPStreamingManager.shared.isStreamingEnabled {
-            let now = Date().timeIntervalSince1970
-            let interval = 1.0 / RigSettings.captureRate
-            if now - self.lastStreamTime >= interval {
-                self.lastStreamTime = now
-                
-                let p_pitch = Double(attitude.x) * (180.0 / .pi)
-                let p_yaw = Double(attitude.y) * (180.0 / .pi)
-                let p_roll = Double(attitude.z) * (180.0 / .pi)
-                
-                UDPStreamingManager.shared.stream(
-                    x: tx,
-                    y: ty,
-                    z: tz,
-                    yaw: p_yaw,
-                    pitch: p_pitch,
-                    roll: p_roll
-                )
-            }
-        }
+        // Background real-time streaming is disabled to lock it strictly to the Dashboard capture session GCD timer
         
         DispatchQueue.main.async {
             self.localX = tx

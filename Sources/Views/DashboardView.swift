@@ -26,7 +26,7 @@ struct DashboardView: View {
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var trackingManager: MotionAndTrackingManager
     
-    @State private var sessionTimer: Timer?
+    @State private var sessionTimer: DispatchSourceTimer?
     @State private var sessionDuration: TimeInterval = 0.0
     @State private var entryCount = 0
     @State private var activeSessionID: String?
@@ -337,10 +337,13 @@ struct DashboardView: View {
                 }
             }
             
-            cameraManager.setupCamera { success in
-                DispatchQueue.main.async {
-                    self.isCameraReady = success
-                    print("CameraManager Setup: \(success)")
+            // Prevent tab-switching conflicts by keeping camera session active during scan
+            if activeSessionID == nil {
+                cameraManager.setupCamera { success in
+                    DispatchQueue.main.async {
+                        self.isCameraReady = success
+                        print("CameraManager Setup: \(success)")
+                    }
                 }
             }
             
@@ -353,7 +356,9 @@ struct DashboardView: View {
         .onDisappear {
             hardwareTimer?.invalidate()
             hardwareTimer = nil
-            cameraManager.stopHardwareSession()
+            if activeSessionID == nil {
+                cameraManager.stopHardwareSession()
+            }
         }
     }
     
@@ -384,42 +389,63 @@ struct DashboardView: View {
         self.panZ = trackingManager.localZ
         self.rotY = -trackingManager.yaw * Double.pi / 180.0
         
-        // UI Timer updates
-        let interval = 1.0 / RigSettings.captureRate
-        sessionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-            guard let start = self.startTime else { return }
-            self.sessionDuration = Date().timeIntervalSince(start)
+        // High-Precision GCD Timer for Jitter-Free 60Hz/30Hz/25Hz/10Hz Poses
+        let queue = DispatchQueue(label: "com.abutrack.sessiontimer", qos: .userInteractive)
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        let intervalNs = Int(1_000_000_000.0 / RigSettings.captureRate)
+        
+        timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs), leeway: .nanoseconds(0))
+        timer.setEventHandler { [weak self] in
+            guard let self = self else { return }
             
             // Log Telemetry Record
             let entry = TelemetryEntry(
                 timestamp: Date().timeIntervalSince1970 * 1000.0,
-                localX: trackingManager.localX,
-                localY: trackingManager.localY,
-                localZ: trackingManager.localZ,
-                relativeAltitude: trackingManager.relativeAltitude,
-                pressure: trackingManager.pressureInKPa,
-                pitch: trackingManager.pitch,
-                roll: trackingManager.roll,
-                yaw: trackingManager.yaw,
-                q_w: trackingManager.q_w,
-                q_x: trackingManager.q_x,
-                q_y: trackingManager.q_y,
-                q_z: trackingManager.q_z,
-                isGPSEnabled: locationManager.isGPSEnabled,
-                latitude: locationManager.latitude,
-                longitude: locationManager.longitude,
-                gpsAltitude: locationManager.altitude,
-                horizontalAccuracy: locationManager.horizontalAccuracy,
-                verticalAccuracy: locationManager.verticalAccuracy
+                localX: self.trackingManager.localX,
+                localY: self.trackingManager.localY,
+                localZ: self.trackingManager.localZ,
+                relativeAltitude: self.trackingManager.relativeAltitude,
+                pressure: self.trackingManager.pressureInKPa,
+                pitch: self.trackingManager.pitch,
+                roll: self.trackingManager.roll,
+                yaw: self.trackingManager.yaw,
+                q_w: self.trackingManager.q_w,
+                q_x: self.trackingManager.q_x,
+                q_y: self.trackingManager.q_y,
+                q_z: self.trackingManager.q_z,
+                isGPSEnabled: self.locationManager.isGPSEnabled,
+                latitude: self.locationManager.latitude,
+                longitude: self.locationManager.longitude,
+                gpsAltitude: self.locationManager.altitude,
+                horizontalAccuracy: self.locationManager.horizontalAccuracy,
+                verticalAccuracy: self.locationManager.verticalAccuracy
             )
             
             TelemetryLogger.shared.log(entry)
-            self.entryCount += 1
+            
+            DispatchQueue.main.async {
+                guard let start = self.startTime else { return }
+                self.sessionDuration = Date().timeIntervalSince(start)
+                self.entryCount += 1
+            }
+            
+            // Broadcast live UDP packets with microsecond-level precision
+            UDPStreamingManager.shared.stream(
+                x: self.trackingManager.localX,
+                y: self.trackingManager.localY,
+                z: self.trackingManager.localZ,
+                yaw: self.trackingManager.yaw,
+                pitch: self.trackingManager.pitch,
+                roll: self.trackingManager.roll
+            )
         }
+        
+        self.sessionTimer = timer
+        timer.resume()
     }
     
     private func stopSession() {
-        sessionTimer?.invalidate()
+        sessionTimer?.cancel()
         sessionTimer = nil
         
         // Restore standard screen auto-lock behavior
@@ -718,7 +744,7 @@ struct DashboardView: View {
                 if isCameraReady {
                     ZStack {
                         if trackingManager.isTrackingActive {
-                            ARPreviewContainer(session: trackingManager.arSession)
+                            ARPreviewContainer(trackingManager: trackingManager)
                         } else {
                             CameraPreviewContainer(previewLayer: cameraManager.getPreviewLayer())
                         }
@@ -1348,14 +1374,10 @@ struct TelemetryRow: View {
 
 // SwiftUI wrapper for ARKit live camera preview during active runs
 struct ARPreviewContainer: UIViewRepresentable {
-    let session: ARSession
+    let trackingManager: MotionAndTrackingManager
     
     func makeUIView(context: Context) -> ARSCNView {
-        let scnView = ARSCNView(frame: .zero)
-        scnView.session = session
-        scnView.antialiasingMode = .multisampling4X
-        scnView.autoenablesDefaultLighting = true
-        return scnView
+        return trackingManager.persistentARView
     }
     
     func updateUIView(_ uiView: ARSCNView, context: Context) {}

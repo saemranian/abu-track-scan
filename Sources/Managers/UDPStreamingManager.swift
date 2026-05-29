@@ -17,6 +17,81 @@ struct TargetEndpoint {
     let port: Int
 }
 
+class BSDUDPSender {
+    private var socketFD: Int32 = -1
+    private var targets: [(sockaddr_in, String, Int)] = []
+    
+    func setup(endpoints: [TargetEndpoint]) {
+        closeSocket()
+        
+        // Create UDP socket
+        let fd = socket(AF_INET, SOCK_DGRAM, 0)
+        guard fd >= 0 else {
+            print("BSD UDP: Failed to create socket")
+            return
+        }
+        
+        // Enable broadcast
+        var broadcastEnable: Int32 = 1
+        let setOptResult = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, socklen_t(MemoryLayout<Int32>.size))
+        if setOptResult < 0 {
+            print("BSD UDP: Failed to set SO_BROADCAST")
+        }
+        
+        self.socketFD = fd
+        
+        // Resolve IP addresses and prepare sockaddr_in structs
+        for endpoint in endpoints {
+            var addr = sockaddr_in()
+            #if os(iOS) || os(macOS)
+            addr.sin_len = __uint8_t(MemoryLayout<sockaddr_in>.size)
+            #endif
+            addr.sin_family = sa_family_t(AF_INET)
+            addr.sin_port = CFSwapInt16HostToBig(UInt16(endpoint.port))
+            
+            let ipAddressStr = endpoint.ip
+            let resolved = inet_addr(ipAddressStr)
+            if resolved == 0xffffffff && ipAddressStr != "255.255.255.255" {
+                print("BSD UDP: Invalid IP address: \(ipAddressStr)")
+                continue
+            }
+            addr.sin_addr.s_addr = resolved
+            
+            targets.append((addr, endpoint.ip, endpoint.port))
+            print("BSD UDP: Configured destination \(endpoint.ip):\(endpoint.port) [SO_BROADCAST enabled]")
+        }
+    }
+    
+    func send(data: Data) {
+        guard socketFD >= 0 else { return }
+        
+        for (addr, ip, port) in targets {
+            var targetAddr = addr
+            let dataCount = data.count
+            
+            _ = withUnsafePointer(to: &targetAddr) { addrPtr in
+                addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                    data.withUnsafeBytes { dataBytes in
+                        sendto(socketFD, dataBytes.baseAddress, dataCount, 0, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_in>.size))
+                    }
+                }
+            }
+        }
+    }
+    
+    func closeSocket() {
+        if socketFD >= 0 {
+            close(socketFD)
+            socketFD = -1
+        }
+        targets.removeAll()
+    }
+    
+    deinit {
+        closeSocket()
+    }
+}
+
 class UDPStreamingManager: ObservableObject {
     static let shared = UDPStreamingManager()
     
@@ -58,7 +133,7 @@ class UDPStreamingManager: ObservableObject {
         }
     }
     
-    private var connections: [NWConnection] = []
+    private var bsdSender = BSDUDPSender()
     private let queue = DispatchQueue(label: "com.abutrack.udpstreaming", qos: .userInteractive)
     
     private init() {
@@ -106,41 +181,12 @@ class UDPStreamingManager: ObservableObject {
         // Stop any old connections first
         stopConnection()
         
-        // Spin up NWConnections for all target endpoints
-        for endpoint in endpoints {
-            let host = NWEndpoint.Host(endpoint.ip)
-            guard let portValue = NWEndpoint.Port(rawValue: UInt16(endpoint.port)) else { continue }
-            
-            let params = NWParameters.udp
-            // Optimize for ultimate low latency: priority voice class + bypass intermediate queues
-            params.serviceClass = .interactiveVoice
-            params.preferNoProxies = true
-            
-            let connection = NWConnection(to: NWEndpoint.hostPort(host: host, port: portValue), using: params)
-            
-            connection.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    print("UDP Streamer: Connected to \(endpoint.ip):\(endpoint.port) [Mode: \(self.isBroadcastEnabled ? "Broadcast" : "Unicast")]")
-                case .failed(let error):
-                    print("UDP Streamer: Connection failed to \(endpoint.ip):\(endpoint.port): \(error)")
-                case .cancelled:
-                    print("UDP Streamer: Connection cancelled to \(endpoint.ip):\(endpoint.port)")
-                default:
-                    break
-                }
-            }
-            
-            connection.start(queue: queue)
-            connections.append(connection)
-        }
+        // Setup raw POSIX socket connection
+        bsdSender.setup(endpoints: endpoints)
     }
     
     private func stopConnection() {
-        for conn in connections {
-            conn.cancel()
-        }
-        connections.removeAll()
+        bsdSender.closeSocket()
     }
     
     private func restartConnection() {
@@ -149,7 +195,7 @@ class UDPStreamingManager: ObservableObject {
     }
     
     func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) {
-        guard isStreamingEnabled, !connections.isEmpty else { return }
+        guard isStreamingEnabled else { return }
         
         let data: Data
         
@@ -161,13 +207,7 @@ class UDPStreamingManager: ObservableObject {
         }
         
         // Broadcast the formatted tracking payload to all active connections
-        for conn in connections {
-            conn.send(content: data, completion: .contentProcessed({ error in
-                if let error = error {
-                    print("UDP Streamer: Send error: \(error)")
-                }
-            }))
-        }
+        bsdSender.send(data: data)
     }
     
     private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) -> Data {
@@ -207,17 +247,18 @@ class UDPStreamingManager: ObservableObject {
         let rollVal = Int32(clamp(roll * 32768.0, min: -8388607.0, max: 8388607.0))
         packet.append(contentsOf: pack24(rollVal))
         
-        // Byte 11-13: X position (signed 24-bit integer, scale 64.0 per mm, translation is in meters)
+        // SPEC COMPLIANT FREED D1 COORDINATE ORDERING:
+        // Byte 11-13: Z position (signed 24-bit integer, scale 64.0 per mm, translation is in meters)
+        let zVal = Int32(clamp(z * 1000.0 * 64.0, min: -8388607.0, max: 8388607.0))
+        packet.append(contentsOf: pack24(zVal))
+        
+        // Byte 14-16: X position (signed 24-bit integer, scale 64.0 per mm)
         let xVal = Int32(clamp(x * 1000.0 * 64.0, min: -8388607.0, max: 8388607.0))
         packet.append(contentsOf: pack24(xVal))
         
-        // Byte 14-16: Y position (signed 24-bit integer, scale 64.0 per mm)
+        // Byte 17-19: Y position (signed 24-bit integer, scale 64.0 per mm)
         let yVal = Int32(clamp(y * 1000.0 * 64.0, min: -8388607.0, max: 8388607.0))
         packet.append(contentsOf: pack24(yVal))
-        
-        // Byte 17-19: Z position (signed 24-bit integer, scale 64.0 per mm)
-        let zVal = Int32(clamp(z * 1000.0 * 64.0, min: -8388607.0, max: 8388607.0))
-        packet.append(contentsOf: pack24(zVal))
         
         // Byte 20-22: Zoom (24-bit unsigned integer, set to 0)
         packet.append(contentsOf: [0x00, 0x00, 0x00])
