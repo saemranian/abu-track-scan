@@ -59,16 +59,11 @@ struct SettingsView: View {
                                             .foregroundColor(.cyan)
                                     }
                                     
-                                    Picker("IMU Sampling Rate", selection: $captureRate) {
-                                        Text("10 Hz").tag(10.0)
-                                        Text("25 Hz").tag(25.0)
-                                        Text("30 Hz").tag(30.0)
-                                        Text("60 Hz").tag(60.0)
-                                    }
-                                    .pickerStyle(SegmentedPickerStyle())
-                                    .onChange(of: captureRate) { newValue in
-                                        RigSettings.captureRate = newValue
-                                    }
+                                    Slider(value: $captureRate, in: 10...60, step: 1)
+                                        .tint(.cyan)
+                                        .onChange(of: captureRate) { newValue in
+                                            RigSettings.captureRate = newValue
+                                        }
                                     
                                     Text("Higher frequencies capture rapid shifts but consume more storage.")
                                         .font(.caption2)

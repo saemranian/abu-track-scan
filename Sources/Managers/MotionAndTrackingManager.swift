@@ -54,6 +54,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     
     private var cancellables = Set<AnyCancellable>()
     private var isAltimeterRunning = false
+    private var lastStreamTime: TimeInterval = 0
     
     override init() {
         super.init()
@@ -269,6 +270,28 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         
         // Convert to Quaternions
         let quaternion = frame.camera.quaternion
+        
+        // Real-time UDP network streaming down-sampled dynamically to RigSettings.captureRate
+        if UDPStreamingManager.shared.isStreamingEnabled {
+            let now = Date().timeIntervalSince1970
+            let interval = 1.0 / RigSettings.captureRate
+            if now - self.lastStreamTime >= interval {
+                self.lastStreamTime = now
+                
+                let p_pitch = Double(attitude.x) * (180.0 / .pi)
+                let p_yaw = Double(attitude.y) * (180.0 / .pi)
+                let p_roll = Double(attitude.z) * (180.0 / .pi)
+                
+                UDPStreamingManager.shared.stream(
+                    x: tx,
+                    y: ty,
+                    z: tz,
+                    yaw: p_yaw,
+                    pitch: p_pitch,
+                    roll: p_roll
+                )
+            }
+        }
         
         DispatchQueue.main.async {
             self.localX = tx

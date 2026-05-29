@@ -415,16 +415,6 @@ struct DashboardView: View {
             
             TelemetryLogger.shared.log(entry)
             self.entryCount += 1
-            
-            // Broadcast live UDP packets
-            UDPStreamingManager.shared.stream(
-                x: trackingManager.localX,
-                y: trackingManager.localY,
-                z: trackingManager.localZ,
-                yaw: trackingManager.yaw,
-                pitch: trackingManager.pitch,
-                roll: trackingManager.roll
-            )
         }
     }
     
