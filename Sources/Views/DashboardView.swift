@@ -385,7 +385,8 @@ struct DashboardView: View {
         self.rotY = -trackingManager.yaw * Double.pi / 180.0
         
         // UI Timer updates
-        sessionTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+        let interval = 1.0 / RigSettings.captureRate
+        sessionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             guard let start = self.startTime else { return }
             self.sessionDuration = Date().timeIntervalSince(start)
             
@@ -414,6 +415,16 @@ struct DashboardView: View {
             
             TelemetryLogger.shared.log(entry)
             self.entryCount += 1
+            
+            // Broadcast live UDP packets
+            UDPStreamingManager.shared.stream(
+                x: trackingManager.localX,
+                y: trackingManager.localY,
+                z: trackingManager.localZ,
+                yaw: trackingManager.yaw,
+                pitch: trackingManager.pitch,
+                roll: trackingManager.roll
+            )
         }
     }
     
@@ -725,7 +736,7 @@ struct DashboardView: View {
                         // Cyberpunk save directory path HUD overlay
                         VStack {
                             HStack {
-                                Text("SAVE PATH: Files -> On My iPhone -> CamTrack Pro -> Sessions -> \(activeSessionID?.suffix(8) ?? "SESSION_ID")")
+                                Text("SAVE PATH: Files -> On My iPhone -> Abu Track -> Sessions -> \(activeSessionID?.suffix(8) ?? "SESSION_ID")")
                                     .font(.system(size: 6.5, weight: .bold, design: .monospaced))
                                     .foregroundColor(.cyan.opacity(0.85))
                                     .padding(4)

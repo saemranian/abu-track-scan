@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>CamTrack Pro requires GPS access to capture georeferencing coordinates alongside camera positions outdoors.</string>
+	<string>Abu Track requires GPS access to capture georeferencing coordinates alongside camera positions outdoors.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>CamTrack Pro requires always-on background location tracking to log GPS coordinates while the screen is off or while taking photos inside the default camera app.</string>
+	<string>Abu Track requires always-on background location tracking to log GPS coordinates while the screen is off or while taking photos inside the default camera app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>CamTrack Pro requires access to your Photo Library to scan, match, and sync photos taken during the tracking session with logged coordinates.</string>
+	<string>Abu Track requires access to your Photo Library to scan, match, and sync photos taken during the tracking session with logged coordinates.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>CamTrack Pro requires camera access to activate ARKit Visual-Inertial-LiDAR Odometry for precise local metric positioning indoors.</string>
+	<string>Abu Track requires camera access to activate ARKit Visual-Inertial-LiDAR Odometry for precise local metric positioning indoors.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>CamTrack Pro requires access to device motion sensors (gyroscope/accelerometer) to record precise camera attitudes and orientations.</string>
+	<string>Abu Track requires access to device motion sensors (gyroscope/accelerometer) to record precise camera attitudes and orientations.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

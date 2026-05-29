@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var locationManager: LocationManager
+    @ObservedObject var streamManager = UDPStreamingManager.shared
     
     @State private var leverArmX: String = ""
     @State private var leverArmY: String = ""
@@ -129,6 +130,92 @@ struct SettingsView: View {
                             .padding(.horizontal)
                         }
                         
+                        // Section 2.5: UDP Network Live Streaming
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("UDP Network Live Streaming")
+                                .font(.caption)
+                                .fontWeight(.black)
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal)
+                            
+                            VStack(alignment: .leading, spacing: 15) {
+                                Text("Broadcast real-time positional and rotational tracker metrics directly to your Unreal Engine or FreeD device receiver.")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                
+                                Toggle(isOn: $streamManager.isStreamingEnabled) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Enable UDP Broadcast")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                        Text("Stream live tracking poses at \(String(format: "%.0f Hz", captureRate))")
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                                .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                                
+                                if streamManager.isStreamingEnabled {
+                                    Divider()
+                                        .background(Color.gray.opacity(0.3))
+                                    
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Target IP Address")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.gray)
+                                        
+                                        TextField("e.g. 192.168.1.100", text: $streamManager.streamIP)
+                                            .font(.footnote)
+                                            .padding(10)
+                                            .background(Color(red: 0.08, green: 0.12, blue: 0.22))
+                                            .cornerRadius(8)
+                                            .foregroundColor(.white)
+                                            .keyboardType(.numbersAndPunctuation)
+                                            .autocapitalization(.none)
+                                            .disableAutocorrection(true)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Target Port")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.gray)
+                                        
+                                        TextField("e.g. 8080", text: Binding(
+                                            get: { String(streamManager.streamPort) },
+                                            set: { streamManager.streamPort = Int($0) ?? 8080 }
+                                        ))
+                                        .font(.footnote)
+                                        .padding(10)
+                                        .background(Color(red: 0.08, green: 0.12, blue: 0.22))
+                                        .cornerRadius(8)
+                                        .foregroundColor(.white)
+                                        .keyboardType(.numberPad)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Streaming Protocol")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.gray)
+                                        
+                                        Picker("Protocol", selection: $streamManager.format) {
+                                            ForEach(StreamingFormat.allCases) { fmt in
+                                                Text(fmt.rawValue).tag(fmt)
+                                            }
+                                        }
+                                        .pickerStyle(SegmentedPickerStyle())
+                                        .padding(.top, 4)
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
+                            .cornerRadius(14)
+                            .padding(.horizontal)
+                        }
+                        
                         // Section 3: Hardware Diagnostics info
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Platform Diagnostics")
@@ -149,9 +236,9 @@ struct SettingsView: View {
                             .padding(.horizontal)
                         }
                         
-                        // Section 4: About CamTrack Pro
+                        // Section 4: About Abu Track
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("About CamTrack Pro")
+                            Text("About Abu Track")
                                 .font(.caption)
                                 .fontWeight(.black)
                                 .foregroundColor(.cyan)
@@ -163,7 +250,7 @@ struct SettingsView: View {
                                         .foregroundColor(.cyan)
                                         .font(.title3)
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("CamTrack Pro")
+                                        Text("Abu Track")
                                             .font(.footnote)
                                             .fontWeight(.bold)
                                             .foregroundColor(.white)

@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='camtrack_desktop_gui',
+    name='abu_track_desktop',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -24,7 +24,7 @@ struct AcademyView: View {
                                 Image(systemName: "graduationcap.fill")
                                     .font(.title2)
                                     .foregroundColor(.cyan)
-                                Text("CAMTRACK ACADEMY")
+                                Text("ABU TRACK ACADEMY")
                                     .font(.system(.title3, design: .monospaced))
                                     .fontWeight(.black)
                                     .foregroundColor(.white)
@@ -55,8 +55,8 @@ struct AcademyView: View {
                                 • **The App-Switching Conflict:** iOS suspends visual camera polling when switching to the native Camera app. Although we fall back to IMU dead-reckoning, tracking will slowly drift.
                                 
                                 • **Solutions to Eliminate Drift:**
-                                  1. **Hot-Shoe Rig Mounting:** Mount the phone on your DSLR. Leave CamTrack Pro active in the foreground while you shoot with the DSLR normally.
-                                  2. **In-App Shutter Shutter:** In our upcoming version, shoot photos directly inside CamTrack Pro using the ARKit high-res shutter—retaining absolute VIO truth!
+                                  1. **Hot-Shoe Rig Mounting:** Mount the phone on your DSLR. Leave Abu Track active in the foreground while you shoot with the DSLR normally.
+                                  2. **In-App Shutter Shutter:** In our upcoming version, shoot photos directly inside Abu Track using the ARKit high-res shutter—retaining absolute VIO truth!
                                 """
                             )
                             
@@ -131,7 +131,7 @@ struct AcademyView: View {
                                 color: .blue,
                                 content: """
                                 • **LiDAR Back-Projection Engine:**
-                                  Starting in version **0.0.5**, CamTrack Pro now captures high-accuracy active depth maps (`frame.sceneDepth`) from the iPhone's **ToF LiDAR scanner**.
+                                  Starting in version **0.0.5**, Abu Track now captures high-accuracy active depth maps (`frame.sceneDepth`) from the iPhone's **ToF LiDAR scanner**.
                                 
                                 • **How it Works:**
                                   We back-project depth pixels using the camera intrinsics and 3D transform into world space coordinates. Decimation filters are applied to decimate points (e.g. sampling grids) to keep performance high and fluid.

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct CamTrackApp: App {
+struct AbuTrackApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
