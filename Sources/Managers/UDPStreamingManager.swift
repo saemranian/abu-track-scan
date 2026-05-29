@@ -115,7 +115,6 @@ class UDPStreamingManager: ObservableObject {
             // Optimize for ultimate low latency: priority voice class + bypass intermediate queues
             params.serviceClass = .interactiveVoice
             params.preferNoProxies = true
-            params.allowLocalMulticast = true
             
             let connection = NWConnection(to: NWEndpoint.hostPort(host: host, port: portValue), using: params)
             
@@ -259,7 +258,7 @@ class UDPStreamingManager: ObservableObject {
         guard getifaddrs(&ifaddr) == 0 else { return address }
         guard let firstAddr = ifaddr else { return address }
         
-        for ptr in sequence(firstAddr, next: { $0.pointee.ifa_next }) {
+        for ptr in sequence(first: firstAddr, next: { $0.pointee.ifa_next }) {
             let addr = ptr.pointee.ifa_addr.pointee
             if addr.sa_family == UInt8(AF_INET) {
                 let name = String(cString: ptr.pointee.ifa_name)

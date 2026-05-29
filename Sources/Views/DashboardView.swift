@@ -317,7 +317,7 @@ struct DashboardView: View {
                     }
                 }
             }
-            .navigationTitle("CAMTRACK PRO")
+            .navigationTitle("ABU TRACK")
             .navigationBarTitleDisplayMode(.inline)
         }
         .onAppear {
