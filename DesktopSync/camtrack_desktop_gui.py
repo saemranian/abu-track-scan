@@ -93,6 +93,28 @@ class CamTrackDesktopApp:
         self.time_entry_var.trace_add("write", self._on_entry_change)
         
         self.setup_styles()
+        
+        # Live Receiver State
+        self.receiver_running = False
+        self.receiver_thread = None
+        self.receiver_sock = None
+        self.receiver_packet_count = 0
+        self.receiver_last_time = None
+        self.receiver_frequency = 0.0
+        
+        self.receiver_port = tk.IntVar(value=8080)
+        self.receiver_status_var = tk.StringVar(value="OFFLINE")
+        self.receiver_format_var = tk.StringVar(value="No Stream Detected")
+        self.receiver_frames_var = tk.StringVar(value="0")
+        self.receiver_hz_var = tk.StringVar(value="0.0 Hz")
+        
+        self.pose_x_var = tk.StringVar(value="0.0000 m")
+        self.pose_y_var = tk.StringVar(value="0.0000 m")
+        self.pose_z_var = tk.StringVar(value="0.0000 m")
+        self.pose_roll_var = tk.StringVar(value="0.00°")
+        self.pose_pitch_var = tk.StringVar(value="0.00°")
+        self.pose_yaw_var = tk.StringVar(value="0.00°")
+        
         self.build_ui()
         
     def setup_styles(self):
@@ -460,6 +482,148 @@ class CamTrackDesktopApp:
         scroll_console = ttk.Scrollbar(calib_log_card, orient="vertical", command=self.calib_console.yview)
         scroll_console.grid(row=1, column=1, sticky="ns")
         self.calib_console.configure(yscrollcommand=scroll_console.set)
+        
+        # ----------------- TAB 4: LIVE TELEMETRY CHECKER -----------------
+        self.tab_receiver = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(self.tab_receiver, text="04 // LIVE TELEMETRY CHECKER")
+        
+        self.tab_receiver.columnconfigure(0, weight=4) # Left Controls Panel
+        self.tab_receiver.columnconfigure(1, weight=5) # Right Telemetry Panel
+        self.tab_receiver.rowconfigure(0, weight=1)
+        
+        # Left Panel
+        rx_left = ttk.Frame(self.tab_receiver, padding=10)
+        rx_left.grid(row=0, column=0, sticky="nsew")
+        rx_left.columnconfigure(0, weight=1)
+        rx_left.rowconfigure(2, weight=1)
+        
+        # Card 1: Receiver Configuration
+        rx_config_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
+        rx_config_card.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        rx_config_card.columnconfigure(1, weight=1)
+        
+        ttk.Label(rx_config_card, text="01 // UDP LISTENER OPTIONS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        
+        ttk.Label(rx_config_card, text="UDP Port Number:").grid(row=1, column=0, sticky="w", pady=4)
+        port_entry = ttk.Entry(rx_config_card, textvariable=self.receiver_port, width=10)
+        port_entry.grid(row=1, column=1, sticky="w", pady=4)
+        
+        # Action Buttons
+        self.start_rx_btn = ttk.Button(rx_config_card, text="START LISTENING", command=self.start_receiver)
+        self.start_rx_btn.grid(row=2, column=0, sticky="ew", padx=(0, 2), pady=(8, 0), ipady=4)
+        
+        self.stop_rx_btn = ttk.Button(rx_config_card, text="STOP LISTENING", command=self.stop_receiver)
+        self.stop_rx_btn.grid(row=2, column=1, sticky="ew", padx=(2, 0), pady=(8, 0), ipady=4)
+        self.stop_rx_btn.state(["disabled"])
+        
+        # Card 2: PC Network & Stream Diagnostics
+        rx_diag_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
+        rx_diag_card.grid(row=1, column=0, sticky="nsew")
+        rx_diag_card.columnconfigure(1, weight=1)
+        
+        ttk.Label(rx_diag_card, text="02 // PC NETWORK DIAGNOSTICS", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        
+        # Local IP List
+        ttk.Label(rx_diag_card, text="PC Local IP(s):").grid(row=1, column=0, sticky="w", pady=4)
+        ip_label = ttk.Label(rx_diag_card, text=", ".join(self.get_local_ips()), foreground=ACCENT_CYAN, font=("Consolas", 8, "bold"))
+        ip_label.grid(row=1, column=1, sticky="e", pady=4)
+        
+        # Status
+        ttk.Label(rx_diag_card, text="Receiver State:").grid(row=2, column=0, sticky="w", pady=4)
+        self.rx_status_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_status_var, font=("Consolas", 9, "bold"), foreground=TEXT_MUTED)
+        self.rx_status_lbl.grid(row=2, column=1, sticky="e", pady=4)
+        
+        # Detected Protocol
+        ttk.Label(rx_diag_card, text="Detected Format:").grid(row=3, column=0, sticky="w", pady=4)
+        fmt_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_format_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
+        fmt_lbl.grid(row=3, column=1, sticky="e", pady=4)
+        
+        # Total Frames
+        ttk.Label(rx_diag_card, text="Frames Received:").grid(row=4, column=0, sticky="w", pady=4)
+        frames_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_frames_var, font=("Consolas", 9, "bold"))
+        frames_lbl.grid(row=4, column=1, sticky="e", pady=4)
+        
+        # Frequency
+        ttk.Label(rx_diag_card, text="Data Frequency:").grid(row=5, column=0, sticky="w", pady=4)
+        hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_hz_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
+        hz_lbl.grid(row=5, column=1, sticky="e", pady=4)
+        
+        # Visual Ping indicator (Canvas)
+        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=6, column=0, sticky="w", pady=4)
+        self.ping_canvas = tk.Canvas(rx_diag_card, width=16, height=16, bg=CARD_BG, highlightthickness=0)
+        self.ping_canvas.grid(row=6, column=1, sticky="e", pady=4)
+        self.ping_light = self.ping_canvas.create_oval(2, 2, 14, 14, fill=FIELD_BG, outline=BORDER_COLOR)
+        
+        # Right Panel
+        rx_right = ttk.Frame(self.tab_receiver, padding=10)
+        rx_right.grid(row=0, column=1, sticky="nsew")
+        rx_right.columnconfigure(0, weight=1)
+        rx_right.rowconfigure(0, weight=6) # Large numerical indicators
+        rx_right.rowconfigure(1, weight=4) # Log console
+        
+        # Card 3: Large Pose Display
+        rx_pose_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
+        rx_pose_card.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+        rx_pose_card.columnconfigure(0, weight=1)
+        rx_pose_card.columnconfigure(1, weight=1)
+        rx_pose_card.rowconfigure(1, weight=1)
+        rx_pose_card.rowconfigure(2, weight=1)
+        rx_pose_card.rowconfigure(3, weight=1)
+        
+        ttk.Label(rx_pose_card, text="03 // LIVE CAMERA TRACKING POSITION & ORIENTATION", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        
+        # X / Y / Z Positions
+        pos_frame = ttk.LabelFrame(rx_pose_card, text=" POSITION (METERS) ", padding=10)
+        pos_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=6)
+        pos_frame.columnconfigure(0, weight=1)
+        pos_frame.columnconfigure(1, weight=1)
+        pos_frame.columnconfigure(2, weight=1)
+        
+        ttk.Label(pos_frame, text="X (EAST/LENGTH)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=0, pady=2)
+        self.pos_x_lbl = ttk.Label(pos_frame, textvariable=self.pose_x_var, font=("Consolas", 15, "bold"), foreground=ACCENT_CYAN)
+        self.pos_x_lbl.grid(row=1, column=0, pady=4)
+        
+        ttk.Label(pos_frame, text="Y (NORTH/DEPTH)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=1, pady=2)
+        self.pos_y_lbl = ttk.Label(pos_frame, textvariable=self.pose_y_var, font=("Consolas", 15, "bold"), foreground=ACCENT_CYAN)
+        self.pos_y_lbl.grid(row=1, column=1, pady=4)
+        
+        ttk.Label(pos_frame, text="Z (UP/HEIGHT)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=2, pady=2)
+        self.pos_z_lbl = ttk.Label(pos_frame, textvariable=self.pose_z_var, font=("Consolas", 15, "bold"), foreground=ACCENT_CYAN)
+        self.pos_z_lbl.grid(row=1, column=2, pady=4)
+        
+        # Roll / Pitch / Yaw Rotations
+        rot_frame = ttk.LabelFrame(rx_pose_card, text=" ROTATION (EULER DEGREES) ", padding=10)
+        rot_frame.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=6)
+        rot_frame.columnconfigure(0, weight=1)
+        rot_frame.columnconfigure(1, weight=1)
+        rot_frame.columnconfigure(2, weight=1)
+        
+        ttk.Label(rot_frame, text="ROLL (X AXIS)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=0, pady=2)
+        self.rot_roll_lbl = ttk.Label(rot_frame, textvariable=self.pose_roll_var, font=("Consolas", 15, "bold"), foreground=ACCENT_AMBER)
+        self.rot_roll_lbl.grid(row=1, column=0, pady=4)
+        
+        ttk.Label(rot_frame, text="PITCH (Y AXIS)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=1, pady=2)
+        self.rot_pitch_lbl = ttk.Label(rot_frame, textvariable=self.pose_pitch_var, font=("Consolas", 15, "bold"), foreground=ACCENT_AMBER)
+        self.rot_pitch_lbl.grid(row=1, column=1, pady=4)
+        
+        ttk.Label(rot_frame, text="YAW (Z AXIS)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=2, pady=2)
+        self.rot_yaw_lbl = ttk.Label(rot_frame, textvariable=self.pose_yaw_var, font=("Consolas", 15, "bold"), foreground=ACCENT_AMBER)
+        self.rot_yaw_lbl.grid(row=1, column=2, pady=4)
+        
+        # Card 4: Console
+        rx_console_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
+        rx_console_card.grid(row=1, column=0, sticky="nsew")
+        rx_console_card.columnconfigure(0, weight=1)
+        rx_console_card.rowconfigure(1, weight=1)
+        
+        ttk.Label(rx_console_card, text="04 // LIVE TRACKING STREAM LOG CONSOLE (LAST 15 FRAMES)", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
+        
+        self.rx_console = tk.Text(rx_console_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 8), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
+        self.rx_console.grid(row=1, column=0, sticky="nsew")
+        
+        scroll_rx_console = ttk.Scrollbar(rx_console_card, orient="vertical", command=self.rx_console.yview)
+        scroll_rx_console.grid(row=1, column=1, sticky="ns")
+        self.rx_console.configure(yscrollcommand=scroll_rx_console.set)
         
     def setup_3d_axes(self):
         self.ax.clear()
@@ -2318,6 +2482,193 @@ class CamTrackDesktopApp:
                 messagebox.showinfo("Success", f"Postshot Calibration parameters JSON saved successfully:\n{f}")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save Postshot JSON:\n{str(e)}")
+
+    def get_local_ips(self):
+        ips = []
+        try:
+            import socket
+            hostname = socket.gethostname()
+            _, _, ip_list = socket.gethostbyname_ex(hostname)
+            for ip in ip_list:
+                if not ip.startswith("127."):
+                    ips.append(ip)
+        except Exception:
+            pass
+        if not ips:
+            ips.append("127.0.0.1")
+        return ips
+
+    def start_receiver(self):
+        if self.receiver_running:
+            return
+            
+        port = self.receiver_port.get()
+        
+        try:
+            import socket
+            self.receiver_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.receiver_sock.bind(("0.0.0.0", port))
+            self.receiver_sock.settimeout(1.0)
+        except Exception as e:
+            messagebox.showerror("Socket Error", f"Failed to bind socket to port {port}:\n{str(e)}")
+            return
+            
+        self.receiver_running = True
+        self.receiver_packet_count = 0
+        self.receiver_last_time = None
+        self.receiver_frequency = 0.0
+        
+        self.receiver_status_var.set("LISTENING")
+        self.rx_status_lbl.configure(foreground=ACCENT_CYAN)
+        
+        self.start_rx_btn.state(["disabled"])
+        self.stop_rx_btn.state(["!disabled"])
+        
+        self.rx_log(f"RECEIVER STATE // Listening on port {port} (0.0.0.0:{port}). READY FOR STREAM!")
+        
+        import threading
+        self.receiver_thread = threading.Thread(target=self.run_receiver_socket, daemon=True)
+        self.receiver_thread.start()
+
+    def stop_receiver(self):
+        if not self.receiver_running:
+            return
+            
+        self.receiver_running = False
+        
+        if self.receiver_sock:
+            try:
+                self.receiver_sock.close()
+            except Exception:
+                pass
+            self.receiver_sock = None
+            
+        self.receiver_status_var.set("OFFLINE")
+        self.rx_status_lbl.configure(foreground=TEXT_MUTED)
+        
+        self.start_rx_btn.state(["!disabled"])
+        self.stop_rx_btn.state(["disabled"])
+        
+        self.rx_log("RECEIVER STATE // Stopped listening. Port unbound.")
+
+    def run_receiver_socket(self):
+        import time
+        import socket
+        
+        buffer_size = 4096
+        
+        while self.receiver_running:
+            try:
+                data, addr = self.receiver_sock.recvfrom(buffer_size)
+            except socket.timeout:
+                continue
+            except Exception:
+                break
+                
+            if not self.receiver_running:
+                break
+                
+            now = time.time()
+            self.receiver_packet_count += 1
+            
+            if self.receiver_last_time is not None:
+                delta = now - self.receiver_last_time
+                if delta > 0:
+                    current_hz = 1.0 / delta
+                    self.receiver_frequency = 0.9 * self.receiver_frequency + 0.1 * current_hz
+            self.receiver_last_time = now
+            
+            parsed = self.parse_incoming_packet(data)
+            
+            if parsed:
+                px, py, pz = parsed["x"], parsed["y"], parsed["z"]
+                pitch, yaw, roll = parsed["pitch"], parsed["yaw"], parsed["roll"]
+                fmt_type = parsed["type"]
+                
+                self.root.after(0, lambda fmt=fmt_type: self.receiver_format_var.set(fmt))
+                self.root.after(0, lambda c=self.receiver_packet_count: self.receiver_frames_var.set(str(c)))
+                self.root.after(0, lambda hz=self.receiver_frequency: self.receiver_hz_var.set(f"{hz:.1f} Hz"))
+                
+                self.root.after(0, lambda x=px: self.pose_x_var.set(f"{x:.4f} m"))
+                self.root.after(0, lambda y=py: self.pose_y_var.set(f"{y:.4f} m"))
+                self.root.after(0, lambda z=pz: self.pose_z_var.set(f"{z:.4f} m"))
+                self.root.after(0, lambda r=roll: self.pose_roll_var.set(f"{r:.2f}°"))
+                self.root.after(0, lambda p=pitch: self.pose_pitch_var.set(f"{p:.2f}°"))
+                self.root.after(0, lambda y=yaw: self.pose_yaw_var.set(f"{y:.2f}°"))
+                
+                self.root.after(0, self.trigger_ping_blink)
+                
+                log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr[0]}:{addr[1]} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Rot: ({roll:.1f}, {pitch:.1f}, {yaw:.1f})"
+                self.root.after(0, lambda m=log_msg: self.rx_log(m))
+            else:
+                log_msg = f"[{time.strftime('%H:%M:%S')}] Unknown packet from {addr[0]}:{addr[1]} ({len(data)} bytes)"
+                self.root.after(0, lambda m=log_msg: self.rx_log(m))
+
+    def parse_incoming_packet(self, data):
+        if len(data) == 29 and data[0] in (0xD1, 0xD2):
+            try:
+                def unpack24(b1, b2, b3):
+                    val = (b1 << 16) | (b2 << 8) | b3
+                    if val & 0x800000:
+                        val -= 0x1000000
+                    return val
+                
+                pitch_val = unpack24(data[2], data[3], data[4])
+                yaw_val = unpack24(data[5], data[6], data[7])
+                roll_val = unpack24(data[8], data[9], data[10])
+                
+                x_val = unpack24(data[11], data[12], data[13])
+                y_val = unpack24(data[14], data[15], data[16])
+                z_val = unpack24(data[17], data[18], data[19])
+                
+                pitch = pitch_val / 32768.0
+                yaw = yaw_val / 32768.0
+                roll = roll_val / 32768.0
+                
+                x = x_val / (64.0 * 1000.0)
+                y = y_val / (64.0 * 1000.0)
+                z = z_val / (64.0 * 1000.0)
+                
+                return {
+                    "type": "FreeD Binary (Type D1)",
+                    "x": x, "y": y, "z": z,
+                    "pitch": pitch, "yaw": yaw, "roll": roll
+                }
+            except Exception:
+                pass
+                
+        try:
+            import json
+            decoded = data.decode("utf-8")
+            payload = json.loads(decoded)
+            if "translation" in payload and "rotation" in payload:
+                tx, ty, tz = payload["translation"]
+                pitch, yaw, roll = payload["rotation"]
+                device_name = payload.get("deviceName", "AbuTrack")
+                return {
+                    "type": f"Live Link ({device_name})",
+                    "x": tx, "y": ty, "z": tz,
+                    "pitch": pitch, "yaw": yaw, "roll": roll
+                }
+        except Exception:
+            pass
+            
+        return None
+
+    def trigger_ping_blink(self):
+        self.ping_canvas.itemconfig(self.ping_light, fill=ACCENT_CYAN)
+        self.root.after(80, lambda: self.ping_canvas.itemconfig(self.ping_light, fill=FIELD_BG))
+
+    def rx_log(self, msg):
+        self.rx_console.configure(state="normal")
+        self.rx_console.insert(tk.END, msg + "\n")
+        
+        lines = int(self.rx_console.index('end-1c').split('.')[0])
+        if lines > 16:
+            self.rx_console.delete("1.0", "2.0")
+            
+        self.rx_console.see(tk.END)
+        self.rx_console.configure(state="disabled")
 
 if __name__ == "__main__":
     root = tk.Tk()

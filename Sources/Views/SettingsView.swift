@@ -59,11 +59,16 @@ struct SettingsView: View {
                                             .foregroundColor(.cyan)
                                     }
                                     
-                                    Slider(value: $captureRate, in: 10...60, step: 10)
-                                        .tint(.cyan)
-                                        .onChange(of: captureRate) { newValue in
-                                            RigSettings.captureRate = newValue
-                                        }
+                                    Picker("IMU Sampling Rate", selection: $captureRate) {
+                                        Text("10 Hz").tag(10.0)
+                                        Text("25 Hz").tag(25.0)
+                                        Text("30 Hz").tag(30.0)
+                                        Text("60 Hz").tag(60.0)
+                                    }
+                                    .pickerStyle(SegmentedPickerStyle())
+                                    .onChange(of: captureRate) { newValue in
+                                        RigSettings.captureRate = newValue
+                                    }
                                     
                                     Text("Higher frequencies capture rapid shifts but consume more storage.")
                                         .font(.caption2)
@@ -159,21 +164,61 @@ struct SettingsView: View {
                                     Divider()
                                         .background(Color.gray.opacity(0.3))
                                     
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Target IP Address")
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.gray)
-                                        
-                                        TextField("e.g. 192.168.1.100", text: $streamManager.streamIP)
+                                    HStack {
+                                        Text("Mobile Device IP")
                                             .font(.footnote)
-                                            .padding(10)
-                                            .background(Color(red: 0.08, green: 0.12, blue: 0.22))
-                                            .cornerRadius(8)
-                                            .foregroundColor(.white)
-                                            .keyboardType(.numbersAndPunctuation)
-                                            .autocapitalization(.none)
-                                            .disableAutocorrection(true)
+                                            .fontWeight(.bold)
+                                        Spacer()
+                                        Text(UDPStreamingManager.getLocalIPAddress())
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.cyan)
+                                    }
+                                    .padding(.vertical, 4)
+                                    
+                                    Toggle(isOn: $streamManager.isBroadcastEnabled) {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Subnet Broadcast Mode")
+                                                .font(.footnote)
+                                                .fontWeight(.bold)
+                                            Text("Broadcasts to all devices (255.255.255.255)")
+                                                .font(.caption2)
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                    .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                                    
+                                    if !streamManager.isBroadcastEnabled {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text("Target IP Address(es)")
+                                                .font(.caption2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.gray)
+                                            
+                                            TextField("e.g. 192.168.1.100 or 192.168.1.100, 192.168.1.101", text: $streamManager.streamIP)
+                                                .font(.footnote)
+                                                .padding(10)
+                                                .background(Color(red: 0.08, green: 0.12, blue: 0.22))
+                                                .cornerRadius(8)
+                                                .foregroundColor(.white)
+                                                .keyboardType(.numbersAndPunctuation)
+                                                .autocapitalization(.none)
+                                                .disableAutocorrection(true)
+                                        }
+                                    } else {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Target IP Address")
+                                                .font(.caption2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.gray)
+                                            Text("255.255.255.255 (Automatic Broadcast)")
+                                                .font(.footnote)
+                                                .foregroundColor(.cyan)
+                                                .padding(10)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .background(Color(red: 0.08, green: 0.12, blue: 0.22))
+                                                .cornerRadius(8)
+                                        }
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 6) {
@@ -226,6 +271,7 @@ struct SettingsView: View {
                             
                             VStack(alignment: .leading, spacing: 8) {
                                 DiagnosticRow(label: "Device Model", value: "iPhone 16 Pro Max")
+                                DiagnosticRow(label: "Device Local IP", value: UDPStreamingManager.getLocalIPAddress())
                                 DiagnosticRow(label: "LiDAR Hardware", value: "Available")
                                 DiagnosticRow(label: "Barometer Sensor", value: "Supported")
                                 DiagnosticRow(label: "RTK GNSS Provider", value: locationManager.horizontalAccuracy < 1.0 && locationManager.horizontalAccuracy > 0 ? "Bluetooth Sub-Centimeter (RTK)" : "iOS Native (Dual-Frequency)")
@@ -264,8 +310,8 @@ struct SettingsView: View {
                                 
                                 Divider().background(Color.gray.opacity(0.3))
                                 
-                                DiagnosticRow(label: "App Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.5")
-                                DiagnosticRow(label: "Build Number", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "16")
+                                DiagnosticRow(label: "App Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.6")
+                                DiagnosticRow(label: "Build Number", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "17")
                                 DiagnosticRow(label: "Compile Date", value: {
                                     let formatter = DateFormatter()
                                     formatter.dateFormat = "yyyy-MM-dd HH:mm"
@@ -289,6 +335,15 @@ struct SettingsView: View {
             }
             .navigationTitle("RIG CALIBRATION")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .foregroundColor(.cyan)
+                }
+            }
             .onAppear {
                 loadOffsets()
             }

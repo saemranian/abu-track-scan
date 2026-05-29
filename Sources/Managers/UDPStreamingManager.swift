@@ -1,12 +1,20 @@
 import Foundation
 import Network
 import Combine
+#if canImport(Darwin)
+import Darwin
+#endif
 
 enum StreamingFormat: String, CaseIterable, Identifiable {
     case liveLink = "Live Link JSON"
     case freeD = "FreeD Binary"
     
     var id: String { self.rawValue }
+}
+
+struct TargetEndpoint {
+    let ip: String
+    let port: Int
 }
 
 class UDPStreamingManager: ObservableObject {
@@ -37,19 +45,27 @@ class UDPStreamingManager: ObservableObject {
         }
     }
     
+    @Published var isBroadcastEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(isBroadcastEnabled, forKey: "isBroadcastEnabled")
+            restartConnection()
+        }
+    }
+    
     @Published var format: StreamingFormat {
         didSet {
             UserDefaults.standard.set(format.rawValue, forKey: "streamingFormat")
         }
     }
     
-    private var connection: NWConnection?
+    private var connections: [NWConnection] = []
     private let queue = DispatchQueue(label: "com.abutrack.udpstreaming", qos: .userInteractive)
     
     private init() {
         self.isStreamingEnabled = UserDefaults.standard.bool(forKey: "isStreamingEnabled")
         self.streamIP = UserDefaults.standard.string(forKey: "streamIP") ?? "192.168.1.100"
         self.streamPort = UserDefaults.standard.integer(forKey: "streamPort") == 0 ? 8080 : UserDefaults.standard.integer(forKey: "streamPort")
+        self.isBroadcastEnabled = UserDefaults.standard.bool(forKey: "isBroadcastEnabled")
         
         let formatStr = UserDefaults.standard.string(forKey: "streamingFormat") ?? StreamingFormat.liveLink.rawValue
         self.format = StreamingFormat(rawValue: formatStr) ?? .liveLink
@@ -62,31 +78,70 @@ class UDPStreamingManager: ObservableObject {
     private func startConnection() {
         guard isStreamingEnabled else { return }
         
-        let host = NWEndpoint.Host(streamIP)
-        guard let portValue = NWEndpoint.Port(rawValue: UInt16(streamPort)) else { return }
+        // Build the target endpoints
+        var endpoints: [TargetEndpoint] = []
         
-        let params = NWParameters.udp
-        connection = NWConnection(to: NWEndpoint.hostPort(host: host, port: portValue), using: params)
-        
-        connection?.stateUpdateHandler = { state in
-            switch state {
-            case .ready:
-                print("UDP Streamer: Connected to \(self.streamIP):\(self.streamPort)")
-            case .failed(let error):
-                print("UDP Streamer: Connection failed: \(error)")
-            case .cancelled:
-                print("UDP Streamer: Connection cancelled")
-            default:
-                break
+        if isBroadcastEnabled {
+            endpoints.append(TargetEndpoint(ip: "255.255.255.255", port: streamPort))
+        } else {
+            // Split by comma for multiple targets
+            let ipComponents = streamIP.components(separatedBy: ",")
+            for comp in ipComponents {
+                let trimmed = comp.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { continue }
+                
+                if trimmed.contains(":") {
+                    let parts = trimmed.components(separatedBy: ":")
+                    if parts.count == 2, let customPort = Int(parts[1]) {
+                        endpoints.append(TargetEndpoint(ip: parts[0], port: customPort))
+                    } else {
+                        endpoints.append(TargetEndpoint(ip: parts[0], port: streamPort))
+                    }
+                } else {
+                    endpoints.append(TargetEndpoint(ip: trimmed, port: streamPort))
+                }
             }
         }
         
-        connection?.start(queue: queue)
+        // Stop any old connections first
+        stopConnection()
+        
+        // Spin up NWConnections for all target endpoints
+        for endpoint in endpoints {
+            let host = NWEndpoint.Host(endpoint.ip)
+            guard let portValue = NWEndpoint.Port(rawValue: UInt16(endpoint.port)) else { continue }
+            
+            let params = NWParameters.udp
+            // Optimize for ultimate low latency: priority voice class + bypass intermediate queues
+            params.serviceClass = .interactiveVoice
+            params.preferNoProxies = true
+            params.allowLocalMulticast = true
+            
+            let connection = NWConnection(to: NWEndpoint.hostPort(host: host, port: portValue), using: params)
+            
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    print("UDP Streamer: Connected to \(endpoint.ip):\(endpoint.port) [Mode: \(self.isBroadcastEnabled ? "Broadcast" : "Unicast")]")
+                case .failed(let error):
+                    print("UDP Streamer: Connection failed to \(endpoint.ip):\(endpoint.port): \(error)")
+                case .cancelled:
+                    print("UDP Streamer: Connection cancelled to \(endpoint.ip):\(endpoint.port)")
+                default:
+                    break
+                }
+            }
+            
+            connection.start(queue: queue)
+            connections.append(connection)
+        }
     }
     
     private func stopConnection() {
-        connection?.cancel()
-        connection = nil
+        for conn in connections {
+            conn.cancel()
+        }
+        connections.removeAll()
     }
     
     private func restartConnection() {
@@ -95,7 +150,7 @@ class UDPStreamingManager: ObservableObject {
     }
     
     func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) {
-        guard isStreamingEnabled, let connection = connection else { return }
+        guard isStreamingEnabled, !connections.isEmpty else { return }
         
         let data: Data
         
@@ -106,11 +161,14 @@ class UDPStreamingManager: ObservableObject {
             data = formatFreeD(x: x, y: y, z: z, yaw: yaw, pitch: pitch, roll: roll)
         }
         
-        connection.send(content: data, completion: .contentProcessed({ error in
-            if let error = error {
-                print("UDP Streamer: Send error: \(error)")
-            }
-        }))
+        // Broadcast the formatted tracking payload to all active connections
+        for conn in connections {
+            conn.send(content: data, completion: .contentProcessed({ error in
+                if let error = error {
+                    print("UDP Streamer: Send error: \(error)")
+                }
+            }))
+        }
     }
     
     private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) -> Data {
@@ -192,5 +250,35 @@ class UDPStreamingManager: ObservableObject {
     
     private func clamp(_ val: Double, min minVal: Double, max maxVal: Double) -> Double {
         return max(minVal, min(maxVal, val))
+    }
+    
+    // Static helper to query the device's local network interface IP (both Wi-Fi en0 and Ethernet adapters)
+    static func getLocalIPAddress() -> String {
+        var address: String = "127.0.0.1"
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0 else { return address }
+        guard let firstAddr = ifaddr else { return address }
+        
+        for ptr in sequence(firstAddr, next: { $0.pointee.ifa_next }) {
+            let addr = ptr.pointee.ifa_addr.pointee
+            if addr.sa_family == UInt8(AF_INET) {
+                let name = String(cString: ptr.pointee.ifa_name)
+                // Filter out loopback, check for Wi-Fi (en0) or LAN dongles (en1, en2, eth0)
+                if name.hasPrefix("en") || name.hasPrefix("eth") {
+                    var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                    if getnameinfo(ptr.pointee.ifa_addr, socklen_t(ptr.pointee.ifa_addr.pointee.sa_len),
+                                   &hostname, socklen_t(hostname.count),
+                                   nil, socklen_t(0), NI_NUMERICHOST) == 0 {
+                        let ip = String(cString: hostname)
+                        if !ip.isEmpty && ip != "127.0.0.1" {
+                            address = ip
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        freeifaddrs(ifaddr)
+        return address
     }
 }
