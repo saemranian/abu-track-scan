@@ -1,4 +1,4 @@
-name: Compile CamTrack Pro iOS App
+name: Compile Abu Track iOS App
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          path: CamTrackPro.swiftpm
+          path: AbuTrack.swiftpm
 
       - name: Show Available Xcode Versions
         run: ls /Applications | grep Xcode
@@ -23,18 +23,18 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
       - name: List Available Schemes (Diagnostics)
-        working-directory: CamTrackPro.swiftpm
+        working-directory: AbuTrack.swiftpm
         run: |
           echo "=== List of Available Schemes ==="
           xcodebuild -list
           
       - name: Compile SwiftPM App
-        working-directory: CamTrackPro.swiftpm
+        working-directory: AbuTrack.swiftpm
         run: |
           # Dynamically determine the scheme
-          SCHEME="CamTrackPro"
-          if xcodebuild -list | grep -q "CamTrack Pro"; then
-            SCHEME="CamTrack Pro"
+          SCHEME="AbuTrack"
+          if xcodebuild -list | grep -q "Abu Track"; then
+            SCHEME="Abu Track"
           fi
           echo "Building scheme: $SCHEME"
           
@@ -47,7 +47,7 @@ jobs:
             clean build
 
       - name: Package App into IPA
-        working-directory: CamTrackPro.swiftpm
+        working-directory: AbuTrack.swiftpm
         run: |
           mkdir -p Payload
           # Diagnostics: print the contents of the build products directory to find the app
@@ -59,11 +59,11 @@ jobs:
           echo "Found compiled app bundle at: $APP_PATH"
           cp -r "$APP_PATH" Payload/
           # Compress into an .ipa file
-          zip -r ../CamTrackPro.ipa Payload
+          zip -r ../AbuTrack.ipa Payload
           
       - name: Upload Compiled IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CamTrackPro-IPA
-          path: CamTrackPro.ipa
+          name: AbuTrack-IPA
+          path: AbuTrack.ipa
           retention-days: 7
