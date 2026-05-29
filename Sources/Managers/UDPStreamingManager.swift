@@ -65,7 +65,7 @@ class BSDUDPSender {
     func send(data: Data) {
         guard socketFD >= 0 else { return }
         
-        for (addr, ip, port) in targets {
+        for (addr, _, _) in targets {
             var targetAddr = addr
             let dataCount = data.count
             

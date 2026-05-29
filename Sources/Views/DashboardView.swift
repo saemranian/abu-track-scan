@@ -395,9 +395,7 @@ struct DashboardView: View {
         let intervalNs = Int(1_000_000_000.0 / RigSettings.captureRate)
         
         timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs), leeway: .nanoseconds(0))
-        timer.setEventHandler { [weak self] in
-            guard let self = self else { return }
-            
+        timer.setEventHandler {
             // Log Telemetry Record
             let entry = TelemetryEntry(
                 timestamp: Date().timeIntervalSince1970 * 1000.0,
