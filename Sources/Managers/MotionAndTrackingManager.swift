@@ -68,6 +68,9 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     @Published var entryCount: Int = 0
     @Published var activeSessionID: String? = nil
     @Published var startTime: Date? = nil
+    @Published var hardwareScanHz: Double = 0.0
+    private var lastFrameTime: TimeInterval = 0
+    
     
     private var cancellables = Set<AnyCancellable>()
     private var isAltimeterRunning = false
@@ -348,6 +351,18 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         
         // Absolute precision: only process frame updates when visual-inertial tracking state is normal
         guard case .normal = frame.camera.trackingState else { return }
+        
+        let currentFrameTime = frame.timestamp
+        if lastFrameTime > 0 {
+            let diff = currentFrameTime - lastFrameTime
+            if diff > 0 {
+                let currentHz = 1.0 / diff
+                DispatchQueue.main.async {
+                    self.hardwareScanHz = (self.hardwareScanHz * 0.95) + (currentHz * 0.05)
+                }
+            }
+        }
+        lastFrameTime = currentFrameTime
         
         let transform = frame.camera.transform
         let columns = transform.columns

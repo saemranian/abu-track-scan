@@ -41,6 +41,8 @@ TEXT_MUTED = "#828F9F"
 ACCENT_CYAN = "#00F0FF"
 ACCENT_AMBER = "#FFC400"
 ACCENT_RED = "#FF3366"
+ACCENT_GREEN = "#10B981"
+
 
 class CamTrackDesktopApp:
     def __init__(self, root):
@@ -112,6 +114,8 @@ class CamTrackDesktopApp:
         self.receiver_latency_var = tk.StringVar(value="No Sync (0.0 ms)")
         self.receiver_smoothing_sec = tk.DoubleVar(value=1.0)
         self.receiver_buffer_ms = tk.DoubleVar(value=100.0)
+        self.receiver_auto_calibrate = tk.BooleanVar(value=True)
+        self.timeshift_history = []
         self.receiver_pc_time_var = tk.StringVar(value="00:00:00.000")
         
         self.pose_x_var = tk.StringVar(value="0.0000 m")
@@ -598,6 +602,9 @@ class CamTrackDesktopApp:
         
         self.buffer_lbl = ttk.Label(buffer_frame, text="100ms", font=("Consolas", 8, "bold"))
         self.buffer_lbl.pack(side="left")
+        
+        auto_chk = ttk.Checkbutton(buffer_frame, text="Auto-Profile", variable=self.receiver_auto_calibrate)
+        auto_chk.pack(side="left", padx=(8, 0))
         
         # Visual Ping indicator (Canvas)
         ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=12, column=0, sticky="w", pady=4)
@@ -2569,11 +2576,19 @@ class CamTrackDesktopApp:
         if self.receiver_running:
             return
             
-        port = self.receiver_port.get()
+        try:
+            port = self.receiver_port.get()
+            if port <= 0 or port > 65535:
+                port = 8080
+                self.receiver_port.set(8080)
+        except Exception:
+            port = 8080
+            self.receiver_port.set(8080)
         
         try:
             import socket
             self.receiver_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.receiver_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.receiver_sock.bind(("0.0.0.0", port))
             self.receiver_sock.settimeout(1.0)
         except Exception as e:
@@ -2684,6 +2699,18 @@ class CamTrackDesktopApp:
                 time_shift_ms = 0.0
                 if timestamp is not None:
                     time_shift_ms = (now - timestamp) * 1000.0
+                    
+                    self.timeshift_history.append(time_shift_ms)
+                    if len(self.timeshift_history) > 100:
+                        self.timeshift_history.pop(0)
+                        
+                    if self.receiver_auto_calibrate.get() and len(self.timeshift_history) >= 20:
+                        jitter = max(self.timeshift_history) - min(self.timeshift_history)
+                        recommended_buffer = max(10.0, min(1000.0, jitter + 15.0))
+                        self.root.after(0, lambda val=recommended_buffer: [
+                            self.receiver_buffer_ms.set(val),
+                            self._update_buffer_label()
+                        ])
                 
                 # Append to playout buffer under thread-safe lock
                 with self.playout_lock:
@@ -2771,7 +2798,8 @@ class CamTrackDesktopApp:
                 time.sleep(0.001)
 
     def parse_incoming_packet(self, data):
-        if len(data) == 29 and data[0] in (0xD1, 0xD2):
+        # 1. Standard (29 bytes) and Extended (37 bytes) FreeD Binary formats
+        if (len(data) == 29 or len(data) == 37) and data[0] in (0xD1, 0xD2):
             try:
                 def unpack24(b1, b2, b3):
                     val = (b1 << 16) | (b2 << 8) | b3
@@ -2796,15 +2824,58 @@ class CamTrackDesktopApp:
                 y = y_val / (64.0 * 1000.0)
                 z = z_val / (64.0 * 1000.0)
                 
+                timestamp = None
+                p_type = "FreeD Binary (Type D1)"
+                
+                if len(data) == 37:
+                    # Extract 8-byte trailing timestamp for Extended FreeD
+                    import struct
+                    timestamp_ms = struct.unpack(">q", data[29:37])[0]
+                    timestamp = float(timestamp_ms) / 1000.0
+                    p_type = "Extended FreeD Binary (Type D1)"
+                
                 return {
-                    "type": "FreeD Binary (Type D1)",
+                    "type": p_type,
                     "x": x, "y": y, "z": z,
                     "pitch": pitch, "yaw": yaw, "roll": roll,
-                    "timestamp": None
+                    "timestamp": timestamp
                 }
             except Exception:
                 pass
                 
+        # 2. OpenTrackIO JSON / UDP format
+        if len(data) >= 17 and data[0:4] == b"OTrk":
+            try:
+                import struct
+                import json
+                encoding = data[8]
+                payload_len = struct.unpack(">I", data[9:13])[0]
+                source_id = struct.unpack(">I", data[13:17])[0]
+                
+                if encoding == 0x01: # JSON encoding
+                    json_bytes = data[17:17+payload_len]
+                    payload = json.loads(json_bytes.decode("utf-8"))
+                    
+                    timestamp = payload.get("timestamp", None)
+                    t_array = payload.get("transforms", [])
+                    if t_array:
+                        trans = t_array[0].get("translation", {"x": 0.0, "y": 0.0, "z": 0.0})
+                        rot = t_array[0].get("rotation", {"yaw": 0.0, "pitch": 0.0, "roll": 0.0})
+                        
+                        return {
+                            "type": f"OpenTrackIO JSON (Src {source_id})",
+                            "x": trans.get("x", 0.0),
+                            "y": trans.get("y", 0.0),
+                            "z": trans.get("z", 0.0),
+                            "pitch": rot.get("pitch", 0.0),
+                            "yaw": rot.get("yaw", 0.0),
+                            "roll": rot.get("roll", 0.0),
+                            "timestamp": timestamp
+                        }
+            except Exception as e:
+                print(f"OpenTrackIO parse failed: {e}")
+                
+        # 3. Standard Live Link JSON format
         try:
             import json
             decoded = data.decode("utf-8")

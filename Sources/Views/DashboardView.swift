@@ -31,7 +31,6 @@ struct DashboardView: View {
     @State private var sessionTimer: DispatchSourceTimer?
     @State private var sessionDuration: TimeInterval = 0.0
     @State private var entryCount = 0
-    @State private var activeSessionID: String?
     @State private var startTime: Date?
     
     // 3D Visualizer Drag Navigation State (Orbit, Pan, Zoom)
@@ -313,6 +312,8 @@ struct DashboardView: View {
                                 Divider().background(Color.gray.opacity(0.1))
                                 TelemetryRow(label: "MOBILE LOCAL IP ADDRESS", value: UDPStreamingManager.getLocalIPAddress(), highlight: .green)
                                 Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "HARDWARE SCAN HZ (LOCKED)", value: String(format: "%.1f Hz", trackingManager.hardwareScanHz), highlight: .cyan)
+                                Divider().background(Color.gray.opacity(0.1))
                                 TelemetryRow(label: "SESSION TELEMETRY DATA", value: trackingManager.activeSessionID != nil ? "ID: \(String(trackingManager.activeSessionID!.suffix(8)))  [REC: \(trackingManager.entryCount)]" : "STREAM DISCONNECTED", highlight: .yellow)
                             }
                             .background(Color(red: 0.06, green: 0.08, blue: 0.15))
@@ -345,7 +346,7 @@ struct DashboardView: View {
             }
             
             // Prevent tab-switching conflicts by keeping camera session active during scan
-            if activeSessionID == nil {
+            if trackingManager.activeSessionID == nil {
                 cameraManager.setupCamera { success in
                     DispatchQueue.main.async {
                         self.isCameraReady = success
@@ -495,7 +496,7 @@ struct DashboardView: View {
             0.0 // time difference is 0.0s since it's perfectly synchronized on-device!
         )
         
-        if let sessionID = activeSessionID {
+        if let sessionID = trackingManager.activeSessionID {
             let fileManager = FileManager.default
             guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
             let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
@@ -557,7 +558,7 @@ struct DashboardView: View {
             let pixelBuffer = currentFrame.capturedImage
             let timestamp = Date().timeIntervalSince1970
             
-            guard let sessionID = activeSessionID else { return }
+            guard let sessionID = trackingManager.activeSessionID else { return }
             let fileManager = FileManager.default
             guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
             let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
@@ -717,7 +718,7 @@ struct DashboardView: View {
                         // Cyberpunk save directory path HUD overlay
                         VStack {
                             HStack {
-                                Text("SAVE PATH: Files -> On My iPhone -> Abu Track -> Sessions -> \(activeSessionID?.suffix(8) ?? "SESSION_ID")")
+                                Text("SAVE PATH: Files -> On My iPhone -> Abu Track -> Sessions -> \(trackingManager.activeSessionID?.suffix(8) ?? "SESSION_ID")")
                                     .font(.system(size: 6.5, weight: .bold, design: .monospaced))
                                     .foregroundColor(.cyan.opacity(0.85))
                                     .padding(4)

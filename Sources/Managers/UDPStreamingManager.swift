@@ -8,6 +8,7 @@ import Darwin
 enum StreamingFormat: String, CaseIterable, Identifiable {
     case liveLink = "Live Link JSON"
     case freeD = "FreeD Binary"
+    case openTrackIO = "OpenTrackIO JSON"
     
     var id: String { self.rawValue }
 }
@@ -294,6 +295,7 @@ class UDPStreamingManager: ObservableObject {
             break
         }
         
+        
         let data: Data
         
         switch format {
@@ -301,6 +303,8 @@ class UDPStreamingManager: ObservableObject {
             data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
         case .freeD:
             data = formatFreeD(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
+        case .openTrackIO:
+            data = formatOpenTrackIO(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
         }
         
         // Broadcast the formatted tracking payload to all active connections
@@ -308,12 +312,13 @@ class UDPStreamingManager: ObservableObject {
     }
     
     private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) -> Data {
+        let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
         let json: [String: Any] = [
             "deviceName": "AbuTrack",
             "translation": [x, y, z],
             "rotation": [pitch, yaw, roll],
             "focalLength": 24.0,
-            "timestamp": Date().timeIntervalSince1970
+            "timestamp": Date().timeIntervalSince1970 + ntpSyncOffset
         ]
         
         do {
@@ -375,7 +380,66 @@ class UDPStreamingManager: ObservableObject {
         let checksum = UInt8((0x40 - sum) & 0xFF)
         packet.append(checksum)
         
+        // Proprietary Extended FreeD: Append an 8-byte big-endian millisecond timestamp for clock sync latency calculations!
+        let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
+        let timestampMs = Int64((Date().timeIntervalSince1970 + ntpSyncOffset) * 1000.0)
+        var tsBig = timestampMs.bigEndian
+        packet.append(contentsOf: withUnsafeBytes(of: &tsBig) { Array($0) })
+        
         return Data(packet)
+    }
+    
+    private var openTrackSequence: UInt32 = 0
+    
+    private func formatOpenTrackIO(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) -> Data {
+        let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
+        let timestamp = Date().timeIntervalSince1970 + ntpSyncOffset
+        
+        let json: [String: Any] = [
+            "version": "1.0",
+            "sourceId": 101,
+            "timestamp": timestamp,
+            "transforms": [
+                [
+                    "translation": ["x": x, "y": y, "z": z],
+                    "rotation": ["yaw": yaw, "pitch": pitch, "roll": roll]
+                ]
+            ],
+            "lens": [
+                "focalLength": 24.0,
+                "focusDistance": 1.5
+            ]
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: json, options: []) else {
+            return Data()
+        }
+        
+        var packet = Data()
+        
+        // 1. Fixed ASCII Header: "OTrk" (4 bytes)
+        packet.append("OTrk".data(using: .ascii)!)
+        
+        // 2. Sequence number (4 bytes, big-endian)
+        openTrackSequence += 1
+        var seqBig = openTrackSequence.bigEndian
+        packet.append(contentsOf: withUnsafeBytes(of: &seqBig) { Array($0) })
+        
+        // 3. Payload Type: JSON is 0x01 (1 byte)
+        packet.append(0x01)
+        
+        // 4. Payload Length (4 bytes, big-endian)
+        var lenBig = UInt32(jsonData.count).bigEndian
+        packet.append(contentsOf: withUnsafeBytes(of: &lenBig) { Array($0) })
+        
+        // 5. Source ID: 101 (4 bytes, big-endian)
+        var srcBig = UInt32(101).bigEndian
+        packet.append(contentsOf: withUnsafeBytes(of: &srcBig) { Array($0) })
+        
+        // 6. JSON Data
+        packet.append(jsonData)
+        
+        return packet
     }
     
     private func pack24(_ value: Int32) -> [UInt8] {
