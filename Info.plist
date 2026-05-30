@@ -20,5 +20,7 @@
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Abu Track requires local network access to stream real-time camera tracking telemetry to your Unreal Engine and virtual production workstation.</string>
 </dict>
 </plist>

@@ -40,6 +40,24 @@ class BSDUDPSender {
         
         self.socketFD = fd
         
+        // Bind to 0.0.0.0 (INADDR_ANY) to let the iOS kernel configure standard interface routing for UDP broadcasts
+        var localAddr = sockaddr_in()
+        #if os(iOS) || os(macOS)
+        localAddr.sin_len = __uint8_t(MemoryLayout<sockaddr_in>.size)
+        #endif
+        localAddr.sin_family = sa_family_t(AF_INET)
+        localAddr.sin_port = CFSwapInt16HostToBig(0) // system selects available port
+        localAddr.sin_addr.s_addr = in_addr_t(0) // INADDR_ANY (0.0.0.0)
+        
+        let bindResult = withUnsafePointer(to: &localAddr) { localAddrPtr in
+            localAddrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                bind(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        if bindResult < 0 {
+            print("BSD UDP: Socket bind to 0.0.0.0 failed with error \(errno) (\(String(cString: strerror(errno))))")
+        }
+        
         // Resolve IP addresses and prepare sockaddr_in structs
         for endpoint in endpoints {
             var addr = sockaddr_in()
@@ -65,16 +83,20 @@ class BSDUDPSender {
     func send(data: Data) {
         guard socketFD >= 0 else { return }
         
-        for (addr, _, _) in targets {
+        for (addr, ip, port) in targets {
             var targetAddr = addr
             let dataCount = data.count
             
-            _ = withUnsafePointer(to: &targetAddr) { addrPtr in
+            let result = withUnsafePointer(to: &targetAddr) { addrPtr in
                 addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
                     data.withUnsafeBytes { dataBytes in
                         sendto(socketFD, dataBytes.baseAddress, dataCount, 0, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_in>.size))
                     }
                 }
+            }
+            if result < 0 {
+                let err = errno
+                print("BSD UDP: sendto failed to \(ip):\(port) with error \(err) (\(String(cString: strerror(err))))")
             }
         }
     }

@@ -2517,6 +2517,8 @@ class CamTrackDesktopApp:
         self.receiver_packet_count = 0
         self.receiver_last_time = None
         self.receiver_frequency = 0.0
+        self.receiver_sec_start = None
+        self.receiver_sec_packet_count = 0
         
         self.receiver_status_var.set("LISTENING")
         self.rx_status_lbl.configure(foreground=ACCENT_CYAN)
@@ -2556,6 +2558,8 @@ class CamTrackDesktopApp:
         import socket
         
         buffer_size = 4096
+        self.receiver_sec_start = time.time()
+        self.receiver_sec_packet_count = 0
         
         while self.receiver_running:
             try:
@@ -2570,13 +2574,15 @@ class CamTrackDesktopApp:
                 
             now = time.time()
             self.receiver_packet_count += 1
+            self.receiver_sec_packet_count += 1
             
-            if self.receiver_last_time is not None:
-                delta = now - self.receiver_last_time
-                if delta > 0:
-                    current_hz = 1.0 / delta
-                    self.receiver_frequency = 0.9 * self.receiver_frequency + 0.1 * current_hz
-            self.receiver_last_time = now
+            if self.receiver_sec_start is not None:
+                elapsed = now - self.receiver_sec_start
+                if elapsed >= 1.0:
+                    # Calculate pure average Hz over the last second to filter out network/Wi-Fi arrival jitter
+                    self.receiver_frequency = float(self.receiver_sec_packet_count) / elapsed
+                    self.receiver_sec_packet_count = 0
+                    self.receiver_sec_start = now
             
             parsed = self.parse_incoming_packet(data)
             
