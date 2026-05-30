@@ -26,6 +26,8 @@ struct DashboardView: View {
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var trackingManager: MotionAndTrackingManager
     
+    @AppStorage("captureRate") private var captureRate: Double = 10.0
+    
     @State private var sessionTimer: DispatchSourceTimer?
     @State private var sessionDuration: TimeInterval = 0.0
     @State private var entryCount = 0
@@ -360,6 +362,18 @@ struct DashboardView: View {
                 cameraManager.stopHardwareSession()
             }
         }
+        .onChange(of: captureRate) { newRate in
+            if activeSessionID != nil {
+                rescheduleSessionTimer(newRate: newRate)
+            }
+        }
+    }
+    
+    private func rescheduleSessionTimer(newRate: Double) {
+        guard let timer = sessionTimer else { return }
+        print("DashboardView: Rescheduling session timer on the fly to \(newRate) Hz")
+        let intervalNs = Int(1_000_000_000.0 / newRate)
+        timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs), leeway: .nanoseconds(0))
     }
     
     // MARK: - Session Controllers
@@ -376,7 +390,7 @@ struct DashboardView: View {
         
         // Start physical managers
         locationManager.startUpdates()
-        trackingManager.startTracking(frequency: RigSettings.captureRate)
+        trackingManager.startTracking(frequency: captureRate)
         
         // Start in-app camera session if active
         if captureMode == .singleDevice {
@@ -392,7 +406,7 @@ struct DashboardView: View {
         // High-Precision GCD Timer for Jitter-Free 60Hz/30Hz/25Hz/10Hz Poses
         let queue = DispatchQueue(label: "com.abutrack.sessiontimer", qos: .userInteractive)
         let timer = DispatchSource.makeTimerSource(queue: queue)
-        let intervalNs = Int(1_000_000_000.0 / RigSettings.captureRate)
+        let intervalNs = Int(1_000_000_000.0 / captureRate)
         
         timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs), leeway: .nanoseconds(0))
         timer.setEventHandler {

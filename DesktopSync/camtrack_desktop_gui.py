@@ -107,6 +107,9 @@ class CamTrackDesktopApp:
         self.receiver_format_var = tk.StringVar(value="No Stream Detected")
         self.receiver_frames_var = tk.StringVar(value="0")
         self.receiver_hz_var = tk.StringVar(value="0.0 Hz")
+        self.receiver_raw_hz_var = tk.StringVar(value="0.0 Hz (Raw)")
+        self.receiver_latency_var = tk.StringVar(value="No Sync (0.0 ms)")
+        self.receiver_smoothing_sec = tk.DoubleVar(value=1.0)
         
         self.pose_x_var = tk.StringVar(value="0.0000 m")
         self.pose_y_var = tk.StringVar(value="0.0000 m")
@@ -543,15 +546,37 @@ class CamTrackDesktopApp:
         frames_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_frames_var, font=("Consolas", 9, "bold"))
         frames_lbl.grid(row=4, column=1, sticky="e", pady=4)
         
-        # Frequency
-        ttk.Label(rx_diag_card, text="Data Frequency:").grid(row=5, column=0, sticky="w", pady=4)
+        # Pure Frequency
+        ttk.Label(rx_diag_card, text="Data Frequency (Pure):").grid(row=5, column=0, sticky="w", pady=4)
         hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_hz_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
         hz_lbl.grid(row=5, column=1, sticky="e", pady=4)
         
+        # Raw Network Frequency
+        ttk.Label(rx_diag_card, text="Network Delivery (Raw):").grid(row=6, column=0, sticky="w", pady=4)
+        raw_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_raw_hz_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
+        raw_hz_lbl.grid(row=6, column=1, sticky="e", pady=4)
+        
+        # Latency / Time Shift
+        ttk.Label(rx_diag_card, text="Clock Latency Shift:").grid(row=7, column=0, sticky="w", pady=4)
+        latency_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_latency_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
+        latency_lbl.grid(row=7, column=1, sticky="e", pady=4)
+        
+        # Smoothing Window Slider
+        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=8, column=0, sticky="w", pady=4)
+        
+        smoothing_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
+        smoothing_frame.grid(row=8, column=1, sticky="e", pady=4)
+        
+        smooth_slider = ttk.Scale(smoothing_frame, from_=0.1, to=5.0, value=1.0, variable=self.receiver_smoothing_sec, command=lambda v: self._update_smoothing_label())
+        smooth_slider.pack(side="left", padx=(0, 4))
+        
+        self.smooth_lbl = ttk.Label(smoothing_frame, text="1.0s", font=("Consolas", 8, "bold"))
+        self.smooth_lbl.pack(side="left")
+        
         # Visual Ping indicator (Canvas)
-        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=6, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=9, column=0, sticky="w", pady=4)
         self.ping_canvas = tk.Canvas(rx_diag_card, width=16, height=16, bg=CARD_BG, highlightthickness=0)
-        self.ping_canvas.grid(row=6, column=1, sticky="e", pady=4)
+        self.ping_canvas.grid(row=9, column=1, sticky="e", pady=4)
         self.ping_light = self.ping_canvas.create_oval(2, 2, 14, 14, fill=FIELD_BG, outline=BORDER_COLOR)
         
         # Right Panel
@@ -2498,6 +2523,10 @@ class CamTrackDesktopApp:
             ips.append("127.0.0.1")
         return ips
 
+    def _update_smoothing_label(self):
+        val = self.receiver_smoothing_sec.get()
+        self.smooth_lbl.configure(text=f"{val:.1f}s")
+
     def start_receiver(self):
         if self.receiver_running:
             return
@@ -2576,10 +2605,19 @@ class CamTrackDesktopApp:
             self.receiver_packet_count += 1
             self.receiver_sec_packet_count += 1
             
+            # 1. Raw Network Frequency (Packet-to-packet delta)
+            raw_hz = 0.0
+            if self.receiver_last_time is not None:
+                delta = now - self.receiver_last_time
+                if delta > 0:
+                    raw_hz = 1.0 / delta
+            self.receiver_last_time = now
+            
+            # 2. Pure Data Frequency (Average Hz over user-defined smoothing window)
+            window_sec = max(0.1, self.receiver_smoothing_sec.get())
             if self.receiver_sec_start is not None:
                 elapsed = now - self.receiver_sec_start
-                if elapsed >= 1.0:
-                    # Calculate pure average Hz over the last second to filter out network/Wi-Fi arrival jitter
+                if elapsed >= window_sec:
                     self.receiver_frequency = float(self.receiver_sec_packet_count) / elapsed
                     self.receiver_sec_packet_count = 0
                     self.receiver_sec_start = now
@@ -2590,10 +2628,21 @@ class CamTrackDesktopApp:
                 px, py, pz = parsed["x"], parsed["y"], parsed["z"]
                 pitch, yaw, roll = parsed["pitch"], parsed["yaw"], parsed["roll"]
                 fmt_type = parsed["type"]
+                timestamp = parsed.get("timestamp", None)
+                
+                # Calculate latency / time shift
+                latency_str = "No Sync (N/A)"
+                if timestamp is not None:
+                    time_shift_ms = (now - timestamp) * 1000.0
+                    latency_str = f"{time_shift_ms:+.1f} ms"
                 
                 self.root.after(0, lambda fmt=fmt_type: self.receiver_format_var.set(fmt))
                 self.root.after(0, lambda c=self.receiver_packet_count: self.receiver_frames_var.set(str(c)))
+                
+                # Update both frequencies and latency displays
                 self.root.after(0, lambda hz=self.receiver_frequency: self.receiver_hz_var.set(f"{hz:.1f} Hz"))
+                self.root.after(0, lambda r_hz=raw_hz: self.receiver_raw_hz_var.set(f"{r_hz:.1f} Hz (Raw)"))
+                self.root.after(0, lambda lat=latency_str: self.receiver_latency_var.set(lat))
                 
                 self.root.after(0, lambda x=px: self.pose_x_var.set(f"{x:.4f} m"))
                 self.root.after(0, lambda y=py: self.pose_y_var.set(f"{y:.4f} m"))
@@ -2604,7 +2653,11 @@ class CamTrackDesktopApp:
                 
                 self.root.after(0, self.trigger_ping_blink)
                 
-                log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr[0]}:{addr[1]} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Rot: ({roll:.1f}, {pitch:.1f}, {yaw:.1f})"
+                # Print the timestamp and latency shift info directly in the raw log line!
+                if timestamp is not None:
+                    log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr[0]}:{addr[1]} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Shift: {time_shift_ms:+.1f}ms"
+                else:
+                    log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr[0]}:{addr[1]} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) [FreeD]"
                 self.root.after(0, lambda m=log_msg: self.rx_log(m))
             else:
                 log_msg = f"[{time.strftime('%H:%M:%S')}] Unknown packet from {addr[0]}:{addr[1]} ({len(data)} bytes)"
@@ -2623,9 +2676,10 @@ class CamTrackDesktopApp:
                 yaw_val = unpack24(data[5], data[6], data[7])
                 roll_val = unpack24(data[8], data[9], data[10])
                 
-                x_val = unpack24(data[11], data[12], data[13])
-                y_val = unpack24(data[14], data[15], data[16])
-                z_val = unpack24(data[17], data[18], data[19])
+                # Correct indices to read Z, X, Y in order:
+                z_val = unpack24(data[11], data[12], data[13])
+                x_val = unpack24(data[14], data[15], data[16])
+                y_val = unpack24(data[17], data[18], data[19])
                 
                 pitch = pitch_val / 32768.0
                 yaw = yaw_val / 32768.0
@@ -2638,7 +2692,8 @@ class CamTrackDesktopApp:
                 return {
                     "type": "FreeD Binary (Type D1)",
                     "x": x, "y": y, "z": z,
-                    "pitch": pitch, "yaw": yaw, "roll": roll
+                    "pitch": pitch, "yaw": yaw, "roll": roll,
+                    "timestamp": None
                 }
             except Exception:
                 pass
@@ -2651,10 +2706,12 @@ class CamTrackDesktopApp:
                 tx, ty, tz = payload["translation"]
                 pitch, yaw, roll = payload["rotation"]
                 device_name = payload.get("deviceName", "AbuTrack")
+                timestamp = payload.get("timestamp", None)
                 return {
                     "type": f"Live Link ({device_name})",
                     "x": tx, "y": ty, "z": tz,
-                    "pitch": pitch, "yaw": yaw, "roll": roll
+                    "pitch": pitch, "yaw": yaw, "roll": roll,
+                    "timestamp": timestamp
                 }
         except Exception:
             pass
