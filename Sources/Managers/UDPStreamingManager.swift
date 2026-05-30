@@ -155,6 +155,26 @@ class UDPStreamingManager: ObservableObject {
         }
     }
     
+    // Coordinate Alignment Profile
+    @Published var coordinatePreset: String {
+        didSet { UserDefaults.standard.set(coordinatePreset, forKey: "coordinatePreset") }
+    }
+    @Published var xMapSource: String { didSet { UserDefaults.standard.set(xMapSource, forKey: "xMapSource") } }
+    @Published var yMapSource: String { didSet { UserDefaults.standard.set(yMapSource, forKey: "yMapSource") } }
+    @Published var zMapSource: String { didSet { UserDefaults.standard.set(zMapSource, forKey: "zMapSource") } }
+    
+    @Published var xMapSign: Double { didSet { UserDefaults.standard.set(xMapSign, forKey: "xMapSign") } }
+    @Published var yMapSign: Double { didSet { UserDefaults.standard.set(yMapSign, forKey: "yMapSign") } }
+    @Published var zMapSign: Double { didSet { UserDefaults.standard.set(zMapSign, forKey: "zMapSign") } }
+    
+    @Published var rollMapSource: String { didSet { UserDefaults.standard.set(rollMapSource, forKey: "rollMapSource") } }
+    @Published var pitchMapSource: String { didSet { UserDefaults.standard.set(pitchMapSource, forKey: "pitchMapSource") } }
+    @Published var yawMapSource: String { didSet { UserDefaults.standard.set(yawMapSource, forKey: "yawMapSource") } }
+    
+    @Published var rollMapSign: Double { didSet { UserDefaults.standard.set(rollMapSign, forKey: "rollMapSign") } }
+    @Published var pitchMapSign: Double { didSet { UserDefaults.standard.set(pitchMapSign, forKey: "pitchMapSign") } }
+    @Published var yawMapSign: Double { didSet { UserDefaults.standard.set(yawMapSign, forKey: "yawMapSign") } }
+    
     private var bsdSender = BSDUDPSender()
     private let queue = DispatchQueue(label: "com.abutrack.udpstreaming", qos: .userInteractive)
     
@@ -166,6 +186,23 @@ class UDPStreamingManager: ObservableObject {
         
         let formatStr = UserDefaults.standard.string(forKey: "streamingFormat") ?? StreamingFormat.liveLink.rawValue
         self.format = StreamingFormat(rawValue: formatStr) ?? .liveLink
+        
+        self.coordinatePreset = UserDefaults.standard.string(forKey: "coordinatePreset") ?? "Default (ARKit)"
+        self.xMapSource = UserDefaults.standard.string(forKey: "xMapSource") ?? "X"
+        self.yMapSource = UserDefaults.standard.string(forKey: "yMapSource") ?? "Y"
+        self.zMapSource = UserDefaults.standard.string(forKey: "zMapSource") ?? "Z"
+        
+        self.xMapSign = UserDefaults.standard.double(forKey: "xMapSign") == 0 ? 1.0 : UserDefaults.standard.double(forKey: "xMapSign")
+        self.yMapSign = UserDefaults.standard.double(forKey: "yMapSign") == 0 ? 1.0 : UserDefaults.standard.double(forKey: "yMapSign")
+        self.zMapSign = UserDefaults.standard.double(forKey: "zMapSign") == 0 ? 1.0 : UserDefaults.standard.double(forKey: "zMapSign")
+        
+        self.rollMapSource = UserDefaults.standard.string(forKey: "rollMapSource") ?? "Roll"
+        self.pitchMapSource = UserDefaults.standard.string(forKey: "pitchMapSource") ?? "Pitch"
+        self.yawMapSource = UserDefaults.standard.string(forKey: "yawMapSource") ?? "Yaw"
+        
+        self.rollMapSign = UserDefaults.standard.double(forKey: "rollMapSign") == 0 ? 1.0 : UserDefaults.standard.double(forKey: "rollMapSign")
+        self.pitchMapSign = UserDefaults.standard.double(forKey: "pitchMapSign") == 0 ? 1.0 : UserDefaults.standard.double(forKey: "pitchMapSign")
+        self.yawMapSign = UserDefaults.standard.double(forKey: "yawMapSign") == 0 ? 1.0 : UserDefaults.standard.double(forKey: "yawMapSign")
         
         if isStreamingEnabled {
             startConnection()
@@ -219,13 +256,51 @@ class UDPStreamingManager: ObservableObject {
     func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) {
         guard isStreamingEnabled else { return }
         
+        var tx = x
+        var ty = y
+        var tz = z
+        var mYaw = yaw
+        var mPitch = pitch
+        var mRoll = roll
+        
+        switch coordinatePreset {
+        case "Default (ARKit)":
+            break
+        case "Unreal Engine":
+            tx = x
+            ty = z
+            tz = y
+            mYaw = yaw
+            mPitch = pitch
+            mRoll = roll
+        case "Metashape":
+            tx = x
+            ty = -z
+            tz = y
+            mYaw = yaw
+            mPitch = pitch
+            mRoll = roll
+        case "Custom":
+            let inputs = ["X": x, "Y": y, "Z": z]
+            tx = (inputs[xMapSource] ?? x) * xMapSign
+            ty = (inputs[yMapSource] ?? y) * yMapSign
+            tz = (inputs[zMapSource] ?? z) * zMapSign
+            
+            let rotInputs = ["Roll": roll, "Pitch": pitch, "Yaw": yaw]
+            mRoll = (rotInputs[rollMapSource] ?? roll) * rollMapSign
+            mPitch = (rotInputs[pitchMapSource] ?? pitch) * pitchMapSign
+            mYaw = (rotInputs[yawMapSource] ?? yaw) * yawMapSign
+        default:
+            break
+        }
+        
         let data: Data
         
         switch format {
         case .liveLink:
-            data = formatLiveLink(x: x, y: y, z: z, yaw: yaw, pitch: pitch, roll: roll)
+            data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
         case .freeD:
-            data = formatFreeD(x: x, y: y, z: z, yaw: yaw, pitch: pitch, roll: roll)
+            data = formatFreeD(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
         }
         
         // Broadcast the formatted tracking payload to all active connections

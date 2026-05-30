@@ -108,8 +108,11 @@ class CamTrackDesktopApp:
         self.receiver_frames_var = tk.StringVar(value="0")
         self.receiver_hz_var = tk.StringVar(value="0.0 Hz")
         self.receiver_raw_hz_var = tk.StringVar(value="0.0 Hz (Raw)")
+        self.receiver_real_hz_var = tk.StringVar(value="0.0 Hz (iOS Lock)")
         self.receiver_latency_var = tk.StringVar(value="No Sync (0.0 ms)")
         self.receiver_smoothing_sec = tk.DoubleVar(value=1.0)
+        self.receiver_buffer_ms = tk.DoubleVar(value=100.0)
+        self.receiver_pc_time_var = tk.StringVar(value="00:00:00.000")
         
         self.pose_x_var = tk.StringVar(value="0.0000 m")
         self.pose_y_var = tk.StringVar(value="0.0000 m")
@@ -119,6 +122,7 @@ class CamTrackDesktopApp:
         self.pose_yaw_var = tk.StringVar(value="0.00°")
         
         self.build_ui()
+        self.root.after(33, self.update_pc_local_time)
         
     def setup_styles(self):
         style = ttk.Style()
@@ -531,41 +535,51 @@ class CamTrackDesktopApp:
         ip_label = ttk.Label(rx_diag_card, text=", ".join(self.get_local_ips()), foreground=ACCENT_CYAN, font=("Consolas", 8, "bold"))
         ip_label.grid(row=1, column=1, sticky="e", pady=4)
         
+        # PC System Time
+        ttk.Label(rx_diag_card, text="PC Epoch Time:").grid(row=2, column=0, sticky="w", pady=4)
+        pc_time_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_pc_time_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
+        pc_time_lbl.grid(row=2, column=1, sticky="e", pady=4)
+        
         # Status
-        ttk.Label(rx_diag_card, text="Receiver State:").grid(row=2, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Receiver State:").grid(row=3, column=0, sticky="w", pady=4)
         self.rx_status_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_status_var, font=("Consolas", 9, "bold"), foreground=TEXT_MUTED)
-        self.rx_status_lbl.grid(row=2, column=1, sticky="e", pady=4)
+        self.rx_status_lbl.grid(row=3, column=1, sticky="e", pady=4)
         
         # Detected Protocol
-        ttk.Label(rx_diag_card, text="Detected Format:").grid(row=3, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Detected Format:").grid(row=4, column=0, sticky="w", pady=4)
         fmt_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_format_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        fmt_lbl.grid(row=3, column=1, sticky="e", pady=4)
+        fmt_lbl.grid(row=4, column=1, sticky="e", pady=4)
         
         # Total Frames
-        ttk.Label(rx_diag_card, text="Frames Received:").grid(row=4, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Frames Received:").grid(row=5, column=0, sticky="w", pady=4)
         frames_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_frames_var, font=("Consolas", 9, "bold"))
-        frames_lbl.grid(row=4, column=1, sticky="e", pady=4)
+        frames_lbl.grid(row=5, column=1, sticky="e", pady=4)
         
-        # Pure Frequency
-        ttk.Label(rx_diag_card, text="Data Frequency (Pure):").grid(row=5, column=0, sticky="w", pady=4)
+        # Real iOS Source Frequency
+        ttk.Label(rx_diag_card, text="Real Source Hz (iOS Lock):").grid(row=6, column=0, sticky="w", pady=4)
+        real_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_real_hz_var, foreground=ACCENT_GREEN, font=("Consolas", 9, "bold"))
+        real_hz_lbl.grid(row=6, column=1, sticky="e", pady=4)
+        
+        # Buffered Delivery Stable Frequency
+        ttk.Label(rx_diag_card, text="Buffered Delivery (Stable):").grid(row=7, column=0, sticky="w", pady=4)
         hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_hz_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
-        hz_lbl.grid(row=5, column=1, sticky="e", pady=4)
+        hz_lbl.grid(row=7, column=1, sticky="e", pady=4)
         
         # Raw Network Frequency
-        ttk.Label(rx_diag_card, text="Network Delivery (Raw):").grid(row=6, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Network Delivery (Raw):").grid(row=8, column=0, sticky="w", pady=4)
         raw_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_raw_hz_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        raw_hz_lbl.grid(row=6, column=1, sticky="e", pady=4)
+        raw_hz_lbl.grid(row=8, column=1, sticky="e", pady=4)
         
         # Latency / Time Shift
-        ttk.Label(rx_diag_card, text="Clock Latency Shift:").grid(row=7, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Clock Latency Shift:").grid(row=9, column=0, sticky="w", pady=4)
         latency_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_latency_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
-        latency_lbl.grid(row=7, column=1, sticky="e", pady=4)
+        latency_lbl.grid(row=9, column=1, sticky="e", pady=4)
         
         # Smoothing Window Slider
-        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=8, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=10, column=0, sticky="w", pady=4)
         
         smoothing_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        smoothing_frame.grid(row=8, column=1, sticky="e", pady=4)
+        smoothing_frame.grid(row=10, column=1, sticky="e", pady=4)
         
         smooth_slider = ttk.Scale(smoothing_frame, from_=0.1, to=5.0, value=1.0, variable=self.receiver_smoothing_sec, command=lambda v: self._update_smoothing_label())
         smooth_slider.pack(side="left", padx=(0, 4))
@@ -573,10 +587,22 @@ class CamTrackDesktopApp:
         self.smooth_lbl = ttk.Label(smoothing_frame, text="1.0s", font=("Consolas", 8, "bold"))
         self.smooth_lbl.pack(side="left")
         
+        # Playout Buffer Slider
+        ttk.Label(rx_diag_card, text="Playout Buffer Delay (ms):").grid(row=11, column=0, sticky="w", pady=4)
+        
+        buffer_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
+        buffer_frame.grid(row=11, column=1, sticky="e", pady=4)
+        
+        buffer_slider = ttk.Scale(buffer_frame, from_=0, to=1000, value=100, variable=self.receiver_buffer_ms, command=lambda v: self._update_buffer_label())
+        buffer_slider.pack(side="left", padx=(0, 4))
+        
+        self.buffer_lbl = ttk.Label(buffer_frame, text="100ms", font=("Consolas", 8, "bold"))
+        self.buffer_lbl.pack(side="left")
+        
         # Visual Ping indicator (Canvas)
-        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=9, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=12, column=0, sticky="w", pady=4)
         self.ping_canvas = tk.Canvas(rx_diag_card, width=16, height=16, bg=CARD_BG, highlightthickness=0)
-        self.ping_canvas.grid(row=9, column=1, sticky="e", pady=4)
+        self.ping_canvas.grid(row=12, column=1, sticky="e", pady=4)
         self.ping_light = self.ping_canvas.create_oval(2, 2, 14, 14, fill=FIELD_BG, outline=BORDER_COLOR)
         
         # Right Panel
@@ -2527,6 +2553,18 @@ class CamTrackDesktopApp:
         val = self.receiver_smoothing_sec.get()
         self.smooth_lbl.configure(text=f"{val:.1f}s")
 
+    def _update_buffer_label(self):
+        val = self.receiver_buffer_ms.get()
+        self.buffer_lbl.configure(text=f"{int(val)}ms")
+
+    def update_pc_local_time(self):
+        import time
+        now = time.time()
+        time_str = time.strftime('%H:%M:%S', time.localtime(now))
+        ms = int((now % 1.0) * 1000)
+        self.receiver_pc_time_var.set(f"{time_str}.{ms:03d} ({now:.3f})")
+        self.root.after(33, self.update_pc_local_time)
+
     def start_receiver(self):
         if self.receiver_running:
             return
@@ -2557,15 +2595,25 @@ class CamTrackDesktopApp:
         
         self.rx_log(f"RECEIVER STATE // Listening on port {port} (0.0.0.0:{port}). READY FOR STREAM!")
         
+        self.playout_buffer = []
+        self.playout_lock = threading.Lock()
+        self.playout_running = True
+        self.last_source_timestamp = None
+        self.last_detected_format = None
+        
         import threading
         self.receiver_thread = threading.Thread(target=self.run_receiver_socket, daemon=True)
         self.receiver_thread.start()
+        
+        self.playout_thread = threading.Thread(target=self.run_playout_loop, daemon=True)
+        self.playout_thread.start()
 
     def stop_receiver(self):
         if not self.receiver_running:
             return
             
         self.receiver_running = False
+        self.playout_running = False
         
         if self.receiver_sock:
             try:
@@ -2603,7 +2651,6 @@ class CamTrackDesktopApp:
                 
             now = time.time()
             self.receiver_packet_count += 1
-            self.receiver_sec_packet_count += 1
             
             # 1. Raw Network Frequency (Packet-to-packet delta)
             raw_hz = 0.0
@@ -2613,35 +2660,95 @@ class CamTrackDesktopApp:
                     raw_hz = 1.0 / delta
             self.receiver_last_time = now
             
-            # 2. Pure Data Frequency (Average Hz over user-defined smoothing window)
-            window_sec = max(0.1, self.receiver_smoothing_sec.get())
-            if self.receiver_sec_start is not None:
-                elapsed = now - self.receiver_sec_start
-                if elapsed >= window_sec:
-                    self.receiver_frequency = float(self.receiver_sec_packet_count) / elapsed
-                    self.receiver_sec_packet_count = 0
-                    self.receiver_sec_start = now
+            # Update raw frequency display instantly
+            self.root.after(0, lambda r_hz=raw_hz: self.receiver_raw_hz_var.set(f"{r_hz:.1f} Hz (Raw)"))
             
             parsed = self.parse_incoming_packet(data)
             
             if parsed:
+                parsed["addr_str"] = f"{addr[0]}:{addr[1]}"
+                timestamp = parsed.get("timestamp", None)
+                
+                # 2. Real Source Frequency (iOS Lock)
+                if timestamp is not None:
+                    if self.last_source_timestamp is not None:
+                        source_delta = timestamp - self.last_source_timestamp
+                        if 0.001 < source_delta < 5.0:
+                            source_hz = 1.0 / source_delta
+                            self.root.after(0, lambda hz=source_hz: self.receiver_real_hz_var.set(f"{hz:.1f} Hz (iOS Lock)"))
+                    self.last_source_timestamp = timestamp
+                else:
+                    self.root.after(0, lambda: self.receiver_real_hz_var.set("No Stamp (FreeD)"))
+                
+                # 3. Calculate latency / time shift
+                time_shift_ms = 0.0
+                if timestamp is not None:
+                    time_shift_ms = (now - timestamp) * 1000.0
+                
+                # Append to playout buffer under thread-safe lock
+                with self.playout_lock:
+                    self.playout_buffer.append((now, parsed, raw_hz, self.receiver_packet_count, time_shift_ms))
+            else:
+                log_msg = f"[{time.strftime('%H:%M:%S')}] Unknown packet from {addr[0]}:{addr[1]} ({len(data)} bytes)"
+                self.root.after(0, lambda m=log_msg: self.rx_log(m))
+
+    def run_playout_loop(self):
+        import time
+        last_playout_time = None
+        playout_packet_count = 0
+        playout_sec_start = time.time()
+        playout_sec_packet_count = 0
+        self.buffered_delivery_hz = 0.0
+        
+        while self.playout_running:
+            now = time.time()
+            buffer_delay = self.receiver_buffer_ms.get() / 1000.0
+            
+            packet_to_play = None
+            with self.playout_lock:
+                if self.playout_buffer:
+                    # Look at the oldest packet
+                    arrival_time, parsed, r_hz, raw_count, shift_ms = self.playout_buffer[0]
+                    if now - arrival_time >= buffer_delay:
+                        packet_to_play = self.playout_buffer.pop(0)
+            
+            if packet_to_play:
+                arrival_time, parsed, r_hz, raw_count, shift_ms = packet_to_play
+                
+                playout_now = time.time()
+                playout_packet_count += 1
+                playout_sec_packet_count += 1
+                
+                # Calculate playout (buffered) average frequency over window
+                window_sec = max(0.1, self.receiver_smoothing_sec.get())
+                elapsed = playout_now - playout_sec_start
+                if elapsed >= window_sec:
+                    self.buffered_delivery_hz = float(playout_sec_packet_count) / elapsed
+                    playout_sec_packet_count = 0
+                    playout_sec_start = playout_now
+                
+                # Extract coordinates
                 px, py, pz = parsed["x"], parsed["y"], parsed["z"]
                 pitch, yaw, roll = parsed["pitch"], parsed["yaw"], parsed["roll"]
                 fmt_type = parsed["type"]
                 timestamp = parsed.get("timestamp", None)
+                addr_str = parsed.get("addr_str", "iOS")
                 
-                # Calculate latency / time shift
+                if getattr(self, 'last_detected_format', None) != fmt_type:
+                    self.last_detected_format = fmt_type
+                    self.root.after(0, lambda f=fmt_type: self.rx_log(f"PROTOCOL SWAP DETECTED // Active Protocol: {f}"))
+                
+                # Format time shift / latency string
                 latency_str = "No Sync (N/A)"
                 if timestamp is not None:
-                    time_shift_ms = (now - timestamp) * 1000.0
-                    latency_str = f"{time_shift_ms:+.1f} ms"
+                    latency_str = f"{shift_ms:+.1f} ms"
+                elif "FreeD" in fmt_type:
+                    latency_str = "No Sync (N/A) - FreeD has no timestamp payload"
                 
+                # Update UI elements
                 self.root.after(0, lambda fmt=fmt_type: self.receiver_format_var.set(fmt))
-                self.root.after(0, lambda c=self.receiver_packet_count: self.receiver_frames_var.set(str(c)))
-                
-                # Update both frequencies and latency displays
-                self.root.after(0, lambda hz=self.receiver_frequency: self.receiver_hz_var.set(f"{hz:.1f} Hz"))
-                self.root.after(0, lambda r_hz=raw_hz: self.receiver_raw_hz_var.set(f"{r_hz:.1f} Hz (Raw)"))
+                self.root.after(0, lambda c=playout_packet_count: self.receiver_frames_var.set(str(c)))
+                self.root.after(0, lambda hz=self.buffered_delivery_hz: self.receiver_hz_var.set(f"{hz:.1f} Hz"))
                 self.root.after(0, lambda lat=latency_str: self.receiver_latency_var.set(lat))
                 
                 self.root.after(0, lambda x=px: self.pose_x_var.set(f"{x:.4f} m"))
@@ -2653,15 +2760,15 @@ class CamTrackDesktopApp:
                 
                 self.root.after(0, self.trigger_ping_blink)
                 
-                # Print the timestamp and latency shift info directly in the raw log line!
+                # Console logs
                 if timestamp is not None:
-                    log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr[0]}:{addr[1]} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Shift: {time_shift_ms:+.1f}ms"
+                    log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Shift: {shift_ms:+.1f}ms"
                 else:
-                    log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr[0]}:{addr[1]} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) [FreeD]"
+                    log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) [FreeD]"
                 self.root.after(0, lambda m=log_msg: self.rx_log(m))
             else:
-                log_msg = f"[{time.strftime('%H:%M:%S')}] Unknown packet from {addr[0]}:{addr[1]} ({len(data)} bytes)"
-                self.root.after(0, lambda m=log_msg: self.rx_log(m))
+                # Sleep a tiny bit to avoid spinning the CPU
+                time.sleep(0.001)
 
     def parse_incoming_packet(self, data):
         if len(data) == 29 and data[0] in (0xD1, 0xD2):

@@ -46,6 +46,7 @@ struct DashboardView: View {
     // Hardware Load Diagnostic State
     @State private var cpuUsage: Double = 0.0
     @State private var ramUsage: Double = 0.0
+    @State private var localEpochTimeStr: String = "00:00:00.000"
     @State private var hardwareTimer: Timer?
     
     // Toggles for Trajectory and Camera Position
@@ -264,7 +265,7 @@ struct DashboardView: View {
                                     
                                     Spacer()
                                     
-                                    Text(trackingManager.isTrackingActive ? formatDuration(sessionDuration) : "STANDBY")
+                                    Text(trackingManager.isTrackingActive ? formatDuration(trackingManager.sessionDuration) : "STANDBY")
                                         .font(.system(size: 10, design: .monospaced))
                                         .foregroundColor(trackingManager.isTrackingActive ? .red : .gray)
                                 }
@@ -308,7 +309,11 @@ struct DashboardView: View {
                                 Divider().background(Color.gray.opacity(0.1))
                                 TelemetryRow(label: "SYS HARDWARE LOAD (CPU/RAM)", value: String(format: "CPU: %.1f%%  RAM: %.1f%%", cpuUsage, ramUsage), highlight: cpuUsage > 80.0 || ramUsage > 80.0 ? .red : .green)
                                 Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "SESSION TELEMETRY DATA", value: activeSessionID != nil ? "ID: \(String(activeSessionID!.suffix(8)))  [REC: \(entryCount)]" : "STREAM DISCONNECTED", highlight: .yellow)
+                                TelemetryRow(label: "MOBILE EPOCH SYSTEM TIME", value: localEpochTimeStr, highlight: .orange)
+                                Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "MOBILE LOCAL IP ADDRESS", value: UDPStreamingManager.getLocalIPAddress(), highlight: .green)
+                                Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "SESSION TELEMETRY DATA", value: trackingManager.activeSessionID != nil ? "ID: \(String(trackingManager.activeSessionID!.suffix(8)))  [REC: \(trackingManager.entryCount)]" : "STREAM DISCONNECTED", highlight: .yellow)
                             }
                             .background(Color(red: 0.06, green: 0.08, blue: 0.15))
                             .cornerRadius(10)
@@ -349,42 +354,34 @@ struct DashboardView: View {
                 }
             }
             
-            // Periodic Hardware Diagnostics Timer (CPU / RAM Load monitoring)
-            hardwareTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-                self.cpuUsage = getCPUUsage()
-                self.ramUsage = getMemoryUsage().used
+            // Periodic Hardware Diagnostics & System Clock Timer (50ms refresh for smooth millisecond clock)
+            var ticks = 0
+            hardwareTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
+                self.localEpochTimeStr = getEpochClockString()
+                ticks += 1
+                if ticks % 20 == 0 { // every 1.0s, update CPU/RAM metrics
+                    self.cpuUsage = getCPUUsage()
+                    self.ramUsage = getMemoryUsage().used
+                }
             }
         }
         .onDisappear {
             hardwareTimer?.invalidate()
             hardwareTimer = nil
-            if activeSessionID == nil {
+            if trackingManager.activeSessionID == nil {
                 cameraManager.stopHardwareSession()
             }
         }
         .onChange(of: captureRate) { newRate in
-            if activeSessionID != nil {
-                rescheduleSessionTimer(newRate: newRate)
+            if trackingManager.activeSessionID != nil {
+                trackingManager.rescheduleSessionTimer(newRate: newRate)
             }
         }
-    }
-    
-    private func rescheduleSessionTimer(newRate: Double) {
-        guard let timer = sessionTimer else { return }
-        print("DashboardView: Rescheduling session timer on the fly to \(newRate) Hz")
-        let intervalNs = Int(1_000_000_000.0 / newRate)
-        timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs), leeway: .nanoseconds(0))
     }
     
     // MARK: - Session Controllers
     
     private func startSession() {
-        let sessionID = TelemetryLogger.shared.startNewSession()
-        self.activeSessionID = sessionID
-        self.startTime = Date()
-        self.entryCount = 0
-        self.sessionDuration = 0.0
-        
         // Prevent screen auto-lock to keep tracking active
         UIApplication.shared.isIdleTimerDisabled = true
         
@@ -392,74 +389,22 @@ struct DashboardView: View {
         locationManager.startUpdates()
         trackingManager.startTracking(frequency: captureRate)
         
-        // Start in-app camera session if active
-        if captureMode == .singleDevice {
-            cameraManager.startSession(sessionID: sessionID)
-        }
-        
         // Automatically snap viewport to active camera coordinate
         self.panX = trackingManager.localX
         self.panY = trackingManager.localY
         self.panZ = trackingManager.localZ
         self.rotY = -trackingManager.yaw * Double.pi / 180.0
         
-        // High-Precision GCD Timer for Jitter-Free 60Hz/30Hz/25Hz/10Hz Poses
-        let queue = DispatchQueue(label: "com.abutrack.sessiontimer", qos: .userInteractive)
-        let timer = DispatchSource.makeTimerSource(queue: queue)
-        let intervalNs = Int(1_000_000_000.0 / captureRate)
+        // Trigger shared, persistent high-precision session capture
+        trackingManager.startSessionTimer(captureRate: captureRate)
         
-        timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs), leeway: .nanoseconds(0))
-        timer.setEventHandler {
-            // Log Telemetry Record
-            let entry = TelemetryEntry(
-                timestamp: Date().timeIntervalSince1970 * 1000.0,
-                localX: self.trackingManager.localX,
-                localY: self.trackingManager.localY,
-                localZ: self.trackingManager.localZ,
-                relativeAltitude: self.trackingManager.relativeAltitude,
-                pressure: self.trackingManager.pressureInKPa,
-                pitch: self.trackingManager.pitch,
-                roll: self.trackingManager.roll,
-                yaw: self.trackingManager.yaw,
-                q_w: self.trackingManager.q_w,
-                q_x: self.trackingManager.q_x,
-                q_y: self.trackingManager.q_y,
-                q_z: self.trackingManager.q_z,
-                isGPSEnabled: self.locationManager.isGPSEnabled,
-                latitude: self.locationManager.latitude,
-                longitude: self.locationManager.longitude,
-                gpsAltitude: self.locationManager.altitude,
-                horizontalAccuracy: self.locationManager.horizontalAccuracy,
-                verticalAccuracy: self.locationManager.verticalAccuracy
-            )
-            
-            TelemetryLogger.shared.log(entry)
-            
-            DispatchQueue.main.async {
-                guard let start = self.startTime else { return }
-                self.sessionDuration = Date().timeIntervalSince(start)
-                self.entryCount += 1
-            }
-            
-            // Broadcast live UDP packets with microsecond-level precision
-            UDPStreamingManager.shared.stream(
-                x: self.trackingManager.localX,
-                y: self.trackingManager.localY,
-                z: self.trackingManager.localZ,
-                yaw: self.trackingManager.yaw,
-                pitch: self.trackingManager.pitch,
-                roll: self.trackingManager.roll
-            )
+        // Start in-app camera session if active
+        if captureMode == .singleDevice, let sessionID = trackingManager.activeSessionID {
+            cameraManager.startSession(sessionID: sessionID)
         }
-        
-        self.sessionTimer = timer
-        timer.resume()
     }
     
     private func stopSession() {
-        sessionTimer?.cancel()
-        sessionTimer = nil
-        
         // Restore standard screen auto-lock behavior
         UIApplication.shared.isIdleTimerDisabled = false
         
@@ -469,12 +414,12 @@ struct DashboardView: View {
         }
         
         // Write details to history index in UserDefaults
-        if let sessionID = activeSessionID, let start = startTime {
+        if let sessionID = trackingManager.activeSessionID, let start = trackingManager.startTime {
             let sessionInfo: [String: Any] = [
                 "id": sessionID,
                 "startTime": start.timeIntervalSince1970,
                 "endTime": Date().timeIntervalSince1970,
-                "entryCount": entryCount,
+                "entryCount": trackingManager.entryCount,
                 "isGPSEnabled": locationManager.isGPSEnabled
             ]
             
@@ -483,12 +428,11 @@ struct DashboardView: View {
             UserDefaults.standard.set(history, forKey: "sessionHistory")
         }
         
+        // Stop persistent session capturing timer and hardware tracking
+        trackingManager.stopSessionTimer()
         trackingManager.stopTracking()
         locationManager.stopUpdates()
         TelemetryLogger.shared.stopSession(sparsePointCloud: trackingManager.accumulatedPointCloud)
-        
-        self.activeSessionID = nil
-        self.startTime = nil
     }
     
     // Live microsecond-accurate photo georeferencer for Single-Device In-App RAW captures
@@ -667,6 +611,15 @@ struct DashboardView: View {
             // Standard non-georeferenced viewport aim capture
             cameraManager.capturePhoto(format: pictureFormat, is48MP: is48MP)
         }
+    }
+    
+    private func getEpochClockString() -> String {
+        let now = Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        let timeStr = formatter.string(from: now)
+        let ms = Int((now.timeIntervalSince1970.truncatingRemainder(dividingBy: 1)) * 1000)
+        return String(format: "%@.%03d  (%.3f)", timeStr, ms, now.timeIntervalSince1970)
     }
     
     private func formatDuration(_ interval: TimeInterval) -> String {

@@ -199,6 +199,9 @@ struct SettingsView: View {
                                                 .keyboardType(.numbersAndPunctuation)
                                                 .autocapitalization(.none)
                                                 .disableAutocorrection(true)
+                                                .onSubmit {
+                                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                                }
                                         }
                                     } else {
                                         VStack(alignment: .leading, spacing: 4) {
@@ -232,6 +235,9 @@ struct SettingsView: View {
                                         .cornerRadius(8)
                                         .foregroundColor(.white)
                                         .keyboardType(.numberPad)
+                                        .onSubmit {
+                                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                        }
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 6) {
@@ -248,6 +254,160 @@ struct SettingsView: View {
                                         .pickerStyle(SegmentedPickerStyle())
                                         .padding(.top, 4)
                                     }
+                                }
+                            }
+                            .padding()
+                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
+                            .cornerRadius(14)
+                            .padding(.horizontal)
+                        }
+                        
+                        // Section 2.5: Coordinate Alignment Profile
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Coordinate System Alignment")
+                                .font(.caption)
+                                .fontWeight(.black)
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal)
+                            
+                            VStack(alignment: .leading, spacing: 15) {
+                                Text("Align your iOS motion coordinate axes with your virtual production pipeline (e.g. Unreal Engine, Metashape).")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Pipeline Profile Preset")
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.gray)
+                                    
+                                    Picker("Alignment Profile", selection: $streamManager.coordinatePreset) {
+                                        Text("Default (ARKit)").tag("Default (ARKit)")
+                                        Text("Unreal Engine").tag("Unreal Engine")
+                                        Text("Metashape").tag("Metashape")
+                                        Text("Custom").tag("Custom")
+                                    }
+                                    .pickerStyle(SegmentedPickerStyle())
+                                }
+                                
+                                if streamManager.coordinatePreset == "Custom" {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("Custom Translation Axes Mapping")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.cyan)
+                                            .padding(.top, 4)
+                                        
+                                        // X Mapping
+                                        HStack {
+                                            Text("Output X Axis:")
+                                                .font(.footnote)
+                                                .fontWeight(.bold)
+                                            Spacer()
+                                            Picker("X Sign", selection: $streamManager.xMapSign) {
+                                                Text("+").tag(1.0)
+                                                Text("-").tag(-1.0)
+                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                            Picker("X Source", selection: $streamManager.xMapSource) {
+                                                Text("X").tag("X")
+                                                Text("Y").tag("Y")
+                                                Text("Z").tag("Z")
+                                            }.pickerStyle(MenuPickerStyle()).frame(width: 85)
+                                        }
+                                        
+                                        // Y Mapping
+                                        HStack {
+                                            Text("Output Y Axis:")
+                                                .font(.footnote)
+                                                .fontWeight(.bold)
+                                            Spacer()
+                                            Picker("Y Sign", selection: $streamManager.yMapSign) {
+                                                Text("+").tag(1.0)
+                                                Text("-").tag(-1.0)
+                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                            Picker("Y Source", selection: $streamManager.yMapSource) {
+                                                Text("X").tag("X")
+                                                Text("Y").tag("Y")
+                                                Text("Z").tag("Z")
+                                            }.pickerStyle(MenuPickerStyle()).frame(width: 85)
+                                        }
+                                        
+                                        // Z Mapping
+                                        HStack {
+                                            Text("Output Z Axis:")
+                                                .font(.footnote)
+                                                .fontWeight(.bold)
+                                            Spacer()
+                                            Picker("Z Sign", selection: $streamManager.zMapSign) {
+                                                Text("+").tag(1.0)
+                                                Text("-").tag(-1.0)
+                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                            Picker("Z Source", selection: $streamManager.zMapSource) {
+                                                Text("X").tag("X")
+                                                Text("Y").tag("Y")
+                                                Text("Z").tag("Z")
+                                            }.pickerStyle(MenuPickerStyle()).frame(width: 85)
+                                        }
+                                        
+                                        Divider().background(Color.gray.opacity(0.3))
+                                        
+                                        Text("Custom Rotation Axes Mapping")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.cyan)
+                                        
+                                        // Rotation Pitch Mapping
+                                        HStack {
+                                            Text("Output Pitch:")
+                                                .font(.footnote)
+                                                .fontWeight(.bold)
+                                            Spacer()
+                                            Picker("Pitch Sign", selection: $streamManager.pitchMapSign) {
+                                                Text("+").tag(1.0)
+                                                Text("-").tag(-1.0)
+                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                            Picker("Pitch Source", selection: $streamManager.pitchMapSource) {
+                                                Text("Roll").tag("Roll")
+                                                Text("Pitch").tag("Pitch")
+                                                Text("Yaw").tag("Yaw")
+                                            }.pickerStyle(MenuPickerStyle()).frame(width: 95)
+                                        }
+                                        
+                                        // Rotation Yaw Mapping
+                                        HStack {
+                                            Text("Output Yaw:")
+                                                .font(.footnote)
+                                                .fontWeight(.bold)
+                                            Spacer()
+                                            Picker("Yaw Sign", selection: $streamManager.yawMapSign) {
+                                                Text("+").tag(1.0)
+                                                Text("-").tag(-1.0)
+                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                            Picker("Yaw Source", selection: $streamManager.yawMapSource) {
+                                                Text("Roll").tag("Roll")
+                                                Text("Pitch").tag("Pitch")
+                                                Text("Yaw").tag("Yaw")
+                                            }.pickerStyle(MenuPickerStyle()).frame(width: 95)
+                                        }
+                                        
+                                        // Rotation Roll Mapping
+                                        HStack {
+                                            Text("Output Roll:")
+                                                .font(.footnote)
+                                                .fontWeight(.bold)
+                                            Spacer()
+                                            Picker("Roll Sign", selection: $streamManager.rollMapSign) {
+                                                Text("+").tag(1.0)
+                                                Text("-").tag(-1.0)
+                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                            Picker("Roll Source", selection: $streamManager.rollMapSource) {
+                                                Text("Roll").tag("Roll")
+                                                Text("Pitch").tag("Pitch")
+                                                Text("Yaw").tag("Yaw")
+                                            }.pickerStyle(MenuPickerStyle()).frame(width: 95)
+                                        }
+                                    }
+                                    .padding(.top, 5)
                                 }
                             }
                             .padding()
@@ -326,6 +486,10 @@ struct SettingsView: View {
                         }
                     }
                     .padding(.bottom, 20)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
                 }
             }
             .onTapGesture {

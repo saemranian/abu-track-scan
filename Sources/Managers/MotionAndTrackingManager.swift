@@ -62,6 +62,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     @Published var cameraTrajectory: [RawPoint3D] = []
     private var pointKeys = Set<String>()
     
+    // Capturing Session Properties
+    @Published var sessionTimer: DispatchSourceTimer? = nil
+    @Published var sessionDuration: TimeInterval = 0.0
+    @Published var entryCount: Int = 0
+    @Published var activeSessionID: String? = nil
+    @Published var startTime: Date? = nil
+    
     private var cancellables = Set<AnyCancellable>()
     private var isAltimeterRunning = false
     private var lastStreamTime: TimeInterval = 0
@@ -100,6 +107,82 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         stopARKitSession()
         stopCoreMotionUpdates()
         stopAltimeter()
+        stopSessionTimer()
+    }
+    
+    func startSessionTimer(captureRate: Double) {
+        stopSessionTimer()
+        
+        let sessionID = TelemetryLogger.shared.startNewSession()
+        self.activeSessionID = sessionID
+        self.startTime = Date()
+        self.entryCount = 0
+        self.sessionDuration = 0.0
+        
+        let queue = DispatchQueue(label: "com.abutrack.sessiontimer", qos: .userInteractive)
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        let intervalNs = Int(1_000_000_000.0 / captureRate)
+        
+        timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs), leeway: .nanoseconds(0))
+        timer.setEventHandler { [weak self] in
+            guard let self = self, self.isTrackingActive else { return }
+            
+            // Log Telemetry Record
+            let entry = TelemetryEntry(
+                timestamp: Date().timeIntervalSince1970 * 1000.0,
+                localX: self.localX,
+                localY: self.localY,
+                localZ: self.localZ,
+                relativeAltitude: self.relativeAltitude,
+                pressure: self.pressureInKPa,
+                pitch: self.pitch,
+                roll: self.roll,
+                yaw: self.yaw,
+                q_w: self.q_w,
+                q_x: self.q_x,
+                q_y: self.q_y,
+                q_z: self.q_z,
+                isGPSEnabled: UserDefaults.standard.bool(forKey: "isGPSEnabled"),
+                latitude: 0.0,
+                longitude: 0.0,
+                gpsAltitude: 0.0,
+                horizontalAccuracy: 0.0,
+                verticalAccuracy: 0.0
+            )
+            
+            TelemetryLogger.shared.log(entry)
+            
+            DispatchQueue.main.async {
+                guard let start = self.startTime else { return }
+                self.sessionDuration = Date().timeIntervalSince(start)
+                self.entryCount += 1
+            }
+            
+            // Broadcast live UDP packets with coordinate mappings applied
+            UDPStreamingManager.shared.stream(
+                x: self.localX,
+                y: self.localY,
+                z: self.localZ,
+                yaw: self.yaw,
+                pitch: self.pitch,
+                roll: self.roll
+            )
+        }
+        
+        self.sessionTimer = timer
+        timer.resume()
+    }
+    
+    func stopSessionTimer() {
+        sessionTimer?.cancel()
+        sessionTimer = nil
+    }
+    
+    func rescheduleSessionTimer(newRate: Double) {
+        guard let timer = sessionTimer else { return }
+        print("MotionAndTrackingManager: Rescheduling persistent session timer to \(newRate) Hz")
+        let intervalNs = Int(1_000_000_000.0 / newRate)
+        timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs), leeway: .nanoseconds(0))
     }
     
     // MARK: - ARKit Session Management (Foreground)
