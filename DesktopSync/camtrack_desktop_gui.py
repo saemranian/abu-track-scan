@@ -167,6 +167,27 @@ class CamTrackDesktopApp:
         self.pose_pitch_var = tk.StringVar(value="0.00°")
         self.pose_yaw_var = tk.StringVar(value="0.00°")
         
+        # Multi-Protocol Forwarder Server State
+        self.forward_enabled = tk.BooleanVar(value=True)
+        self.forward_host = tk.StringVar(value="127.0.0.1")
+        self.forward_port = tk.IntVar(value=8081)  # Default Unreal plugin listener port
+        self.forward_protocol = tk.StringVar(value="Live Link JSON")  # Options: Live Link JSON, FreeD Binary, OpenTrackIO JSON
+        self.forwarder_sock = None
+        
+        # Workstation Live 3D Projected Canvas State
+        self.live_points = []          # List of (x, y, z) tuples for point cloud
+        self.live_trajectory = []      # List of (x, y, z) camera positions
+        self.live_rot_x = -0.4         # Initial rotation Pitch
+        self.live_rot_y = -0.6         # Initial rotation Yaw
+        self.live_rot_z = 0.0          # Initial rotation Roll
+        self.live_pan_x = 0.0
+        self.live_pan_y = 0.0
+        self.live_pan_z = 0.0
+        self.live_zoom = 1.0
+        self.live_follow = tk.BooleanVar(value=True)
+        self.live_show_path = tk.BooleanVar(value=True)
+        self.live_show_points = tk.BooleanVar(value=True)
+        
         self.build_ui()
         self.root.report_callback_exception = self.report_callback_exception
         self.root.after(33, self.update_pc_local_time)
@@ -542,7 +563,7 @@ class CamTrackDesktopApp:
         self.notebook.add(self.tab_receiver, text="04 // LIVE TELEMETRY CHECKER")
         
         self.tab_receiver.columnconfigure(0, weight=4) # Left Controls Panel
-        self.tab_receiver.columnconfigure(1, weight=5) # Right Telemetry Panel
+        self.tab_receiver.columnconfigure(1, weight=6) # Right Panel
         self.tab_receiver.rowconfigure(0, weight=1)
         
         # Left Panel
@@ -577,12 +598,34 @@ class CamTrackDesktopApp:
         self.open_logs_btn = ttk.Button(rx_config_card, text="OPEN LOGS FOLDER", command=self.open_logs_folder)
         self.open_logs_btn.grid(row=3, column=1, sticky="ew", padx=(2, 0), pady=(6, 0), ipady=3)
         
+        # Card 1.5: Multi-Protocol Precision Forwarder
+        rx_forward_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
+        rx_forward_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        rx_forward_card.columnconfigure(1, weight=1)
+        
+        ttk.Label(rx_forward_card, text="02 // DYNAMIC UDP FORWARDER SERVER", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        
+        forward_chk = ttk.Checkbutton(rx_forward_card, text="Enable Target Forwarding", variable=self.forward_enabled, command=self.toggle_forwarding)
+        forward_chk.grid(row=1, column=0, columnspan=2, sticky="w", pady=4)
+        
+        ttk.Label(rx_forward_card, text="Target IP / Host:").grid(row=2, column=0, sticky="w", pady=4)
+        host_entry = ttk.Entry(rx_forward_card, textvariable=self.forward_host, width=15)
+        host_entry.grid(row=2, column=1, sticky="w", pady=4)
+        
+        ttk.Label(rx_forward_card, text="Target Port:").grid(row=3, column=0, sticky="w", pady=4)
+        tgt_port_entry = ttk.Entry(rx_forward_card, textvariable=self.forward_port, width=10)
+        tgt_port_entry.grid(row=3, column=1, sticky="w", pady=4)
+        
+        ttk.Label(rx_forward_card, text="Protocol Format:").grid(row=4, column=0, sticky="w", pady=4)
+        proto_combo = ttk.Combobox(rx_forward_card, textvariable=self.forward_protocol, values=["Live Link JSON", "FreeD Binary", "OpenTrackIO JSON"], state="readonly", width=18)
+        proto_combo.grid(row=4, column=1, sticky="w", pady=4)
+        
         # Card 2: PC Network & Stream Diagnostics
         rx_diag_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_diag_card.grid(row=1, column=0, sticky="nsew")
+        rx_diag_card.grid(row=2, column=0, sticky="nsew")
         rx_diag_card.columnconfigure(1, weight=1)
         
-        ttk.Label(rx_diag_card, text="02 // PC NETWORK DIAGNOSTICS", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(rx_diag_card, text="03 // PC NETWORK DIAGNOSTICS", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
         
         # Local IP List
         ttk.Label(rx_diag_card, text="PC Local IP(s):").grid(row=1, column=0, sticky="w", pady=4)
@@ -666,8 +709,9 @@ class CamTrackDesktopApp:
         rx_right = ttk.Frame(self.tab_receiver, padding=10)
         rx_right.grid(row=0, column=1, sticky="nsew")
         rx_right.columnconfigure(0, weight=1)
-        rx_right.rowconfigure(0, weight=6) # Large numerical indicators
-        rx_right.rowconfigure(1, weight=4) # Log console
+        rx_right.rowconfigure(0, weight=3) # Large numerical indicators
+        rx_right.rowconfigure(1, weight=5) # Live 3D Projected Canvas
+        rx_right.rowconfigure(2, weight=2) # Log console
         
         # Card 3: Large Pose Display
         rx_pose_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
@@ -678,7 +722,7 @@ class CamTrackDesktopApp:
         rx_pose_card.rowconfigure(2, weight=1)
         rx_pose_card.rowconfigure(3, weight=1)
         
-        ttk.Label(rx_pose_card, text="03 // LIVE CAMERA TRACKING POSITION & ORIENTATION", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(rx_pose_card, text="04 // LIVE CAMERA TRACKING POSITION & ORIENTATION", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
         
         # X / Y / Z Positions
         pos_frame = ttk.LabelFrame(rx_pose_card, text=" POSITION (METERS) ", padding=10)
@@ -718,13 +762,50 @@ class CamTrackDesktopApp:
         self.rot_yaw_lbl = ttk.Label(rot_frame, textvariable=self.pose_yaw_var, font=("Consolas", 15, "bold"), foreground=ACCENT_AMBER)
         self.rot_yaw_lbl.grid(row=1, column=2, pady=4)
         
+        # Card 3.5: Workstation Live 3D Projected Canvas
+        rx_canvas_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
+        rx_canvas_card.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+        rx_canvas_card.columnconfigure(0, weight=1)
+        rx_canvas_card.rowconfigure(1, weight=1)
+        
+        toolbar = ttk.Frame(rx_canvas_card, style="Card.TFrame")
+        toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+        
+        ttk.Label(toolbar, text="05 // LIVE 3D CANVAS MONITOR", style="Header.TLabel").pack(side="left")
+        
+        clear_btn = ttk.Button(toolbar, text="CLEAR", command=self.clear_live_data, width=7)
+        clear_btn.pack(side="right", padx=(4, 0))
+        
+        reset_btn = ttk.Button(toolbar, text="RESET", command=self.reset_live_view, width=7)
+        reset_btn.pack(side="right", padx=(4, 0))
+        
+        points_chk = ttk.Checkbutton(toolbar, text="LiDAR", variable=self.live_show_points, command=self.redraw_live_3d_canvas)
+        points_chk.pack(side="right", padx=(4, 0))
+        
+        path_chk = ttk.Checkbutton(toolbar, text="Path", variable=self.live_show_path, command=self.redraw_live_3d_canvas)
+        path_chk.pack(side="right", padx=(4, 0))
+        
+        follow_chk = ttk.Checkbutton(toolbar, text="Follow", variable=self.live_follow, command=self.redraw_live_3d_canvas)
+        follow_chk.pack(side="right", padx=(4, 0))
+        
+        self.live_canvas = tk.Canvas(rx_canvas_card, bg=BG_COLOR, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
+        self.live_canvas.grid(row=1, column=0, sticky="nsew")
+        
+        # Bind Canvas Drag Gestures
+        self.live_canvas.bind("<ButtonPress-1>", self.on_live_canvas_press)
+        self.live_canvas.bind("<B1-Motion>", self.on_live_canvas_orbit)
+        self.live_canvas.bind("<ButtonPress-3>", self.on_live_canvas_press)
+        self.live_canvas.bind("<B3-Motion>", self.on_live_canvas_pan)
+        self.live_canvas.bind("<MouseWheel>", self.on_live_canvas_scroll)
+        self.live_canvas.bind("<Configure>", lambda e: self.redraw_live_3d_canvas())
+        
         # Card 4: Console
         rx_console_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
-        rx_console_card.grid(row=1, column=0, sticky="nsew")
+        rx_console_card.grid(row=2, column=0, sticky="nsew")
         rx_console_card.columnconfigure(0, weight=1)
         rx_console_card.rowconfigure(1, weight=1)
         
-        ttk.Label(rx_console_card, text="04 // LIVE TRACKING STREAM LOG CONSOLE (LAST 15 FRAMES)", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
+        ttk.Label(rx_console_card, text="06 // LIVE TRACKING STREAM LOG CONSOLE (LAST 15 FRAMES)", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
         
         self.rx_console = tk.Text(rx_console_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 8), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
         self.rx_console.grid(row=1, column=0, sticky="nsew")
@@ -2649,6 +2730,15 @@ class CamTrackDesktopApp:
             messagebox.showerror("Socket Error", f"Failed to bind socket to port {port}:\n{str(e)}")
             return
             
+        # Initialize Forwarder socket if enabled
+        if self.forward_enabled.get():
+            try:
+                self.forwarder_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                logger.info(f"Forwarder socket initialized targeting: {self.forward_host.get()}:{self.forward_port.get()} [{self.forward_protocol.get()}]")
+            except Exception as fe:
+                logger.error("Failed to initialize dynamic UDP forwarder socket", exc_info=True)
+                self.forwarder_sock = None
+                
         self.receiver_running = True
         self.receiver_packet_count = 0
         self.receiver_last_time = None
@@ -2663,6 +2753,8 @@ class CamTrackDesktopApp:
         self.stop_rx_btn.state(["!disabled"])
         
         self.rx_log(f"RECEIVER STATE // Listening on port {port} (0.0.0.0:{port}). READY FOR STREAM!")
+        if self.forward_enabled.get():
+            self.rx_log(f"FORWARD STATE // Active Forwarder -> {self.forward_host.get()}:{self.forward_port.get()} [{self.forward_protocol.get()}]")
         
         self.playout_buffer = []
         self.playout_lock = threading.Lock()
@@ -2692,6 +2784,14 @@ class CamTrackDesktopApp:
             except Exception as e:
                 logger.error("Error closing UDP socket", exc_info=True)
             self.receiver_sock = None
+            
+        if self.forwarder_sock:
+            try:
+                self.forwarder_sock.close()
+                logger.info("Forwarder socket closed successfully.")
+            except Exception:
+                pass
+            self.forwarder_sock = None
             
         self.receiver_status_var.set("OFFLINE")
         self.rx_status_lbl.configure(foreground=TEXT_MUTED)
@@ -2871,6 +2971,32 @@ class CamTrackDesktopApp:
                 
                 self.root.after(0, self.trigger_ping_blink)
                 
+                # Append camera position to live 3D trajectory
+                if not self.live_trajectory or math.sqrt((px - self.live_trajectory[-1][0])**2 + (py - self.live_trajectory[-1][1])**2 + (pz - self.live_trajectory[-1][2])**2) > 0.01:
+                    self.live_trajectory.append((px, py, pz))
+                    
+                # Append new LiDAR points
+                new_pts = parsed.get("new_points", [])
+                if new_pts:
+                    for pt in new_pts:
+                        if len(pt) >= 3:
+                            self.live_points.append((float(pt[0]), float(pt[1]), float(pt[2])))
+                            
+                # Sync cockpit camera tracking in follow mode
+                if self.live_follow.get():
+                    self.live_pan_x = px
+                    self.live_pan_y = py
+                    self.live_pan_z = pz
+                    self.live_rot_x = -pitch * math.pi / 180.0 - math.pi / 2.0  # Apply the -90 degree offset globally for proper horizon pitch alignment
+                    self.live_rot_y = -yaw * math.pi / 180.0
+                    self.live_rot_z = -roll * math.pi / 180.0
+                    
+                self.root.after(0, self.redraw_live_3d_canvas)
+                
+                # Dynamic Multi-Protocol Forwarder Server
+                if self.forward_enabled.get():
+                    self.forward_packet_to_unreal(parsed)
+                
                 # Console logs
                 if timestamp is not None:
                     log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Shift: {shift_ms:+.1f}ms"
@@ -2942,6 +3068,7 @@ class CamTrackDesktopApp:
                     
                     timestamp = payload.get("timestamp", None)
                     t_array = payload.get("transforms", [])
+                    new_points = payload.get("new_points", [])
                     if t_array:
                         trans = t_array[0].get("translation", {"x": 0.0, "y": 0.0, "z": 0.0})
                         rot = t_array[0].get("rotation", {"yaw": 0.0, "pitch": 0.0, "roll": 0.0})
@@ -2954,7 +3081,8 @@ class CamTrackDesktopApp:
                             "pitch": rot.get("pitch", 0.0),
                             "yaw": rot.get("yaw", 0.0),
                             "roll": rot.get("roll", 0.0),
-                            "timestamp": timestamp
+                            "timestamp": timestamp,
+                            "new_points": new_points
                         }
             except Exception as e:
                 print(f"OpenTrackIO parse failed: {e}")
@@ -2969,11 +3097,13 @@ class CamTrackDesktopApp:
                 pitch, yaw, roll = payload["rotation"]
                 device_name = payload.get("deviceName", "AbuTrack")
                 timestamp = payload.get("timestamp", None)
+                new_points = payload.get("new_points", [])
                 return {
                     "type": f"Live Link ({device_name})",
                     "x": tx, "y": ty, "z": tz,
                     "pitch": pitch, "yaw": yaw, "roll": roll,
-                    "timestamp": timestamp
+                    "timestamp": timestamp,
+                    "new_points": new_points
                 }
         except Exception:
             pass
@@ -3047,6 +3177,319 @@ class CamTrackDesktopApp:
                 messagebox.showerror("Error", f"Failed to open directory:\n{str(e)}")
         else:
             messagebox.showinfo("Logs Directory", f"Logs folder does not exist yet. Please start listening or generate some activity first.\nPath: {log_dir}")
+
+    def toggle_forwarding(self):
+        if self.forward_enabled.get():
+            if not self.forwarder_sock and self.receiver_running:
+                try:
+                    import socket
+                    self.forwarder_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    self.rx_log(f"FORWARD STATE // Active Forwarder -> {self.forward_host.get()}:{self.forward_port.get()} [{self.forward_protocol.get()}]")
+                except Exception as e:
+                    self.rx_log(f"FORWARD ERROR // Failed to open socket: {str(e)}")
+        else:
+            if self.forwarder_sock:
+                try:
+                    self.forwarder_sock.close()
+                except Exception:
+                    pass
+                self.forwarder_sock = None
+                self.rx_log("FORWARD STATE // Disabled and socket unbound.")
+
+    def reset_live_view(self):
+        self.live_rot_x = -0.4
+        self.live_rot_y = -0.6
+        self.live_rot_z = 0.0
+        self.live_pan_x = 0.0
+        self.live_pan_y = 0.0
+        self.live_pan_z = 0.0
+        self.live_zoom = 1.0
+        self.live_follow.set(False)
+        self.redraw_live_3d_canvas()
+
+    def clear_live_data(self):
+        self.live_points = []
+        self.live_trajectory = []
+        self.redraw_live_3d_canvas()
+
+    def on_live_canvas_press(self, event):
+        self.last_live_mouse_x = event.x
+        self.last_live_mouse_y = event.y
+
+    def on_live_canvas_orbit(self, event):
+        if self.live_follow.get():
+            self.live_follow.set(False)
+            
+        dx = event.x - self.last_live_mouse_x
+        dy = event.y - self.last_live_mouse_y
+        
+        self.live_rot_y += dx * 0.005
+        self.live_rot_x += dy * 0.005
+        
+        self.last_live_mouse_x = event.x
+        self.last_live_mouse_y = event.y
+        self.redraw_live_3d_canvas()
+
+    def on_live_canvas_pan(self, event):
+        if self.live_follow.get():
+            self.live_follow.set(False)
+            
+        dx = event.x - self.last_live_mouse_x
+        dy = event.y - self.last_live_mouse_y
+        
+        cos_y = math.cos(self.live_rot_y)
+        sin_y = math.sin(self.live_rot_y)
+        
+        self.live_pan_x -= (dx * cos_y + dy * sin_y) * 0.005 * (1.0 / self.live_zoom)
+        self.live_pan_z -= (-dx * sin_y + dy * cos_y) * 0.005 * (1.0 / self.live_zoom)
+        
+        self.last_live_mouse_x = event.x
+        self.last_live_mouse_y = event.y
+        self.redraw_live_3d_canvas()
+
+    def on_live_canvas_scroll(self, event):
+        delta = event.delta
+        if delta > 0:
+            self.live_zoom *= 1.1
+        else:
+            self.live_zoom /= 1.1
+        self.live_zoom = max(0.1, min(50.0, self.live_zoom))
+        self.redraw_live_3d_canvas()
+
+    def project_live_3d(self, x, y, z, width, height):
+        cx = width / 2.0
+        cy = height / 2.0
+        
+        px = x - self.live_pan_x
+        py = y - self.live_pan_y
+        pz = z - self.live_pan_z
+        
+        rx = px
+        ry = -pz
+        rz = py
+        
+        final_rot_x = self.live_rot_x - math.pi / 2.0
+        
+        # 1. Rotate Z (Yaw)
+        cos_y = math.cos(self.live_rot_y)
+        sin_y = math.sin(self.live_rot_y)
+        x1 = rx * cos_y - ry * sin_y
+        y1 = rx * sin_y + ry * cos_y
+        
+        # 2. Rotate X (Pitch)
+        cos_x = math.cos(final_rot_x)
+        sin_x = math.sin(final_rot_x)
+        z2 = rz * cos_x - y1 * sin_x
+        depth2 = rz * sin_x + y1 * cos_x
+        
+        # 3. Rotate Screen Plane (Roll)
+        cos_z = math.cos(self.live_rot_z)
+        sin_z = math.sin(self.live_rot_z)
+        x2 = x1 * cos_z - z2 * sin_z
+        z3 = x1 * sin_z + z2 * cos_z
+        
+        fov = 3.0
+        distance = 4.0
+        zoom_amount = 140.0 * self.live_zoom
+        
+        if depth2 <= -distance:
+            return None
+            
+        scale = fov / (distance + depth2)
+        sx = cx + x2 * scale * zoom_amount
+        sy = cy + z3 * scale * zoom_amount
+        return sx, sy
+
+    def redraw_live_3d_canvas(self):
+        if not hasattr(self, 'live_canvas') or not self.live_canvas.winfo_exists():
+            return
+            
+        w = self.live_canvas.winfo_width()
+        h = self.live_canvas.winfo_height()
+        if w < 10 or h < 10:
+            w = 500
+            h = 300
+            
+        self.live_canvas.delete("all")
+        
+        # Draw tech grid
+        for cx in range(20, w, 40):
+            self.live_canvas.create_line(cx, 0, cx, h, fill="#041224", width=0.5)
+        for cy in range(20, h, 40):
+            self.live_canvas.create_line(0, cy, w, cy, fill="#041224", width=0.5)
+            
+        # Draw Bounding crosshairs
+        self.live_canvas.create_line(10, 10, 30, 10, fill="#00f0ff", width=1)
+        self.live_canvas.create_line(10, 10, 10, 30, fill="#00f0ff", width=1)
+        self.live_canvas.create_line(w-10, 10, w-30, 10, fill="#00f0ff", width=1)
+        self.live_canvas.create_line(w-10, 10, w-10, 30, fill="#00f0ff", width=1)
+        self.live_canvas.create_line(10, h-10, 30, h-10, fill="#00f0ff", width=1)
+        self.live_canvas.create_line(10, h-10, 10, h-30, fill="#00f0ff", width=1)
+        self.live_canvas.create_line(w-10, h-10, w-30, h-10, fill="#00f0ff", width=1)
+        self.live_canvas.create_line(w-10, h-10, w-10, h-30, fill="#00f0ff", width=1)
+        
+        # Draw Axes
+        origin_proj = self.project_live_3d(0, 0, 0, w, h)
+        if origin_proj:
+            ox, oy = origin_proj
+            
+            # X - East (Red)
+            x_proj = self.project_live_3d(0.5, 0, 0, w, h)
+            if x_proj:
+                self.live_canvas.create_line(ox, oy, x_proj[0], x_proj[1], fill="#ff3366", width=2)
+                self.live_canvas.create_text(x_proj[0]+8, x_proj[1], text="X", fill="#ff3366", font=("Consolas", 8, "bold"))
+                
+            # Y - Up (Green)
+            y_proj = self.project_live_3d(0, 0.5, 0, w, h)
+            if y_proj:
+                self.live_canvas.create_line(ox, oy, y_proj[0], y_proj[1], fill="#00ff66", width=2)
+                self.live_canvas.create_text(y_proj[0], y_proj[1]-8, text="Y", fill="#00ff66", font=("Consolas", 8, "bold"))
+                
+            # Z - North (Blue)
+            z_proj = self.project_live_3d(0, 0, 0.5, w, h)
+            if z_proj:
+                self.live_canvas.create_line(ox, oy, z_proj[0], z_proj[1], fill="#3366ff", width=2)
+                self.live_canvas.create_text(z_proj[0], z_proj[1]+8, text="Z", fill="#3366ff", font=("Consolas", 8, "bold"))
+                
+        # Draw LiDAR points
+        if self.live_show_points.get() and self.live_points:
+            step = max(1, len(self.live_points) // 1000)
+            pts_to_draw = self.live_points[::step]
+            for pt in pts_to_draw:
+                proj = self.project_live_3d(pt[0], pt[1], pt[2], w, h)
+                if proj:
+                    sx, sy = proj
+                    if 0 <= sx <= w and 0 <= sy <= h:
+                        self.live_canvas.create_oval(sx-1, sy-1, sx+1, sy+1, fill="#00ff66", outline="")
+                        
+        # Draw camera trajectory path
+        if self.live_show_path.get() and len(self.live_trajectory) > 1:
+            line_pts = []
+            for pt in self.live_trajectory:
+                proj = self.project_live_3d(pt[0], pt[1], pt[2], w, h)
+                if proj:
+                    line_pts.extend(proj)
+            if len(line_pts) >= 4:
+                self.live_canvas.create_line(line_pts, fill="#ffcc00", width=1.5, smooth=True)
+                
+        # Draw current camera indicator
+        if self.live_trajectory:
+            last_pt = self.live_trajectory[-1]
+            proj = self.project_live_3d(last_pt[0], last_pt[1], last_pt[2], w, h)
+            if proj:
+                sx, sy = proj
+                self.live_canvas.create_oval(sx-5, sy-5, sx+5, sy+5, fill="#ff3366", outline="white", width=1.5)
+                self.live_canvas.create_text(
+                    15, h-15, 
+                    text=f"CAM: ({last_pt[0]:+.2f}, {last_pt[1]:+.2f}, {last_pt[2]:+.2f}) | PTS: {len(self.live_points)}", 
+                    anchor="w", fill="#00f0ff", font=("Consolas", 8, "bold")
+                )
+
+    def forward_packet_to_unreal(self, parsed):
+        if not self.forwarder_sock:
+            return
+            
+        try:
+            import json
+            import socket
+            import time
+            import struct
+            
+            host = self.forward_host.get()
+            port = self.forward_port.get()
+            proto = self.forward_protocol.get()
+            
+            px, py, pz = parsed["x"], parsed["y"], parsed["z"]
+            pitch, yaw, roll = parsed["pitch"], parsed["yaw"], parsed["roll"]
+            timestamp = parsed.get("timestamp", time.time())
+            
+            # Apply -90 degree offset globally around X-axis (Pitch) to align tracking data to UE!
+            pitch_forward = pitch - 90.0
+            
+            if proto == "Live Link JSON":
+                payload = {
+                    "deviceName": "AbuTrack",
+                    "translation": [px, py, pz],
+                    "rotation": [pitch_forward, yaw, roll],
+                    "focalLength": 24.0,
+                    "timestamp": timestamp
+                }
+                if "new_points" in parsed:
+                    payload["new_points"] = parsed["new_points"]
+                    
+                data = json.dumps(payload).encode("utf-8")
+                self.forwarder_sock.sendto(data, (host, port))
+                
+            elif proto == "FreeD Binary":
+                packet = bytearray()
+                packet.append(0xD1)
+                packet.append(0x01)
+                
+                def pack24(val):
+                    val = int(val)
+                    if val < 0:
+                        val += 0x1000000
+                    return [
+                        (val >> 16) & 0xFF,
+                        (val >> 8) & 0xFF,
+                        val & 0xFF
+                    ]
+                
+                packet.extend(pack24(pitch_forward * 32768.0))
+                packet.extend(pack24(yaw * 32768.0))
+                packet.extend(pack24(roll * 32768.0))
+                
+                packet.extend(pack24(pz * 1000.0 * 64.0))
+                packet.extend(pack24(px * 1000.0 * 64.0))
+                packet.extend(pack24(py * 1000.0 * 64.0))
+                
+                packet.extend([0x00, 0x00, 0x00])
+                packet.extend([0x00, 0x00, 0x00])
+                packet.extend([0x00, 0x00])
+                
+                checksum = (0x40 - sum(packet)) & 0xFF
+                packet.append(checksum)
+                
+                timestamp_ms = int(timestamp * 1000.0)
+                packet.extend(struct.pack(">q", timestamp_ms))
+                
+                self.forwarder_sock.sendto(packet, (host, port))
+                
+            elif proto == "OpenTrackIO JSON":
+                payload = {
+                    "version": "1.0",
+                    "sourceId": 101,
+                    "timestamp": timestamp,
+                    "transforms": [
+                        {
+                            "translation": {"x": px, "y": py, "z": pz},
+                            "rotation": {"yaw": yaw, "pitch": pitch_forward, "roll": roll}
+                        }
+                    ],
+                    "lens": {
+                        "focalLength": 24.0,
+                        "focusDistance": 1.5
+                    }
+                }
+                if "new_points" in parsed:
+                    payload["new_points"] = parsed["new_points"]
+                    
+                json_bytes = json.dumps(payload).encode("utf-8")
+                
+                packet = bytearray()
+                packet.extend(b"OTrk")
+                
+                seq = int(time.time() * 1000) & 0xFFFFFFFF
+                packet.extend(struct.pack(">I", seq))
+                packet.append(0x01)
+                packet.extend(struct.pack(">I", len(json_bytes)))
+                packet.extend(struct.pack(">I", 101))
+                packet.extend(json_bytes)
+                
+                self.forwarder_sock.sendto(packet, (host, port))
+                
+        except Exception as e:
+            logger.error("Failed to forward UDP packet", exc_info=True)
 
 if __name__ == "__main__":
     root = tk.Tk()

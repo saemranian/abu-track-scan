@@ -134,7 +134,7 @@ struct DashboardView: View {
                                     PointCloudVisualizerView(
                                         points: trackingManager.accumulatedPointCloud,
                                         isTracking: trackingManager.isTrackingActive,
-                                        rotX: isFollowModeActive ? -trackingManager.pitch * Double.pi / 180.0 : rotX,
+                                        rotX: isFollowModeActive ? -trackingManager.pitch * Double.pi / 180.0 - Double.pi / 2.0 : rotX,
                                         rotY: isFollowModeActive ? -trackingManager.yaw * Double.pi / 180.0 : rotY,
                                         rotZ: isFollowModeActive ? -trackingManager.roll * Double.pi / 180.0 : 0.0,
                                         panX: isFollowModeActive ? trackingManager.localX : panX,
@@ -172,7 +172,7 @@ struct DashboardView: View {
                                     Button(action: {
                                         isFollowModeActive.toggle()
                                         if isFollowModeActive {
-                                            rotX = -trackingManager.pitch * Double.pi / 180.0
+                                            rotX = -trackingManager.pitch * Double.pi / 180.0 - Double.pi / 2.0
                                             rotY = -trackingManager.yaw * Double.pi / 180.0
                                             panX = trackingManager.localX
                                             panY = trackingManager.localY
@@ -1146,6 +1146,8 @@ struct PointCloudVisualizerView: View {
         let ry = -pz
         let rz = py
         
+        let finalRotX = rotX - Double.pi / 2.0 // Apply -90 degree offset globally around X-axis for horizontal alignment
+        
         // 1. Rotate around vertical axis Z (rz) by yaw (rotY)
         let cosY = cos(rotY)
         let sinY = sin(rotY)
@@ -1153,8 +1155,8 @@ struct PointCloudVisualizerView: View {
         let y1 = rx * sinY + ry * cosY
         
         // 2. Rotate around horizontal axis X (rx) by pitch (rotX)
-        let cosX = cos(rotX)
-        let sinX = sin(rotX)
+        let cosX = cos(finalRotX)
+        let sinX = sin(finalRotX)
         let z2 = rz * cosX - y1 * sinX  // Screen vertical coordinate
         let depth2 = rz * sinX + y1 * cosX // Screen depth coordinate
         

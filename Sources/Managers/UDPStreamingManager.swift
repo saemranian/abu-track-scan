@@ -257,7 +257,7 @@ class UDPStreamingManager: ObservableObject {
         startConnection()
     }
     
-    func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) {
+    func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil) {
         guard isStreamingEnabled else { return }
         
         var tx = x
@@ -303,26 +303,29 @@ class UDPStreamingManager: ObservableObject {
         
         switch format {
         case .liveLink:
-            data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
+            data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, newPoints: newPoints)
         case .freeD:
             data = formatFreeD(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
         case .openTrackIO:
-            data = formatOpenTrackIO(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
+            data = formatOpenTrackIO(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, newPoints: newPoints)
         }
         
         // Broadcast the formatted tracking payload to all active connections
         bsdSender.send(data: data)
     }
     
-    private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) -> Data {
+    private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil) -> Data {
         let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
-        let json: [String: Any] = [
+        var json: [String: Any] = [
             "deviceName": "AbuTrack",
             "translation": [x, y, z],
             "rotation": [pitch, yaw, roll],
             "focalLength": 24.0,
             "timestamp": Date().timeIntervalSince1970 + ntpSyncOffset
         ]
+        if let pts = newPoints, !pts.isEmpty {
+            json["new_points"] = pts.map { [$0.x, $0.y, $0.z] }
+        }
         
         do {
             return try JSONSerialization.data(withJSONObject: json, options: [])
@@ -394,11 +397,11 @@ class UDPStreamingManager: ObservableObject {
     
     private var openTrackSequence: UInt32 = 0
     
-    private func formatOpenTrackIO(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double) -> Data {
+    private func formatOpenTrackIO(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil) -> Data {
         let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
         let timestamp = Date().timeIntervalSince1970 + ntpSyncOffset
         
-        let json: [String: Any] = [
+        var json: [String: Any] = [
             "version": "1.0",
             "sourceId": 101,
             "timestamp": timestamp,
@@ -413,6 +416,9 @@ class UDPStreamingManager: ObservableObject {
                 "focusDistance": 1.5
             ]
         ]
+        if let pts = newPoints, !pts.isEmpty {
+            json["new_points"] = pts.map { [$0.x, $0.y, $0.z] }
+        }
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: json, options: []) else {
             return Data()

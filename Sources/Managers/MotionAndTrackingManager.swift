@@ -62,6 +62,9 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     @Published var cameraTrajectory: [RawPoint3D] = []
     private var pointKeys = Set<String>()
     
+    // New point cloud points queue for live network stream to desktop app
+    var newPointsQueue: [RawPoint3D] = []
+    
     // Capturing Session Properties
     @Published var sessionTimer: DispatchSourceTimer? = nil
     @Published var sessionDuration: TimeInterval = 0.0
@@ -159,17 +162,21 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                 guard let start = self.startTime else { return }
                 self.sessionDuration = Date().timeIntervalSince(start)
                 self.entryCount += 1
+                
+                let ptsToSend = self.newPointsQueue
+                self.newPointsQueue.removeAll()
+                
+                // Broadcast live UDP packets with coordinate mappings applied and points queue
+                UDPStreamingManager.shared.stream(
+                    x: self.localX,
+                    y: self.localY,
+                    z: self.localZ,
+                    yaw: self.yaw,
+                    pitch: self.pitch,
+                    roll: self.roll,
+                    newPoints: ptsToSend
+                )
             }
-            
-            // Broadcast live UDP packets with coordinate mappings applied
-            UDPStreamingManager.shared.stream(
-                x: self.localX,
-                y: self.localY,
-                z: self.localZ,
-                yaw: self.yaw,
-                pitch: self.pitch,
-                roll: self.roll
-            )
         }
         
         self.sessionTimer = timer
@@ -438,6 +445,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                 if !self.pointKeys.contains(key) {
                     self.pointKeys.insert(key)
                     self.accumulatedPointCloud.append(pt)
+                    self.newPointsQueue.append(pt)
                 }
             }
         }
