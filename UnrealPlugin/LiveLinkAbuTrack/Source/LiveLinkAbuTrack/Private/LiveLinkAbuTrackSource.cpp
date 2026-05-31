@@ -8,6 +8,7 @@
 #include "Roles/LiveLinkCameraTypes.h"
 #include "HAL/RunnableThread.h"
 #include "Misc/ScopeLock.h"
+#include "ILiveLinkClient.h"
 
 FLiveLinkAbuTrackSource::FLiveLinkAbuTrackSource(int32 InPort)
 	: LiveLinkClient(nullptr)
@@ -37,7 +38,7 @@ bool FLiveLinkAbuTrackSource::IsSourceStillValid() const
 	return bIsRunning;
 }
 
-bool FLiveLinkAbuTrackSource::RequestSourceSettingsApply(ULiveLinkSourceSettings* Settings)
+bool FLiveLinkAbuTrackSource::RequestSettingsApply(ULiveLinkSourceSettings* Settings)
 {
 	return true;
 }
@@ -76,7 +77,7 @@ void FLiveLinkAbuTrackSource::StartReceiverThread()
 		.AsNonBlocking()
 		.WithReceiveBufferSize(64 * 1024)
 		.WithMulticastLoopback()
-		.WithSharedAddress();
+		.AsReusable();
 
 	if (Socket)
 	{
@@ -174,12 +175,12 @@ void FLiveLinkAbuTrackSource::ProcessPacket(const FString& PacketData)
 			{
 				FLiveLinkStaticDataStruct StaticData(FLiveLinkCameraStaticData::StaticStruct());
 				FLiveLinkCameraStaticData& CameraStaticData = *StaticData.Cast<FLiveLinkCameraStaticData>();
-				CameraStaticData.bWithValueRotation = true;
-				CameraStaticData.bWithValueTranslation = true;
-				CameraStaticData.bWithValueFocalLength = true;
-				CameraStaticData.bWithValueFocusDistance = true;
-				CameraStaticData.bWithValueAperture = true;
-
+				CameraStaticData.bIsRotationSupported = true;
+				CameraStaticData.bIsLocationSupported = true;
+				CameraStaticData.bIsFocalLengthSupported = true;
+				CameraStaticData.bIsFocusDistanceSupported = true;
+				CameraStaticData.bIsApertureSupported = true;
+ 
 				LiveLinkClient->PushSubjectStaticData_AnyThread({ SourceGuid, SubjectName }, ULiveLinkCameraRole::StaticClass(), MoveTemp(StaticData));
 				bSubjectRegistered = true;
 			}
