@@ -187,9 +187,9 @@ class CamTrackDesktopApp:
         self.live_follow = tk.BooleanVar(value=True)
         self.live_show_path = tk.BooleanVar(value=True)
         self.live_show_points = tk.BooleanVar(value=True)
-        
         self.build_ui()
         self.root.report_callback_exception = self.report_callback_exception
+        self.root.protocol("WM_DELETE_WINDOW", self.on_window_closing)
         self.root.after(33, self.update_pc_local_time)
         
     def setup_styles(self):
@@ -2696,12 +2696,15 @@ class CamTrackDesktopApp:
         self.buffer_lbl.configure(text=f"{int(val)}ms")
 
     def update_pc_local_time(self):
-        import time
-        now = time.time()
-        time_str = time.strftime('%H:%M:%S', time.localtime(now))
-        ms = int((now % 1.0) * 1000)
-        self.receiver_pc_time_var.set(f"{time_str}.{ms:03d} ({now:.3f})")
-        self.root.after(33, self.update_pc_local_time)
+        try:
+            import time
+            now = time.time()
+            time_str = time.strftime('%H:%M:%S', time.localtime(now))
+            ms = int((now % 1.0) * 1000)
+            self.receiver_pc_time_var.set(f"{time_str}.{ms:03d} ({now:.3f})")
+            self.root.after(33, self.update_pc_local_time)
+        except Exception:
+            pass
 
     def start_receiver(self):
         if self.receiver_running:
@@ -3119,22 +3122,36 @@ class CamTrackDesktopApp:
             pass
             
         return None
-
     def trigger_ping_blink(self):
-        self.ping_canvas.itemconfig(self.ping_light, fill=ACCENT_CYAN)
-        self.root.after(80, lambda: self.ping_canvas.itemconfig(self.ping_light, fill=FIELD_BG))
+        try:
+            if hasattr(self, 'ping_canvas') and self.ping_canvas.winfo_exists():
+                self.ping_canvas.itemconfig(self.ping_light, fill=ACCENT_CYAN)
+                self.root.after(80, self._reset_ping_blink)
+        except Exception:
+            pass
+
+    def _reset_ping_blink(self):
+        try:
+            if hasattr(self, 'ping_canvas') and self.ping_canvas.winfo_exists():
+                self.ping_canvas.itemconfig(self.ping_light, fill=FIELD_BG)
+        except Exception:
+            pass
 
     def rx_log(self, msg):
-        self.rx_console.configure(state="normal")
-        self.rx_console.insert(tk.END, msg + "\n")
-        
-        lines = int(self.rx_console.index('end-1c').split('.')[0])
-        if lines > 16:
-            self.rx_console.delete("1.0", "2.0")
+        try:
+            if not hasattr(self, 'rx_console') or not self.rx_console.winfo_exists():
+                return
+            self.rx_console.configure(state="normal")
+            self.rx_console.insert(tk.END, msg + "\n")
             
-        self.rx_console.see(tk.END)
-        self.rx_console.configure(state="disabled")
-
+            lines = int(self.rx_console.index('end-1c').split('.')[0])
+            if lines > 16:
+                self.rx_console.delete("1.0", "2.0")
+                
+            self.rx_console.see(tk.END)
+            self.rx_console.configure(state="disabled")
+        except Exception:
+            pass
     def report_callback_exception(self, exc, val, tb):
         import traceback
         err_str = "".join(traceback.format_exception(exc, val, tb))
@@ -3187,6 +3204,23 @@ class CamTrackDesktopApp:
                 messagebox.showerror("Error", f"Failed to open directory:\n{str(e)}")
         else:
             messagebox.showinfo("Logs Directory", f"Logs folder does not exist yet. Please start listening or generate some activity first.\nPath: {log_dir}")
+
+    def on_window_closing(self):
+        logger.info("Window closing event triggered. Terminating threads and socket connections cleanly.")
+        self.receiver_running = False
+        self.playout_running = False
+        if self.receiver_sock:
+            try:
+                self.receiver_sock.close()
+            except Exception:
+                pass
+        if self.forwarder_sock:
+            try:
+                self.forwarder_sock.close()
+            except Exception:
+                pass
+        import os
+        os._exit(0)
 
     def toggle_forwarding(self):
         if self.forward_enabled.get():
@@ -3311,7 +3345,10 @@ class CamTrackDesktopApp:
         return sx, sy
 
     def redraw_live_3d_canvas(self):
-        if not hasattr(self, 'live_canvas') or not self.live_canvas.winfo_exists():
+        try:
+            if not hasattr(self, 'live_canvas') or not self.live_canvas.winfo_exists():
+                return
+        except Exception:
             return
             
         w = self.live_canvas.winfo_width()
