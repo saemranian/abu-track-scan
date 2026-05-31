@@ -79,6 +79,22 @@ struct RigSettings {
         get { UserDefaults.standard.double(forKey: "leverArmZ") }
         set { UserDefaults.standard.set(newValue, forKey: "leverArmZ") }
     }
+    static var originOffsetX: Double {
+        get { UserDefaults.standard.double(forKey: "originOffsetX") }
+        set { UserDefaults.standard.set(newValue, forKey: "originOffsetX") }
+    }
+    static var originOffsetY: Double {
+        get { UserDefaults.standard.double(forKey: "originOffsetY") }
+        set { UserDefaults.standard.set(newValue, forKey: "originOffsetY") }
+    }
+    static var originOffsetZ: Double {
+        get { UserDefaults.standard.double(forKey: "originOffsetZ") }
+        set { UserDefaults.standard.set(newValue, forKey: "originOffsetZ") }
+    }
+    static var originOffsetYaw: Double {
+        get { UserDefaults.standard.double(forKey: "originOffsetYaw") }
+        set { UserDefaults.standard.set(newValue, forKey: "originOffsetYaw") }
+    }
     static var captureRate: Double {
         get { 
             let rate = UserDefaults.standard.double(forKey: "captureRate")

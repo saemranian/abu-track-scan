@@ -2949,6 +2949,12 @@ class CamTrackDesktopApp:
                     self.last_detected_format = fmt_type
                     self.root.after(0, lambda f=fmt_type: self.rx_log(f"PROTOCOL SWAP DETECTED // Active Protocol: {f}"))
                 
+                is_active = parsed.get("is_mapping_active", True)
+                if getattr(self, 'last_mapping_state', None) != is_active:
+                    self.last_mapping_state = is_active
+                    state_str = "ACTIVE (LiDAR Reconstruction)" if is_active else "PAUSED (Pose-only tracking optimized)"
+                    self.root.after(0, lambda s=state_str: self.rx_log(f"MAPPING SENSORS STATE // {s}"))
+                
                 # Format time shift / latency string
                 latency_str = "No Sync (N/A)"
                 if timestamp is not None:
@@ -3069,6 +3075,7 @@ class CamTrackDesktopApp:
                     timestamp = payload.get("timestamp", None)
                     t_array = payload.get("transforms", [])
                     new_points = payload.get("new_points", [])
+                    is_mapping_active = payload.get("isMappingActive", True)
                     if t_array:
                         trans = t_array[0].get("translation", {"x": 0.0, "y": 0.0, "z": 0.0})
                         rot = t_array[0].get("rotation", {"yaw": 0.0, "pitch": 0.0, "roll": 0.0})
@@ -3082,7 +3089,8 @@ class CamTrackDesktopApp:
                             "yaw": rot.get("yaw", 0.0),
                             "roll": rot.get("roll", 0.0),
                             "timestamp": timestamp,
-                            "new_points": new_points
+                            "new_points": new_points,
+                            "is_mapping_active": is_mapping_active
                         }
             except Exception as e:
                 print(f"OpenTrackIO parse failed: {e}")
@@ -3098,12 +3106,14 @@ class CamTrackDesktopApp:
                 device_name = payload.get("deviceName", "AbuTrack")
                 timestamp = payload.get("timestamp", None)
                 new_points = payload.get("new_points", [])
+                is_mapping_active = payload.get("isMappingActive", True)
                 return {
                     "type": f"Live Link ({device_name})",
                     "x": tx, "y": ty, "z": tz,
                     "pitch": pitch, "yaw": yaw, "roll": roll,
                     "timestamp": timestamp,
-                    "new_points": new_points
+                    "new_points": new_points,
+                    "is_mapping_active": is_mapping_active
                 }
         except Exception:
             pass
@@ -3412,7 +3422,8 @@ class CamTrackDesktopApp:
                     "translation": [px, py, pz],
                     "rotation": [pitch_forward, yaw, roll],
                     "focalLength": 24.0,
-                    "timestamp": timestamp
+                    "timestamp": timestamp,
+                    "isMappingActive": parsed.get("is_mapping_active", True)
                 }
                 if "new_points" in parsed:
                     payload["new_points"] = parsed["new_points"]
@@ -3460,6 +3471,7 @@ class CamTrackDesktopApp:
                     "version": "1.0",
                     "sourceId": 101,
                     "timestamp": timestamp,
+                    "isMappingActive": parsed.get("is_mapping_active", True),
                     "transforms": [
                         {
                             "translation": {"x": px, "y": py, "z": pz},

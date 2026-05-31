@@ -10,6 +10,11 @@ struct SettingsView: View {
     @State private var captureRate: Double = 10.0
     @State private var isGPSEnabled: Bool = true
     
+    @State private var originOffsetX: String = ""
+    @State private var originOffsetY: String = ""
+    @State private var originOffsetZ: String = ""
+    @State private var originOffsetYaw: String = ""
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -118,6 +123,86 @@ struct SettingsView: View {
                                     .padding(.top, 5)
                                     
                                     Text("• X: Positive if phone is offset to the right of lens axis.\n• Y: Positive if phone is mounted higher than lens center.\n• Z: Positive if phone is mounted further forward than DSLR sensor plane.\n• Set to 0.0, 0.0, 0.0 if using the default iPhone camera.")
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                        .lineSpacing(4)
+                                }
+                                .padding(.top, 5)
+                            }
+                            .padding()
+                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
+                            .cornerRadius(14)
+                            .padding(.horizontal)
+                        }
+                        
+                        // Section 2.1: Custom Initial Origin Offset Overrides
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Initial Origin Overrides")
+                                .font(.caption)
+                                .fontWeight(.black)
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal)
+                            
+                            VStack(alignment: .leading, spacing: 15) {
+                                Text("Manually offset or re-orient the tracking origin relative to your physical studio coordinates.")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                
+                                HStack(spacing: 12) {
+                                    // X Origin Offset
+                                    OffsetInputFieldMeters(label: "Origin X (m)", value: $originOffsetX, placeholder: "0.0") {
+                                        saveOffsets()
+                                    }
+                                    
+                                    // Y Origin Offset
+                                    OffsetInputFieldMeters(label: "Origin Y (m)", value: $originOffsetY, placeholder: "0.0") {
+                                        saveOffsets()
+                                    }
+                                    
+                                    // Z Origin Offset
+                                    OffsetInputFieldMeters(label: "Origin Z (m)", value: $originOffsetZ, placeholder: "0.0") {
+                                        saveOffsets()
+                                    }
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Origin Yaw (degrees)")
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                    
+                                    HStack {
+                                        TextField("0.0", text: $originOffsetYaw, onCommit: {
+                                            saveOffsets()
+                                        })
+                                        .font(.caption)
+                                        .keyboardType(.numbersAndPunctuation)
+                                        .foregroundColor(.white)
+                                        .multilineTextAlignment(.center)
+                                        
+                                        Text("°")
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding(10)
+                                    .background(Color.black.opacity(0.4))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "arrow.triangle.branch")
+                                            .foregroundColor(.cyan)
+                                        Text("Coordinate Guidance")
+                                            .font(.caption2)
+                                            .fontWeight(.black)
+                                    }
+                                    .padding(.top, 5)
+                                    
+                                    Text("• X: Shifts the entire tracking trajectory left/right in meters.\n• Y: Shifts the tracking altitude up/down in meters.\n• Z: Shifts the tracking forward/backward in meters.\n• Yaw: Rotates the coordinate system orientation around gravity (Y-axis).")
                                         .font(.caption2)
                                         .foregroundColor(.gray)
                                         .lineSpacing(4)
@@ -563,9 +648,19 @@ struct SettingsView: View {
         let y = RigSettings.leverArmY
         let z = RigSettings.leverArmZ
         
+        let ox = RigSettings.originOffsetX
+        let oy = RigSettings.originOffsetY
+        let oz = RigSettings.originOffsetZ
+        let oyaw = RigSettings.originOffsetYaw
+        
         self.leverArmX = x == 0 ? "" : String(format: "%.1f", x)
         self.leverArmY = y == 0 ? "" : String(format: "%.1f", y)
         self.leverArmZ = z == 0 ? "" : String(format: "%.1f", z)
+        
+        self.originOffsetX = ox == 0 ? "" : String(format: "%.2f", ox)
+        self.originOffsetY = oy == 0 ? "" : String(format: "%.2f", oy)
+        self.originOffsetZ = oz == 0 ? "" : String(format: "%.2f", oz)
+        self.originOffsetYaw = oyaw == 0 ? "" : String(format: "%.1f", oyaw)
     }
     
     private func saveOffsets() {
@@ -573,9 +668,19 @@ struct SettingsView: View {
         let y = Double(leverArmY) ?? 0.0
         let z = Double(leverArmZ) ?? 0.0
         
+        let ox = Double(originOffsetX) ?? 0.0
+        let oy = Double(originOffsetY) ?? 0.0
+        let oz = Double(originOffsetZ) ?? 0.0
+        let oyaw = Double(originOffsetYaw) ?? 0.0
+        
         RigSettings.leverArmX = x
         RigSettings.leverArmY = y
         RigSettings.leverArmZ = z
+        
+        RigSettings.originOffsetX = ox
+        RigSettings.originOffsetY = oy
+        RigSettings.originOffsetZ = oz
+        RigSettings.originOffsetYaw = oyaw
     }
 }
 
@@ -627,6 +732,40 @@ struct DiagnosticRow: View {
                 .font(.caption2)
                 .fontWeight(.bold)
                 .foregroundColor(.cyan)
+        }
+    }
+}
+
+struct OffsetInputFieldMeters: View {
+    let label: String
+    @Binding var value: String
+    let placeholder: String
+    let onCommit: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(.gray)
+            
+            HStack {
+                TextField(placeholder, text: $value, onCommit: onCommit)
+                    .font(.caption)
+                    .keyboardType(.numbersAndPunctuation)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                
+                Text("m")
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+            }
+            .padding(10)
+            .background(Color.black.opacity(0.4))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+            )
         }
     }
 }

@@ -62,6 +62,9 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     @Published var cameraTrajectory: [RawPoint3D] = []
     private var pointKeys = Set<String>()
     
+    // Toggle active depth/LiDAR scanning & point cloud reconstruction
+    @Published var isMappingSensorsActive: Bool = true
+    
     // New point cloud points queue for live network stream to desktop app
     var newPointsQueue: [RawPoint3D] = []
     
@@ -174,7 +177,8 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                     yaw: self.yaw,
                     pitch: self.pitch,
                     roll: self.roll,
-                    newPoints: ptsToSend
+                    newPoints: ptsToSend,
+                    isMappingActive: self.isMappingSensorsActive
                 )
             }
         }
@@ -330,12 +334,30 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             // Convert radians to degrees
             self.pitch = attitude.pitch * (180.0 / .pi)
             self.roll = attitude.roll * (180.0 / .pi)
-            self.yaw = attitude.yaw * (180.0 / .pi)
             
-            self.q_w = attitude.quaternion.w
-            self.q_x = attitude.quaternion.x
-            self.q_y = attitude.quaternion.y
-            self.q_z = attitude.quaternion.z
+            var adjustedYaw = attitude.yaw * (180.0 / .pi) + RigSettings.originOffsetYaw
+            if adjustedYaw > 180 {
+                adjustedYaw -= 360
+            } else if adjustedYaw < -180 {
+                adjustedYaw += 360
+            }
+            self.yaw = adjustedYaw
+            
+            let yawOffsetRad = RigSettings.originOffsetYaw * (.pi / 180.0)
+            if yawOffsetRad != 0 {
+                let offsetQuat = simd_quatd(angle: yawOffsetRad, axis: simd_double3(0, 1, 0))
+                let qCam = simd_quatd(ix: attitude.quaternion.x, iy: attitude.quaternion.y, iz: attitude.quaternion.z, r: attitude.quaternion.w)
+                let rotatedQuat = offsetQuat * qCam
+                self.q_w = rotatedQuat.vector.w
+                self.q_x = rotatedQuat.vector.x
+                self.q_y = rotatedQuat.vector.y
+                self.q_z = rotatedQuat.vector.z
+            } else {
+                self.q_w = attitude.quaternion.w
+                self.q_x = attitude.quaternion.x
+                self.q_y = attitude.quaternion.y
+                self.q_z = attitude.quaternion.z
+            }
         }
     }
     
@@ -376,15 +398,20 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         
         // Extract 3D translation vector (X, Y, Z coordinates in meters)
         // columns.3 is the position vector
-        let tx = Double(columns.3.x)
-        let ty = Double(columns.3.y)
-        let tz = Double(columns.3.z)
+        let tx = Double(columns.3.x) + RigSettings.originOffsetX
+        let ty = Double(columns.3.y) + RigSettings.originOffsetY
+        let tz = Double(columns.3.z) + RigSettings.originOffsetZ
         
         // Convert the 3x3 rotation matrix to Euler angles (degrees)
         let attitude = frame.camera.eulerAngles
         
         // Convert to Quaternions
-        let quaternion = frame.camera.quaternion
+        var quaternion = frame.camera.quaternion
+        let yawOffsetRad = RigSettings.originOffsetYaw * (.pi / 180.0)
+        if yawOffsetRad != 0 {
+            let offsetQuat = simd_quatd(angle: yawOffsetRad, axis: simd_double3(0, 1, 0))
+            quaternion = offsetQuat * quaternion
+        }
         
         // Background real-time streaming is disabled to lock it strictly to the Dashboard capture session GCD timer
         
@@ -395,7 +422,15 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             
             // eulerAngles represent pitch, yaw, roll in radians
             self.pitch = Double(attitude.x) * (180.0 / .pi)
-            self.yaw = Double(attitude.y) * (180.0 / .pi)
+            
+            var adjustedYaw = Double(attitude.y) * (180.0 / .pi) + RigSettings.originOffsetYaw
+            if adjustedYaw > 180 {
+                adjustedYaw -= 360
+            } else if adjustedYaw < -180 {
+                adjustedYaw += 360
+            }
+            self.yaw = adjustedYaw
+            
             self.roll = Double(attitude.z) * (180.0 / .pi)
             
             self.q_w = quaternion.vector.w
@@ -417,36 +452,58 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             
             // Extract high-precision LiDAR depth points (or fall back to sparse VIO points if unavailable)
             var currentFramePoints: [RawPoint3D] = []
-            let lidarPoints = self.extractLiDARPoints(from: frame)
-            
-            let hasLiDAR = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
-            
-            if !lidarPoints.isEmpty {
-                currentFramePoints = lidarPoints
-            } else if !hasLiDAR, let rawFeaturePoints = frame.rawFeaturePoints {
-                let points = rawFeaturePoints.points
-                let maxPoints = min(points.count, 200)
-                for i in 0..<maxPoints {
-                    let pt = points[i]
-                    currentFramePoints.append(RawPoint3D(x: pt.x, y: pt.y, z: pt.z))
+            if self.isMappingSensorsActive {
+                let lidarPoints = self.extractLiDARPoints(from: frame)
+                
+                let hasLiDAR = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+                
+                if !lidarPoints.isEmpty {
+                    currentFramePoints = lidarPoints
+                } else if !hasLiDAR, let rawFeaturePoints = frame.rawFeaturePoints {
+                    let points = rawFeaturePoints.points
+                    let maxPoints = min(points.count, 200)
+                    for i in 0..<maxPoints {
+                        let pt = points[i]
+                        currentFramePoints.append(RawPoint3D(x: pt.x, y: pt.y, z: pt.z))
+                    }
                 }
-            }
-            
-            // Limit points logged to sparsePointCloud to prevent memory overload in UI
-            self.sparsePointCloud = Array(currentFramePoints.prefix(200))
-            
-            // Accumulate unique points using 3cm voxel grid keys to filter spatial tracking noise
-            let voxelSize: Float = 0.03
-            for pt in currentFramePoints {
-                let gridX = Int(round(pt.x / voxelSize))
-                let gridY = Int(round(pt.y / voxelSize))
-                let gridZ = Int(round(pt.z / voxelSize))
-                let key = "\(gridX),\(gridY),\(gridZ)"
-                if !self.pointKeys.contains(key) {
-                    self.pointKeys.insert(key)
-                    self.accumulatedPointCloud.append(pt)
-                    self.newPointsQueue.append(pt)
+                
+                // Map the point cloud points to the offset origin space using translation and yaw offsets
+                let cosYaw = Float(cos(yawOffsetRad))
+                let sinYaw = Float(sin(yawOffsetRad))
+                let offX = Float(RigSettings.originOffsetX)
+                let offY = Float(RigSettings.originOffsetY)
+                let offZ = Float(RigSettings.originOffsetZ)
+                
+                let mappedPoints = currentFramePoints.map { pt -> RawPoint3D in
+                    var rx = pt.x
+                    var rz = pt.z
+                    if yawOffsetRad != 0 {
+                        rx = pt.x * cosYaw - pt.z * sinYaw
+                        rz = pt.x * sinYaw + pt.z * cosYaw
+                    }
+                    return RawPoint3D(x: rx + offX, y: pt.y + offY, z: rz + offZ)
                 }
+                currentFramePoints = mappedPoints
+                
+                // Limit points logged to sparsePointCloud to prevent memory overload in UI
+                self.sparsePointCloud = Array(currentFramePoints.prefix(200))
+                
+                // Accumulate unique points using 3cm voxel grid keys to filter spatial tracking noise
+                let voxelSize: Float = 0.03
+                for pt in currentFramePoints {
+                    let gridX = Int(round(pt.x / voxelSize))
+                    let gridY = Int(round(pt.y / voxelSize))
+                    let gridZ = Int(round(pt.z / voxelSize))
+                    let key = "\(gridX),\(gridY),\(gridZ)"
+                    if !self.pointKeys.contains(key) {
+                        self.pointKeys.insert(key)
+                        self.accumulatedPointCloud.append(pt)
+                        self.newPointsQueue.append(pt)
+                    }
+                }
+            } else {
+                self.sparsePointCloud.removeAll()
             }
         }
     }

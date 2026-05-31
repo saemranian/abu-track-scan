@@ -257,7 +257,7 @@ class UDPStreamingManager: ObservableObject {
         startConnection()
     }
     
-    func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil) {
+    func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) {
         guard isStreamingEnabled else { return }
         
         var tx = x
@@ -303,25 +303,26 @@ class UDPStreamingManager: ObservableObject {
         
         switch format {
         case .liveLink:
-            data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, newPoints: newPoints)
+            data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, newPoints: newPoints, isMappingActive: isMappingActive)
         case .freeD:
             data = formatFreeD(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
         case .openTrackIO:
-            data = formatOpenTrackIO(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, newPoints: newPoints)
+            data = formatOpenTrackIO(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, newPoints: newPoints, isMappingActive: isMappingActive)
         }
         
         // Broadcast the formatted tracking payload to all active connections
         bsdSender.send(data: data)
     }
     
-    private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil) -> Data {
+    private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
         let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
         var json: [String: Any] = [
             "deviceName": "AbuTrack",
             "translation": [x, y, z],
             "rotation": [pitch, yaw, roll],
             "focalLength": 24.0,
-            "timestamp": Date().timeIntervalSince1970 + ntpSyncOffset
+            "timestamp": Date().timeIntervalSince1970 + ntpSyncOffset,
+            "isMappingActive": isMappingActive
         ]
         if let pts = newPoints, !pts.isEmpty {
             json["new_points"] = pts.map { [$0.x, $0.y, $0.z] }
@@ -397,7 +398,7 @@ class UDPStreamingManager: ObservableObject {
     
     private var openTrackSequence: UInt32 = 0
     
-    private func formatOpenTrackIO(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil) -> Data {
+    private func formatOpenTrackIO(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
         let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
         let timestamp = Date().timeIntervalSince1970 + ntpSyncOffset
         
@@ -405,6 +406,7 @@ class UDPStreamingManager: ObservableObject {
             "version": "1.0",
             "sourceId": 101,
             "timestamp": timestamp,
+            "isMappingActive": isMappingActive,
             "transforms": [
                 [
                     "translation": ["x": x, "y": y, "z": z],

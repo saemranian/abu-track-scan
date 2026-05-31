@@ -230,6 +230,17 @@ struct DashboardView: View {
                                             .cornerRadius(4)
                                             .overlay(RoundedRectangle(cornerRadius: 4).stroke(showCamera ? Color.red.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
                                     }
+                                    
+                                    Button(action: { trackingManager.isMappingSensorsActive.toggle() }) {
+                                        Text("SCAN")
+                                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                                            .foregroundColor(trackingManager.isMappingSensorsActive ? .cyan : .gray)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(4)
+                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(trackingManager.isMappingSensorsActive ? Color.cyan.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
+                                    }
                                 }
                                 .padding(8)
                              }
