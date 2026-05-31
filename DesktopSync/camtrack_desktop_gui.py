@@ -2808,7 +2808,7 @@ class CamTrackDesktopApp:
         import time
         import socket
         
-        buffer_size = 4096
+        buffer_size = 65535
         self.receiver_sec_start = time.time()
         self.receiver_sec_packet_count = 0
         consecutive_timeouts = 0
