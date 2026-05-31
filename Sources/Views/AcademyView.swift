@@ -140,6 +140,39 @@ struct AcademyView: View {
                                   You get a dense, watertight 3D surface point cloud (previewed live and exported as `.ply`) showing real geometry (walls, tables, objects) completely free of visual-inertial parallax noise and spikes!
                                 """
                             )
+                            
+                            LessonDisclosureGroup(
+                                title: "7. Custom Initial Origin Overrides",
+                                icon: "arrow.triangle.branch",
+                                color: .purple,
+                                content: """
+                                • **Origin Offset Overrides (meters):**
+                                  Allows virtual production supervisors to offset and re-orient the initial tracking coordinates `(0, 0, 0)` dynamically using settings inputs for translation (X, Y, and Z in meters) and Yaw rotation (degrees).
+                                
+                                • **Dynamic Rotation Math:**
+                                  P_corrected = P_phone + T_offset
+                                  We automatically rotate double-precision quaternions using a custom yaw offset rotation matrix, ensuring absolute pose parity across network streams and 3D UI visualizers.
+                                
+                                • **Point Cloud Alignment:**
+                                  Applies the identical translation and yaw rotation transformation to all voxelized LiDAR point cloud coordinates in real-time, keeping the scanned tracking space perfectly aligned.
+                                """
+                            )
+                            
+                            LessonDisclosureGroup(
+                                title: "8. Live Telemetry & Firewall Configuration",
+                                icon: "network",
+                                color: .red,
+                                content: """
+                                • **Dynamic Live Sockets:**
+                                  Broadcasts live telemetry frames at up to 60Hz. Standard socket receivers must bind to port 8080 to listen for incoming tracking packets.
+                                
+                                • **Windows Defender Firewall Exception:**
+                                  Every compiled binary requires separate whitelisting. Click the 'FIX WINDOWS FIREWALL (8080)' button in the Windows app to add inbound rules automatically.
+                                
+                                • **Socket Buffer Requirements:**
+                                  LiDAR depth mesh scans package and transmit hundreds of active points per frame. The workstation receiver socket buffer is maximized to 65535 bytes to prevent packet drops (WinError 10040).
+                                """
+                            )
                         }
                         .padding(.horizontal)
                         

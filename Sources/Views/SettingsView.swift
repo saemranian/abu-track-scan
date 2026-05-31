@@ -637,6 +637,13 @@ struct SettingsView: View {
             .onAppear {
                 loadOffsets()
             }
+            .onChange(of: leverArmX) { newValue in RigSettings.leverArmX = Double(newValue) ?? 0.0 }
+            .onChange(of: leverArmY) { newValue in RigSettings.leverArmY = Double(newValue) ?? 0.0 }
+            .onChange(of: leverArmZ) { newValue in RigSettings.leverArmZ = Double(newValue) ?? 0.0 }
+            .onChange(of: originOffsetX) { newValue in RigSettings.originOffsetX = Double(newValue) ?? 0.0 }
+            .onChange(of: originOffsetY) { newValue in RigSettings.originOffsetY = Double(newValue) ?? 0.0 }
+            .onChange(of: originOffsetZ) { newValue in RigSettings.originOffsetZ = Double(newValue) ?? 0.0 }
+            .onChange(of: originOffsetYaw) { newValue in RigSettings.originOffsetYaw = Double(newValue) ?? 0.0 }
         }
     }
     

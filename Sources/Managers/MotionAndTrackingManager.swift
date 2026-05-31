@@ -89,6 +89,10 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     private var cachedOriginOffsetYaw: Double = 0.0
     private var cachedYawOffsetRad: Double = 0.0
     
+    private var cachedLeverArmX: Double = 0.0
+    private var cachedLeverArmY: Double = 0.0
+    private var cachedLeverArmZ: Double = 0.0
+    
     override init() {
         super.init()
         arSession.delegate = self
@@ -110,6 +114,10 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         cachedOriginOffsetZ = RigSettings.originOffsetZ
         cachedOriginOffsetYaw = RigSettings.originOffsetYaw
         cachedYawOffsetRad = RigSettings.originOffsetYaw * (.pi / 180.0)
+        
+        cachedLeverArmX = RigSettings.leverArmX / 100.0
+        cachedLeverArmY = RigSettings.leverArmY / 100.0
+        cachedLeverArmZ = RigSettings.leverArmZ / 100.0
         
         isTrackingActive = true
         accumulatedPointCloud.removeAll()
@@ -409,11 +417,10 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         let transform = frame.camera.transform
         let columns = transform.columns
         
-        // Extract 3D translation vector (X, Y, Z coordinates in meters)
-        // columns.3 is the position vector
-        let tx = Double(columns.3.x) + cachedOriginOffsetX
-        let ty = Double(columns.3.y) + cachedOriginOffsetY
-        let tz = Double(columns.3.z) + cachedOriginOffsetZ
+        // 1. Raw VIO translation vector (X, Y, Z in meters)
+        var px = Double(columns.3.x)
+        var py = Double(columns.3.y)
+        var pz = Double(columns.3.z)
         
         // Convert the 3x3 rotation matrix to Euler angles (degrees)
         let attitude = frame.camera.eulerAngles
@@ -424,6 +431,43 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             let offsetQuat = simd_quatd(angle: cachedYawOffsetRad, axis: simd_double3(0, 1, 0))
             quaternion = offsetQuat * quaternion
         }
+        
+        // 2. Apply DSLR Lever Arm offset (local space to world space rotation)
+        let lx = cachedLeverArmX
+        let ly = cachedLeverArmY
+        let lz = cachedLeverArmZ
+        if lx != 0.0 || ly != 0.0 || lz != 0.0 {
+            let qw = quaternion.vector.w
+            let qx = quaternion.vector.x
+            let qy = quaternion.vector.y
+            let qz = quaternion.vector.z
+            
+            let num1 = qx * 2.0
+            let num2 = qy * 2.0
+            let num3 = qz * 2.0
+            let num4 = qx * num1
+            let num5 = qy * num2
+            let num6 = qz * num3
+            let num7 = qx * num2
+            let num8 = qx * num3
+            let num9 = qy * num3
+            let num10 = qw * num1
+            let num11 = qw * num2
+            let num12 = qw * num3
+            
+            let rx = (1.0 - (num5 + num6)) * lx + (num7 - num12) * ly + (num8 + num11) * lz
+            let ry = (num7 + num12) * lx + (1.0 - (num4 + num6)) * ly + (num9 - num10) * lz
+            let rz = (num8 - num11) * lx + (num9 + num10) * ly + (1.0 - (num4 + num5)) * lz
+            
+            px += rx
+            py += ry
+            pz += rz
+        }
+        
+        // 3. Apply static Origin Offset
+        let tx = px + cachedOriginOffsetX
+        let ty = py + cachedOriginOffsetY
+        let tz = pz + cachedOriginOffsetZ
         
         // Background real-time streaming is disabled to lock it strictly to the Dashboard capture session GCD timer
         

@@ -476,9 +476,9 @@ struct DashboardView: View {
         let ry = (num7 + num12) * lx + (1.0 - (num4 + num6)) * ly + (num9 - num10) * lz
         let rz = (num8 - num11) * lx + (num9 + num10) * ly + (1.0 - (num4 + num5)) * lz
         
-        let correctedX = trackingManager.localX + rx
-        let correctedY = trackingManager.localY + ry
-        let correctedZ = trackingManager.localZ + rz
+        let correctedX = trackingManager.localX
+        let correctedY = trackingManager.localY
+        let correctedZ = trackingManager.localZ
         
         var correctedLat = locationManager.latitude
         var correctedLon = locationManager.longitude

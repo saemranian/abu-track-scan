@@ -174,6 +174,16 @@ class CamTrackDesktopApp:
         self.forward_protocol = tk.StringVar(value="Live Link JSON")  # Options: Live Link JSON, FreeD Binary, OpenTrackIO JSON
         self.forwarder_sock = None
         
+        # Workstation Offset Overrides (Local modifications applied prior to forwarders/visualizers)
+        self.ws_origin_x = tk.DoubleVar(value=0.0)
+        self.ws_origin_y = tk.DoubleVar(value=0.0)
+        self.ws_origin_z = tk.DoubleVar(value=0.0)
+        self.ws_origin_yaw = tk.DoubleVar(value=0.0)
+        
+        self.ws_lever_x = tk.DoubleVar(value=0.0)
+        self.ws_lever_y = tk.DoubleVar(value=0.0)
+        self.ws_lever_z = tk.DoubleVar(value=0.0)
+        
         # Workstation Live 3D Projected Canvas State
         self.live_points = []          # List of (x, y, z) tuples for point cloud
         self.live_trajectory = []      # List of (x, y, z) camera positions
@@ -185,6 +195,7 @@ class CamTrackDesktopApp:
         self.live_pan_z = 0.0
         self.live_zoom = 1.0
         self.live_follow = tk.BooleanVar(value=True)
+        self.live_view_mode = tk.StringVar(value="Orbit")
         self.live_show_path = tk.BooleanVar(value=True)
         self.live_show_points = tk.BooleanVar(value=True)
         self.build_ui()
@@ -570,7 +581,7 @@ class CamTrackDesktopApp:
         rx_left = ttk.Frame(self.tab_receiver, padding=10)
         rx_left.grid(row=0, column=0, sticky="nsew")
         rx_left.columnconfigure(0, weight=1)
-        rx_left.rowconfigure(2, weight=1)
+        rx_left.rowconfigure(3, weight=1)
         
         # Card 1: Receiver Configuration
         rx_config_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
@@ -620,9 +631,43 @@ class CamTrackDesktopApp:
         proto_combo = ttk.Combobox(rx_forward_card, textvariable=self.forward_protocol, values=["Live Link JSON", "FreeD Binary", "OpenTrackIO JSON"], state="readonly", width=18)
         proto_combo.grid(row=4, column=1, sticky="w", pady=4)
         
+        # Card 1.7: Workstation Coordinate Offsets & Calibration Overrides
+        rx_offset_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
+        rx_offset_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        rx_offset_card.columnconfigure(1, weight=1)
+        rx_offset_card.columnconfigure(3, weight=1)
+        
+        ttk.Label(rx_offset_card, text="03 // WORKSTATION CALIBRATION & OFFSETS", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
+        
+        # Section A: Initial Origin Offsets
+        ttk.Label(rx_offset_card, text="Origin X (m):").grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_x, width=8).grid(row=1, column=1, sticky="w", pady=2)
+        
+        ttk.Label(rx_offset_card, text="Origin Y (m):").grid(row=1, column=2, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_y, width=8).grid(row=1, column=3, sticky="w", pady=2)
+        
+        ttk.Label(rx_offset_card, text="Origin Z (m):").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_z, width=8).grid(row=2, column=1, sticky="w", pady=2)
+        
+        ttk.Label(rx_offset_card, text="Origin Yaw (°):").grid(row=2, column=2, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_yaw, width=8).grid(row=2, column=3, sticky="w", pady=2)
+        
+        # Separator line
+        ttk.Separator(rx_offset_card, orient="horizontal").grid(row=3, column=0, columnspan=4, sticky="ew", pady=6)
+        
+        # Section B: Camera Lever Arm Offsets
+        ttk.Label(rx_offset_card, text="Lever X (cm):").grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_x, width=8).grid(row=4, column=1, sticky="w", pady=2)
+        
+        ttk.Label(rx_offset_card, text="Lever Y (cm):").grid(row=4, column=2, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_y, width=8).grid(row=4, column=3, sticky="w", pady=2)
+        
+        ttk.Label(rx_offset_card, text="Lever Z (cm):").grid(row=5, column=0, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_z, width=8).grid(row=5, column=1, sticky="w", pady=2)
+
         # Card 2: PC Network & Stream Diagnostics
         rx_diag_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_diag_card.grid(row=2, column=0, sticky="nsew")
+        rx_diag_card.grid(row=3, column=0, sticky="nsew")
         rx_diag_card.columnconfigure(1, weight=1)
         
         ttk.Label(rx_diag_card, text="03 // PC NETWORK DIAGNOSTICS", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
@@ -788,6 +833,10 @@ class CamTrackDesktopApp:
         follow_chk = ttk.Checkbutton(toolbar, text="Follow", variable=self.live_follow, command=self.redraw_live_3d_canvas)
         follow_chk.pack(side="right", padx=(4, 0))
         
+        self.live_view_mode_combo = ttk.Combobox(toolbar, textvariable=self.live_view_mode, values=["Orbit", "Cockpit"], state="readonly", width=8)
+        self.live_view_mode_combo.pack(side="right", padx=(4, 4))
+        self.live_view_mode_combo.bind("<<ComboboxSelected>>", lambda e: self.redraw_live_3d_canvas())
+        
         self.live_canvas = tk.Canvas(rx_canvas_card, bg=BG_COLOR, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
         self.live_canvas.grid(row=1, column=0, sticky="nsew")
         
@@ -798,6 +847,7 @@ class CamTrackDesktopApp:
         self.live_canvas.bind("<B3-Motion>", self.on_live_canvas_pan)
         self.live_canvas.bind("<MouseWheel>", self.on_live_canvas_scroll)
         self.live_canvas.bind("<Configure>", lambda e: self.redraw_live_3d_canvas())
+        self.live_canvas.bind("<Double-Button-1>", lambda e: self.reset_live_view())
         
         # Card 4: Console
         rx_console_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
@@ -813,6 +863,110 @@ class CamTrackDesktopApp:
         scroll_rx_console = ttk.Scrollbar(rx_console_card, orient="vertical", command=self.rx_console.yview)
         scroll_rx_console.grid(row=1, column=1, sticky="ns")
         self.rx_console.configure(yscrollcommand=scroll_rx_console.set)
+        
+        # ----------------- TAB 5: SYSTEM MANUAL & DOCUMENTATION -----------------
+        self.tab_docs = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(self.tab_docs, text="05 // SYSTEM MANUAL & DOCUMENTATION")
+        
+        self.tab_docs.columnconfigure(0, weight=1)
+        self.tab_docs.rowconfigure(0, weight=1)
+        
+        docs_card = ttk.Frame(self.tab_docs, style="Card.TFrame", padding=16)
+        docs_card.grid(row=0, column=0, sticky="nsew")
+        docs_card.columnconfigure(0, weight=1)
+        docs_card.rowconfigure(1, weight=1)
+        
+        ttk.Label(docs_card, text="05 // INDUSTRIAL SYNC ENGINE USER MANUAL & ACADEMY", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 12))
+        
+        self.docs_text = tk.Text(docs_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 10), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR, wrap="word", padx=12, pady=12)
+        self.docs_text.grid(row=1, column=0, sticky="nsew")
+        
+        scroll_docs = ttk.Scrollbar(docs_card, orient="vertical", command=self.docs_text.yview)
+        scroll_docs.grid(row=1, column=1, sticky="ns")
+        self.docs_text.configure(yscrollcommand=scroll_docs.set)
+        
+        # Configure tags for beautiful styled text rendering
+        self.docs_text.tag_config("h1", font=("Consolas", 12, "bold"), foreground=ACCENT_CYAN, spacing1=12, spacing3=6)
+        self.docs_text.tag_config("h2", font=("Consolas", 10, "bold"), foreground=ACCENT_CYAN, spacing1=8, spacing3=4)
+        self.docs_text.tag_config("bold", font=("Consolas", 9, "bold"), foreground=TEXT_PRIMARY)
+        self.docs_text.tag_config("bullet", font=("Consolas", 9, "bold"), foreground=ACCENT_GREEN)
+        self.docs_text.tag_config("code", font=("Consolas", 8, "bold"), foreground=ACCENT_AMBER, background=BG_COLOR)
+        self.docs_text.tag_config("warning", font=("Consolas", 9, "bold"), foreground=ACCENT_RED)
+        self.docs_text.tag_config("normal", font=("Consolas", 9), foreground=TEXT_MUTED, spacing2=4)
+        
+        self.write_documentation_manual()
+        
+    def write_documentation_manual(self):
+        self.docs_text.configure(state="normal")
+        self.docs_text.delete("1.0", tk.END)
+        
+        def add_p(text, tags=("normal",)):
+            self.docs_text.insert(tk.END, text + "\n", tags)
+            
+        def add_h1(text):
+            self.docs_text.insert(tk.END, "\n" + text + "\n", "h1")
+            self.docs_text.insert(tk.END, "="*len(text) + "\n", "h1")
+            
+        def add_h2(text):
+            self.docs_text.insert(tk.END, "\n" + text + "\n", "h2")
+            
+        def add_bullet(bullet_char, label, desc):
+            self.docs_text.insert(tk.END, f"  {bullet_char}  ", "bullet")
+            self.docs_text.insert(tk.END, label, "bold")
+            self.docs_text.insert(tk.END, desc + "\n", "normal")
+            
+        def add_code(text):
+            self.docs_text.insert(tk.END, "  " + text + "\n", "code")
+
+        add_h1("ABU TRACK SYSTEM ACADEMY & OPERATIONS MANUAL")
+        add_p("Welcome to the complete deployment and operations manual for the Abu Track ecosystem. This system bridges multi-frequency, sensor-fused iOS VIO (Visual Inertial Odometry) and high-accuracy ToF LiDAR depth scanners with virtual production workstations, photo-georeferencing pipelines (e.g. Agisoft Metashape, 3D Gaussian Splatting), and Unreal Engine real-time camera tracking.")
+        
+        add_h2("1. CORE ARCHITECTURE OVERVIEW")
+        add_p("The Abu Track pipeline combines industrial mobile tracking hardware and workstation receiver engines to capture, buffer, smooth, and forward spatial coordinates.")
+        add_bullet("✓", "iOS Client (VIO SLAM): ", "Leverages dual-frequency GNSS (GPS), high-rate IMUs, and Apple ARKit scene reconstruction (LiDAR ToF). Coordinates are calculated in local body space and shifted using rig lever-arms and origin offsets.")
+        add_bullet("✓", "Desktop Workstation: ", "Listens to multi-format high-frequency UDP telemetry packets, dynamically applies workstation-side offset overrides, tracks camera path trajectories, visualizes LiDAR point clouds, and forwards clean positional metrics.")
+        
+        add_h2("2. STEP-BY-STEP SYSTEM DEPLOYMENT")
+        add_bullet("1", "Check Local Network Connectivity: ", "Verify that both your iOS device and PC are connected to the exact same Wi-Fi subnet. The client and host must be able to discover each other.")
+        add_bullet("2", "Configure Port Whitelisting: ", "Ensure the target port (default: 8080) is whitelisted in your Windows Firewall. If connection blocks, close port conflicts (e.g. stop Unreal Engine or other listeners before launching Abu Track).")
+        add_bullet("3", "Identify PC IP Address: ", "Check 'PC Local IP(s)' displayed in tab 04 // LIVE TELEMETRY CHECKER. Enter this PC IP under the Target IP inside the iOS App's Calibration tab.")
+        add_bullet("4", "Initialize Stream: ", "Toggles 'Enable UDP Broadcast' in the iOS app, select 'Live Link' or 'FreeD' streaming protocol. Tap 'START LISTENING' on the workstation to open the UDP socket server.")
+        
+        add_h2("3. CALIBRATION & RIG OFFSETS (LOCAL VS WORKSTATION)")
+        add_p("To align the tracker (phone) with the actual optical capture center (DSLR/Mirrorless camera sensor) and physical studio space, two distinct offset tiers are supported:")
+        
+        add_bullet("■", "Origin Offsets (Studio Alignment): ", "Offsets the tracking trajectory relative to the physical studio floor coordinate system.")
+        add_bullet(" ", "- X Offset: ", "Shifts the trajectory left/right in meters.")
+        add_bullet(" ", "- Y Offset: ", "Shifts the trajectory up/down in meters.")
+        add_bullet(" ", "- Z Offset: ", "Shifts the trajectory forward/backward in meters.")
+        add_bullet(" ", "- Yaw Offset: ", "Rotates the entire tracking coordinate system around gravity (Y-axis) in degrees.")
+        
+        add_bullet("■", "DSLR Lever-Arm Offsets (Hot-Shoe Rig): ", "Sets the 3D translation vector (X, Y, Z in cm) between the center of the phone's lens and the DSLR's optical CMOS sensor plane.")
+        add_bullet(" ", "- Lever X: ", "Positive if the phone center is offset to the right of the lens axis.")
+        add_bullet(" ", "- Lever Y: ", "Positive if the phone is mounted higher than the lens center.")
+        add_bullet(" ", "- Lever Z: ", "Positive if the phone is mounted further forward than the DSLR sensor plane.")
+        
+        add_p("Lever-Arm translation vector is rotated in real-time by the unit orientation quaternion of the camera before it is applied to the raw coordinates, ensuring consistent offsets at any tilt angle!")
+        
+        add_h2("4. LIVE 3D CANVAS VIEW NAVIGATION")
+        add_p("The Live 3D Monitor provides rich perspective-projected spatial visualizers for your active camera trajectory and point cloud.")
+        add_bullet("🖱", "Orbit Rotation (Left-Click Drag): ", "Rotate the viewpoint around the focus target center.")
+        add_bullet("🖱", "Pan View (Right-Click Drag): ", "Shift the camera viewport target center. This breaks the Follow Lock.")
+        add_bullet("🖱", "Zoom In/Out (Scroll Wheel): ", "Increase or decrease the viewport magnification.")
+        add_bullet("🖱", "Orbit Target Snap (Double-Left-Click): ", "Instantly center the viewport focus target onto the latest active camera coordinate. Perfect for resetting your rotation target.")
+        
+        add_h2("5. INTEGRATION IN ACTION (UNREAL ENGINE & METASHAPE)")
+        add_bullet("✔", "Unreal Engine Virtual Camera: ", "Set forward host/port in '02 // DYNAMIC UDP FORWARDER SERVER' to forward packets to UE. Use Live Link protocol with subject name 'AbuTrack'. Set pitch offset to -90° inside UE settings for horizon alignment.")
+        add_bullet("✔", "Agisoft Metashape EXIF Sync: ", "Under '01 // CONSOLE LOGS & EXIF SYNC', import your DSLR photos folder and select the session ID log captured on your iOS device. Click 'Inject Precision GPS and Pose' to auto-interpolate, write EXIF, and solve matching cameras.")
+        
+        add_h2("6. TROUBLESHOOTING FIREWALLS & SOCKETS")
+        add_p("If you are getting 'SOCKET ERROR' or not receiving signals in Tab 4:")
+        add_bullet("⚠", "Check Port Locks: ", "Make sure other software (e.g. Unreal Engine Live Link plugin) is not already listening on the same port. Only one program can bind to a UDP port at a time.")
+        add_bullet("⚠", "Firewall Rules: ", "Add an Inbound Rule in Windows Defender Firewall to allow UDP traffic on port 8080.")
+        add_bullet("⚠", "IP Mismatch: ", "Ensure the Target IP entered on the phone exactly matches the PC IP. Do not use broadcast mode unless the local router supports packet replication.")
+        
+        add_p("\nManual version: 1.2.0 | System Architecture: Cyberpunk Industrial Real-Time")
+        self.docs_text.configure(state="disabled")
         
     def setup_3d_axes(self):
         self.ax.clear()
@@ -2941,9 +3095,67 @@ class CamTrackDesktopApp:
                     playout_sec_packet_count = 0
                     playout_sec_start = playout_now
                 
-                # Extract coordinates
-                px, py, pz = parsed["x"], parsed["y"], parsed["z"]
-                pitch, yaw, roll = parsed["pitch"], parsed["yaw"], parsed["roll"]
+                # Extract raw coordinates
+                px_raw = parsed["x"]
+                py_raw = parsed["y"]
+                pz_raw = parsed["z"]
+                pitch_raw = parsed["pitch"]
+                yaw_raw = parsed["yaw"]
+                roll_raw = parsed["roll"]
+                
+                # 1. Apply workstation DSLR Lever Arm Offset (convert cm to meters)
+                lx = self.ws_lever_x.get() / 100.0
+                ly = self.ws_lever_y.get() / 100.0
+                lz = self.ws_lever_z.get() / 100.0
+                
+                px = px_raw
+                py = py_raw
+                pz = pz_raw
+                yaw = yaw_raw
+                pitch = pitch_raw
+                roll = roll_raw
+                
+                if lx != 0.0 or ly != 0.0 or lz != 0.0:
+                    qw, qx, qy, qz = self.euler_to_quaternion(roll_raw, pitch_raw, yaw_raw)
+                    # Vector rotation math using quaternion
+                    n1 = qx * 2.0
+                    n2 = qy * 2.0
+                    n3 = qz * 2.0
+                    n4 = qx * n1
+                    n5 = qy * n2
+                    n6 = qz * n3
+                    n7 = qx * n2
+                    n8 = qx * n3
+                    n9 = qy * n3
+                    n10 = qw * n1
+                    n11 = qw * n2
+                    n12 = qw * n3
+                    
+                    rx = (1.0 - (n5 + n6)) * lx + (n7 - n12) * ly + (n8 + n11) * lz
+                    ry = (n7 + n12) * lx + (1.0 - (n4 + n6)) * ly + (n9 - n10) * lz
+                    rz = (n8 - n11) * lx + (n9 + n10) * ly + (1.0 - (n4 + n5)) * lz
+                    
+                    px += rx
+                    py += ry
+                    pz += rz
+                
+                # 2. Apply workstation static Origin Offsets (meters and degrees)
+                px += self.ws_origin_x.get()
+                py += self.ws_origin_y.get()
+                pz += self.ws_origin_z.get()
+                
+                yaw_adj = yaw_raw + self.ws_origin_yaw.get()
+                if yaw_adj > 180.0:
+                    yaw_adj -= 360.0
+                elif yaw_adj < -180.0:
+                    yaw_adj += 360.0
+                yaw = yaw_adj
+                
+                # Overwrite parsed dictionary to propagate offsets to canvas and forwarders automatically!
+                parsed["x"] = px
+                parsed["y"] = py
+                parsed["z"] = pz
+                parsed["yaw"] = yaw
                 fmt_type = parsed["type"]
                 timestamp = parsed.get("timestamp", None)
                 addr_str = parsed.get("addr_str", "iOS")
@@ -2991,14 +3203,15 @@ class CamTrackDesktopApp:
                         if len(pt) >= 3:
                             self.live_points.append((float(pt[0]), float(pt[1]), float(pt[2])))
                             
-                # Sync cockpit camera tracking in follow mode
+                # Sync cockpit/orbit camera tracking in follow mode
                 if self.live_follow.get():
                     self.live_pan_x = px
                     self.live_pan_y = py
                     self.live_pan_z = pz
-                    self.live_rot_x = -pitch * math.pi / 180.0 - math.pi / 2.0  # Apply the -90 degree offset globally for proper horizon pitch alignment
-                    self.live_rot_y = -yaw * math.pi / 180.0
-                    self.live_rot_z = -roll * math.pi / 180.0
+                    if self.live_view_mode.get() == "Cockpit":
+                        self.live_rot_x = -pitch * math.pi / 180.0 - math.pi / 2.0  # Apply the -90 degree offset globally for proper horizon pitch alignment
+                        self.live_rot_y = -yaw * math.pi / 180.0
+                        self.live_rot_z = -roll * math.pi / 180.0
                     
                 self.root.after(0, self.redraw_live_3d_canvas)
                 
@@ -3241,12 +3454,19 @@ class CamTrackDesktopApp:
                 self.rx_log("FORWARD STATE // Disabled and socket unbound.")
 
     def reset_live_view(self):
+        if self.live_trajectory:
+            last_pt = self.live_trajectory[-1]
+            self.live_pan_x = last_pt[0]
+            self.live_pan_y = last_pt[1]
+            self.live_pan_z = last_pt[2]
+        else:
+            self.live_pan_x = 0.0
+            self.live_pan_y = 0.0
+            self.live_pan_z = 0.0
+            
         self.live_rot_x = -0.4
         self.live_rot_y = -0.6
         self.live_rot_z = 0.0
-        self.live_pan_x = 0.0
-        self.live_pan_y = 0.0
-        self.live_pan_z = 0.0
         self.live_zoom = 1.0
         self.live_follow.set(False)
         self.redraw_live_3d_canvas()
@@ -3261,8 +3481,8 @@ class CamTrackDesktopApp:
         self.last_live_mouse_y = event.y
 
     def on_live_canvas_orbit(self, event):
-        if self.live_follow.get():
-            self.live_follow.set(False)
+        if self.live_follow.get() and self.live_view_mode.get() == "Cockpit":
+            self.live_view_mode.set("Orbit")
             
         dx = event.x - self.last_live_mouse_x
         dy = event.y - self.last_live_mouse_y

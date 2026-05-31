@@ -1,12 +1,12 @@
 {
   "desktop": {
     "version": "1.0.1",
-    "build": 59,
-    "last_build_time": "2026-05-31 23:11:40"
+    "build": 60,
+    "last_build_time": "2026-05-31 23:47:33"
   },
   "ios": {
     "version": "0.0.7",
-    "build": 59,
-    "last_build_time": "2026-05-31 23:11:40"
+    "build": 60,
+    "last_build_time": "2026-05-31 23:47:33"
   }
 }
