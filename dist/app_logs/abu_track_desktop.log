@@ -686,3 +686,97 @@ Traceback (most recent call last):
 OSError: [WinError 10038] An operation was attempted on something that is not a socket
 2026-05-31 17:21:39,489 [INFO] MainThread: UDP socket closed successfully.
 2026-05-31 17:21:39,490 [INFO] Thread-4 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 0
+2026-05-31 18:57:57,649 [INFO] MainThread: ============================================================
+2026-05-31 18:57:57,649 [INFO] MainThread: Abu Track Desktop App Initializing (Local Time: 2026-05-31 18:57:57.649252)
+2026-05-31 18:57:57,649 [INFO] MainThread: Python: 3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]
+2026-05-31 18:57:57,649 [INFO] MainThread: Executable Mode: PyInstaller Bundle
+2026-05-31 18:57:57,649 [INFO] MainThread: Log directory configured at: C:\Users\USer\.gemini\antigravity\scratch\ios_app_cam_track_01\dist\app_logs
+2026-05-31 18:57:57,649 [INFO] MainThread: ============================================================
+2026-05-31 18:57:58,429 [INFO] MainThread: generated new fontManager
+2026-05-31 18:58:15,987 [INFO] MainThread: Receiver startup requested. Targeting port: 8080
+2026-05-31 18:58:15,987 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8080
+2026-05-31 18:58:15,988 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8081 [Live Link JSON]
+2026-05-31 18:58:15,988 [INFO] Thread-2 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-05-31 18:58:26,063 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 10 seconds.
+2026-05-31 18:58:36,150 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 20 seconds.
+2026-05-31 18:58:38,971 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-05-31 18:58:38,971 [ERROR] Thread-2 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 2817, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-05-31 18:58:38,971 [INFO] MainThread: UDP socket closed successfully.
+2026-05-31 18:58:38,972 [INFO] Thread-2 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 0
+2026-05-31 18:58:38,972 [INFO] MainThread: Forwarder socket closed successfully.
+2026-05-31 22:14:38,618 [INFO] MainThread: Receiver startup requested. Targeting port: 8080
+2026-05-31 22:14:38,618 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8080
+2026-05-31 22:14:38,618 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8081 [Live Link JSON]
+2026-05-31 22:14:38,619 [INFO] Thread-4 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-05-31 22:14:48,699 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 10 seconds.
+2026-05-31 22:14:58,782 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 20 seconds.
+2026-05-31 22:15:08,859 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 30 seconds.
+2026-05-31 22:15:18,945 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 40 seconds.
+2026-05-31 22:15:29,028 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 50 seconds.
+2026-05-31 22:15:39,109 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 60 seconds.
+2026-05-31 22:15:49,209 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 70 seconds.
+2026-05-31 22:15:59,286 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 80 seconds.
+2026-05-31 22:16:09,403 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 90 seconds.
+2026-05-31 22:16:19,510 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 100 seconds.
+2026-05-31 22:16:29,614 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 110 seconds.
+2026-05-31 22:16:39,734 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 120 seconds.
+2026-05-31 22:16:49,825 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 130 seconds.
+2026-05-31 22:16:59,910 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 140 seconds.
+2026-05-31 22:17:10,040 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 150 seconds.
+2026-05-31 22:17:20,148 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 160 seconds.
+2026-05-31 22:17:30,244 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 170 seconds.
+2026-05-31 22:17:40,366 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 180 seconds.
+2026-05-31 22:17:50,480 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 190 seconds.
+2026-05-31 22:18:00,595 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 200 seconds.
+2026-05-31 22:18:10,690 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 210 seconds.
+2026-05-31 22:18:20,808 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 220 seconds.
+2026-05-31 22:18:30,922 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 230 seconds.
+2026-05-31 22:18:41,023 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 240 seconds.
+2026-05-31 22:18:51,122 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 250 seconds.
+2026-05-31 22:19:01,226 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 260 seconds.
+2026-05-31 22:19:11,309 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 270 seconds.
+2026-05-31 22:19:21,381 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 280 seconds.
+2026-05-31 22:19:31,489 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 290 seconds.
+2026-05-31 22:19:41,596 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 300 seconds.
+2026-05-31 22:19:51,697 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 310 seconds.
+2026-05-31 22:20:01,782 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 320 seconds.
+2026-05-31 22:20:11,892 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 330 seconds.
+2026-05-31 22:20:21,987 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 340 seconds.
+2026-05-31 22:20:32,089 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 350 seconds.
+2026-05-31 22:20:42,194 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 360 seconds.
+2026-05-31 22:20:52,294 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 370 seconds.
+2026-05-31 22:21:02,408 [INFO] Thread-4 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 380 seconds.
+2026-05-31 22:21:08,960 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-05-31 22:21:08,960 [ERROR] Thread-4 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 2817, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-05-31 22:21:08,961 [INFO] MainThread: UDP socket closed successfully.
+2026-05-31 22:21:08,961 [INFO] Thread-4 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 0
+2026-05-31 22:21:09,722 [INFO] MainThread: Receiver startup requested. Targeting port: 8080
+2026-05-31 22:21:09,723 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8080
+2026-05-31 22:21:09,723 [INFO] Thread-6 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-05-31 22:21:19,814 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 10 seconds.
+2026-05-31 22:21:29,926 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 20 seconds.
+2026-05-31 22:21:40,025 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 30 seconds.
+2026-05-31 22:21:50,128 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 40 seconds.
+2026-05-31 22:22:00,228 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 50 seconds.
+2026-05-31 22:22:10,339 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 60 seconds.
+2026-05-31 22:22:20,451 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 70 seconds.
+2026-05-31 22:22:30,533 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 80 seconds.
+2026-05-31 22:22:40,642 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 90 seconds.
+2026-05-31 22:22:50,754 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 100 seconds.
+2026-05-31 22:23:00,868 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 110 seconds.
+2026-05-31 22:23:10,979 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 120 seconds.
+2026-05-31 22:23:21,057 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 130 seconds.
+2026-05-31 22:23:31,170 [INFO] Thread-6 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 140 seconds.
+2026-05-31 22:23:40,611 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-05-31 22:23:40,611 [ERROR] Thread-6 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 2817, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-05-31 22:23:40,611 [INFO] MainThread: UDP socket closed successfully.
+2026-05-31 22:23:40,611 [INFO] Thread-6 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 0

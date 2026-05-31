@@ -82,6 +82,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     private var isAltimeterRunning = false
     private var lastStreamTime: TimeInterval = 0
     
+    // Cached origin offset overrides for low-overhead thread-safe tracking updates
+    private var cachedOriginOffsetX: Double = 0.0
+    private var cachedOriginOffsetY: Double = 0.0
+    private var cachedOriginOffsetZ: Double = 0.0
+    private var cachedOriginOffsetYaw: Double = 0.0
+    private var cachedYawOffsetRad: Double = 0.0
+    
     override init() {
         super.init()
         arSession.delegate = self
@@ -97,6 +104,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     }
     
     func startTracking(frequency: Double = 30.0) {
+        // Cache the latest user configurations once at session start
+        cachedOriginOffsetX = RigSettings.originOffsetX
+        cachedOriginOffsetY = RigSettings.originOffsetY
+        cachedOriginOffsetZ = RigSettings.originOffsetZ
+        cachedOriginOffsetYaw = RigSettings.originOffsetYaw
+        cachedYawOffsetRad = RigSettings.originOffsetYaw * (.pi / 180.0)
+        
         isTrackingActive = true
         accumulatedPointCloud.removeAll()
         cameraTrajectory.removeAll()
@@ -335,7 +349,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             self.pitch = attitude.pitch * (180.0 / .pi)
             self.roll = attitude.roll * (180.0 / .pi)
             
-            var adjustedYaw = attitude.yaw * (180.0 / .pi) + RigSettings.originOffsetYaw
+            var adjustedYaw = attitude.yaw * (180.0 / .pi) + self.cachedOriginOffsetYaw
             if adjustedYaw > 180 {
                 adjustedYaw -= 360
             } else if adjustedYaw < -180 {
@@ -343,9 +357,8 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             }
             self.yaw = adjustedYaw
             
-            let yawOffsetRad = RigSettings.originOffsetYaw * (.pi / 180.0)
-            if yawOffsetRad != 0 {
-                let offsetQuat = simd_quatd(angle: yawOffsetRad, axis: simd_double3(0, 1, 0))
+            if self.cachedYawOffsetRad != 0 {
+                let offsetQuat = simd_quatd(angle: self.cachedYawOffsetRad, axis: simd_double3(0, 1, 0))
                 let qCam = simd_quatd(ix: attitude.quaternion.x, iy: attitude.quaternion.y, iz: attitude.quaternion.z, r: attitude.quaternion.w)
                 let rotatedQuat = offsetQuat * qCam
                 self.q_w = rotatedQuat.vector.w
@@ -398,18 +411,17 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         
         // Extract 3D translation vector (X, Y, Z coordinates in meters)
         // columns.3 is the position vector
-        let tx = Double(columns.3.x) + RigSettings.originOffsetX
-        let ty = Double(columns.3.y) + RigSettings.originOffsetY
-        let tz = Double(columns.3.z) + RigSettings.originOffsetZ
+        let tx = Double(columns.3.x) + cachedOriginOffsetX
+        let ty = Double(columns.3.y) + cachedOriginOffsetY
+        let tz = Double(columns.3.z) + cachedOriginOffsetZ
         
         // Convert the 3x3 rotation matrix to Euler angles (degrees)
         let attitude = frame.camera.eulerAngles
         
         // Convert to Quaternions
         var quaternion = frame.camera.quaternion
-        let yawOffsetRad = RigSettings.originOffsetYaw * (.pi / 180.0)
-        if yawOffsetRad != 0 {
-            let offsetQuat = simd_quatd(angle: yawOffsetRad, axis: simd_double3(0, 1, 0))
+        if cachedYawOffsetRad != 0 {
+            let offsetQuat = simd_quatd(angle: cachedYawOffsetRad, axis: simd_double3(0, 1, 0))
             quaternion = offsetQuat * quaternion
         }
         
@@ -423,7 +435,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             // eulerAngles represent pitch, yaw, roll in radians
             self.pitch = Double(attitude.x) * (180.0 / .pi)
             
-            var adjustedYaw = Double(attitude.y) * (180.0 / .pi) + RigSettings.originOffsetYaw
+            var adjustedYaw = Double(attitude.y) * (180.0 / .pi) + self.cachedOriginOffsetYaw
             if adjustedYaw > 180 {
                 adjustedYaw -= 360
             } else if adjustedYaw < -180 {
@@ -469,16 +481,16 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                 }
                 
                 // Map the point cloud points to the offset origin space using translation and yaw offsets
-                let cosYaw = Float(cos(yawOffsetRad))
-                let sinYaw = Float(sin(yawOffsetRad))
-                let offX = Float(RigSettings.originOffsetX)
-                let offY = Float(RigSettings.originOffsetY)
-                let offZ = Float(RigSettings.originOffsetZ)
+                let cosYaw = Float(cos(self.cachedYawOffsetRad))
+                let sinYaw = Float(sin(self.cachedYawOffsetRad))
+                let offX = Float(self.cachedOriginOffsetX)
+                let offY = Float(self.cachedOriginOffsetY)
+                let offZ = Float(self.cachedOriginOffsetZ)
                 
                 let mappedPoints = currentFramePoints.map { pt -> RawPoint3D in
                     var rx = pt.x
                     var rz = pt.z
-                    if yawOffsetRad != 0 {
+                    if self.cachedYawOffsetRad != 0 {
                         rx = pt.x * cosYaw - pt.z * sinYaw
                         rz = pt.x * sinYaw + pt.z * cosYaw
                     }
