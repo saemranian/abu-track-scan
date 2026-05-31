@@ -6,7 +6,6 @@
 #include "HAL/ThreadSafeBool.h"
 #include "IMessageReceiver.h"
 #include "LiveLinkSourceSettings.h"
-#include "LiveLinkInterface.h"
 
 class FSocket;
 class FRunnableThread;
