@@ -18976,3 +18976,10 @@ OSError: [WinError 10040] A message sent on a datagram socket was larger than th
 2026-05-31 23:47:16,772 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 1120 seconds.
 2026-05-31 23:47:26,876 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 1130 seconds.
 2026-05-31 23:47:36,960 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 1140 seconds.
+2026-05-31 23:56:13,749 [INFO] MainThread: ============================================================
+2026-05-31 23:56:13,749 [INFO] MainThread: Abu Track Desktop App Initializing (Local Time: 2026-05-31 23:56:13.749919)
+2026-05-31 23:56:13,749 [INFO] MainThread: Python: 3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]
+2026-05-31 23:56:13,750 [INFO] MainThread: Executable Mode: PyInstaller Bundle
+2026-05-31 23:56:13,750 [INFO] MainThread: Log directory configured at: C:\Users\USer\.gemini\antigravity\scratch\ios_app_cam_track_01\dist\app_logs
+2026-05-31 23:56:13,750 [INFO] MainThread: ============================================================
+2026-05-31 23:56:14,533 [INFO] MainThread: generated new fontManager

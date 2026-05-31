@@ -637,13 +637,13 @@ struct SettingsView: View {
             .onAppear {
                 loadOffsets()
             }
-            .onChange(of: leverArmX) { newValue in RigSettings.leverArmX = Double(newValue) ?? 0.0 }
-            .onChange(of: leverArmY) { newValue in RigSettings.leverArmY = Double(newValue) ?? 0.0 }
-            .onChange(of: leverArmZ) { newValue in RigSettings.leverArmZ = Double(newValue) ?? 0.0 }
-            .onChange(of: originOffsetX) { newValue in RigSettings.originOffsetX = Double(newValue) ?? 0.0 }
-            .onChange(of: originOffsetY) { newValue in RigSettings.originOffsetY = Double(newValue) ?? 0.0 }
-            .onChange(of: originOffsetZ) { newValue in RigSettings.originOffsetZ = Double(newValue) ?? 0.0 }
-            .onChange(of: originOffsetYaw) { newValue in RigSettings.originOffsetYaw = Double(newValue) ?? 0.0 }
+            .onChange(of: leverArmX) { _ in updateLeverArmX() }
+            .onChange(of: leverArmY) { _ in updateLeverArmY() }
+            .onChange(of: leverArmZ) { _ in updateLeverArmZ() }
+            .onChange(of: originOffsetX) { _ in updateOriginOffsetX() }
+            .onChange(of: originOffsetY) { _ in updateOriginOffsetY() }
+            .onChange(of: originOffsetZ) { _ in updateOriginOffsetZ() }
+            .onChange(of: originOffsetYaw) { _ in updateOriginOffsetYaw() }
         }
     }
     
@@ -689,6 +689,14 @@ struct SettingsView: View {
         RigSettings.originOffsetZ = oz
         RigSettings.originOffsetYaw = oyaw
     }
+    
+    private func updateLeverArmX() { RigSettings.leverArmX = Double(leverArmX) ?? 0.0 }
+    private func updateLeverArmY() { RigSettings.leverArmY = Double(leverArmY) ?? 0.0 }
+    private func updateLeverArmZ() { RigSettings.leverArmZ = Double(leverArmZ) ?? 0.0 }
+    private func updateOriginOffsetX() { RigSettings.originOffsetX = Double(originOffsetX) ?? 0.0 }
+    private func updateOriginOffsetY() { RigSettings.originOffsetY = Double(originOffsetY) ?? 0.0 }
+    private func updateOriginOffsetZ() { RigSettings.originOffsetZ = Double(originOffsetZ) ?? 0.0 }
+    private func updateOriginOffsetYaw() { RigSettings.originOffsetYaw = Double(originOffsetYaw) ?? 0.0 }
 }
 
 struct OffsetInputField: View {
