@@ -19,7 +19,7 @@ public:
 	// ILiveLinkSource interface
 	virtual void ReceiveClient(ILiveLinkClient* InClient, FGuid InSourceGuid) override;
 	virtual bool IsSourceStillValid() const override;
-	virtual bool RequestSourceSettingsApply(ULiveLinkSourceSettings* Settings) override;
+	virtual bool RequestSourceShutdown() override;
 	virtual void InitializeSettings(ULiveLinkSourceSettings* Settings) override;
 	virtual TSubclassOf<ULiveLinkSourceSettings> GetSettingsClass() const override;
 	

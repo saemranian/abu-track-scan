@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "LiveLinkSourceFactory.h"
-#include "LiveLinkAbuTrackSourceFactory.generated.class.h" // Wait, standard Unreal uses .generated.h
+
 
 // Standard Unreal reflection header
 #include "LiveLinkAbuTrackSourceFactory.generated.h"

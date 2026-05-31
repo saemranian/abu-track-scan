@@ -36,7 +36,8 @@ public class LiveLinkAbuTrack : ModuleRules
 				"Engine",
 				"InputCore",
 				"Slate",
-				"SlateCore"
+				"SlateCore",
+				"Json"
 			}
 		);
 		

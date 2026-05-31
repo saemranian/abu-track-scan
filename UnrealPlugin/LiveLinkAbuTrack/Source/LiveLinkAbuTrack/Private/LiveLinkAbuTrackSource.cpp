@@ -38,8 +38,9 @@ bool FLiveLinkAbuTrackSource::IsSourceStillValid() const
 	return bIsRunning;
 }
 
-bool FLiveLinkAbuTrackSource::RequestSettingsApply(ULiveLinkSourceSettings* Settings)
+bool FLiveLinkAbuTrackSource::RequestSourceShutdown()
 {
+	StopReceiverThread();
 	return true;
 }
 
