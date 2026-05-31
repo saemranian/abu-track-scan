@@ -118,11 +118,12 @@ uint32 FLiveLinkAbuTrackSource::Run()
 		if (Socket->HasPendingData(Size))
 		{
 			int32 Read = 0;
-			if (Socket->RecvFrom(RecvBuffer.GetData(), RecvBuffer.Num(), Read, *SenderAddr))
+			if (Socket->RecvFrom(RecvBuffer.GetData(), RecvBuffer.Num() - 1, Read, *SenderAddr))
 			{
 				if (Read > 0)
 				{
-					FString PacketData = FString(UTF8_TO_TCHAR(reinterpret_cast<const char*>(RecvBuffer.GetData())), Read);
+					RecvBuffer[Read] = 0; // Safe null-termination
+					FString PacketData = UTF8_TO_TCHAR(reinterpret_cast<const char*>(RecvBuffer.GetData()));
 					ProcessPacket(PacketData);
 				}
 			}
@@ -193,7 +194,8 @@ void FLiveLinkAbuTrackSource::ProcessPacket(const FString& PacketData)
 			// Build Unreal Transform coordinate
 			CameraFrameData.Transform = FTransform(FRotator(Pitch, Yaw, Roll), FVector(X, Y, Z));
 			CameraFrameData.FocalLength = JsonObject->GetNumberField(TEXT("focalLength"));
-			CameraFrameData.WorldTime = FLiveLinkWorldTime(Timestamp);
+			CameraFrameData.WorldTime = FLiveLinkWorldTime(FPlatformTime::Seconds());
+			CameraFrameData.MetaData.StringMetaData.Add(TEXT("Timestamp"), FString::SanitizeFloat(Timestamp));
 
 			LiveLinkClient->PushSubjectFrameData_AnyThread({ SourceGuid, SubjectName }, MoveTemp(FrameData));
 		}
