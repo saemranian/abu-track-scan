@@ -28,7 +28,7 @@ class BSDUDPSender {
         // Create UDP socket
         let fd = socket(AF_INET, SOCK_DGRAM, 0)
         guard fd >= 0 else {
-            print("BSD UDP: Failed to create socket")
+            AppLogger.critical("BSD UDP: Failed to create socket")
             return
         }
         
@@ -36,7 +36,7 @@ class BSDUDPSender {
         var broadcastEnable: Int32 = 1
         let setOptResult = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, socklen_t(MemoryLayout<Int32>.size))
         if setOptResult < 0 {
-            print("BSD UDP: Failed to set SO_BROADCAST")
+            AppLogger.error("BSD UDP: Failed to set SO_BROADCAST")
         }
         
         self.socketFD = fd
@@ -56,7 +56,7 @@ class BSDUDPSender {
             }
         }
         if bindResult < 0 {
-            print("BSD UDP: Socket bind to 0.0.0.0 failed with error \(errno) (\(String(cString: strerror(errno))))")
+            AppLogger.error("BSD UDP: Socket bind to 0.0.0.0 failed with error \(errno) (\(String(cString: strerror(errno))))")
         }
         
         // Resolve IP addresses and prepare sockaddr_in structs
@@ -71,13 +71,13 @@ class BSDUDPSender {
             let ipAddressStr = endpoint.ip
             let resolved = inet_addr(ipAddressStr)
             if resolved == 0xffffffff && ipAddressStr != "255.255.255.255" {
-                print("BSD UDP: Invalid IP address: \(ipAddressStr)")
+                AppLogger.warning("BSD UDP: Invalid IP address: \(ipAddressStr)")
                 continue
             }
             addr.sin_addr.s_addr = resolved
             
             targets.append((addr, endpoint.ip, endpoint.port))
-            print("BSD UDP: Configured destination \(endpoint.ip):\(endpoint.port) [SO_BROADCAST enabled]")
+            AppLogger.info("BSD UDP: Configured destination \(endpoint.ip):\(endpoint.port) [SO_BROADCAST enabled]")
         }
     }
     
@@ -97,7 +97,7 @@ class BSDUDPSender {
             }
             if result < 0 {
                 let err = errno
-                print("BSD UDP: sendto failed to \(ip):\(port) with error \(err) (\(String(cString: strerror(err))))")
+                AppLogger.error("BSD UDP: sendto failed to \(ip):\(port) with error \(err) (\(String(cString: strerror(err))))")
             }
         }
     }
@@ -213,6 +213,8 @@ class UDPStreamingManager: ObservableObject {
     private func startConnection() {
         guard isStreamingEnabled else { return }
         
+        AppLogger.info("Starting UDP Telemetry Stream (IP: \(streamIP), Port: \(streamPort), Broadcast: \(isBroadcastEnabled))")
+        
         // Build the target endpoints
         var endpoints: [TargetEndpoint] = []
         
@@ -246,6 +248,7 @@ class UDPStreamingManager: ObservableObject {
     }
     
     private func stopConnection() {
+        AppLogger.info("Stopping telemetry socket stream.")
         bsdSender.closeSocket()
     }
     

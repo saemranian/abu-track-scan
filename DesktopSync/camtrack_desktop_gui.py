@@ -5,6 +5,40 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import math
 import threading
+import logging
+import datetime
+
+def get_log_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), "app_logs")
+    else:
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_logs")
+
+# Configure logger
+LOG_DIR = get_log_dir()
+if not os.path.exists(LOG_DIR):
+    try:
+        os.makedirs(LOG_DIR)
+    except Exception:
+        pass
+
+log_file_path = os.path.join(LOG_DIR, "abu_track_desktop.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(threadName)s: %(message)s",
+    handlers=[
+        logging.FileHandler(log_file_path, encoding="utf-8", mode="a"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("AbuTrack")
+logger.info("=" * 60)
+logger.info(f"Abu Track Desktop App Initializing (Local Time: {datetime.datetime.now()})")
+logger.info(f"Python: {sys.version}")
+logger.info(f"Executable Mode: {'PyInstaller Bundle' if getattr(sys, 'frozen', False) else 'Raw Python Script'}")
+logger.info(f"Log directory configured at: {LOG_DIR}")
+logger.info("=" * 60)
 
 # Auto-bootstrap necessary libraries for EXIF byte operations and 3D visualizer
 try:
@@ -47,7 +81,15 @@ ACCENT_GREEN = "#10B981"
 class CamTrackDesktopApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("ABU TRACK // 3DGS & METASHAPE PROCESSING SUITE")
+        
+        # Load versioning information dynamically
+        try:
+            from version_info import VERSION, BUILD, BUILD_TIME
+            title_suffix = f" (v{VERSION} Build {BUILD} - {BUILD_TIME})"
+        except ImportError:
+            title_suffix = " (v1.0.1 Build 52)"
+            
+        self.root.title(f"ABU TRACK // 3DGS & METASHAPE PROCESSING SUITE{title_suffix}")
         self.root.geometry("1100x760")
         self.root.configure(bg=BG_COLOR)
         
@@ -126,6 +168,7 @@ class CamTrackDesktopApp:
         self.pose_yaw_var = tk.StringVar(value="0.00°")
         
         self.build_ui()
+        self.root.report_callback_exception = self.report_callback_exception
         self.root.after(33, self.update_pc_local_time)
         
     def setup_styles(self):
@@ -526,6 +569,13 @@ class CamTrackDesktopApp:
         self.stop_rx_btn = ttk.Button(rx_config_card, text="STOP LISTENING", command=self.stop_receiver)
         self.stop_rx_btn.grid(row=2, column=1, sticky="ew", padx=(2, 0), pady=(8, 0), ipady=4)
         self.stop_rx_btn.state(["disabled"])
+        
+        # Row 3: Diagnostics & Firewall
+        self.firewall_btn = ttk.Button(rx_config_card, text="FIX WINDOWS FIREWALL (8080)", command=self.fix_windows_firewall)
+        self.firewall_btn.grid(row=3, column=0, sticky="ew", padx=(0, 2), pady=(6, 0), ipady=3)
+        
+        self.open_logs_btn = ttk.Button(rx_config_card, text="OPEN LOGS FOLDER", command=self.open_logs_folder)
+        self.open_logs_btn.grid(row=3, column=1, sticky="ew", padx=(2, 0), pady=(6, 0), ipady=3)
         
         # Card 2: PC Network & Stream Diagnostics
         rx_diag_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
@@ -2585,13 +2635,17 @@ class CamTrackDesktopApp:
             port = 8080
             self.receiver_port.set(8080)
         
+        logger.info(f"Receiver startup requested. Targeting port: {port}")
+        
         try:
             import socket
             self.receiver_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.receiver_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.receiver_sock.bind(("0.0.0.0", port))
             self.receiver_sock.settimeout(1.0)
+            logger.info(f"UDP receiver bound successfully to 0.0.0.0:{port}")
         except Exception as e:
+            logger.error(f"UDP receiver failed to bind to port {port}", exc_info=True)
             messagebox.showerror("Socket Error", f"Failed to bind socket to port {port}:\n{str(e)}")
             return
             
@@ -2615,8 +2669,8 @@ class CamTrackDesktopApp:
         self.playout_running = True
         self.last_source_timestamp = None
         self.last_detected_format = None
+        self.active_protocol_type = None
         
-        import threading
         self.receiver_thread = threading.Thread(target=self.run_receiver_socket, daemon=True)
         self.receiver_thread.start()
         
@@ -2627,14 +2681,16 @@ class CamTrackDesktopApp:
         if not self.receiver_running:
             return
             
+        logger.info("Receiver stop requested. Terminating socket and threads.")
         self.receiver_running = False
         self.playout_running = False
         
         if self.receiver_sock:
             try:
                 self.receiver_sock.close()
-            except Exception:
-                pass
+                logger.info("UDP socket closed successfully.")
+            except Exception as e:
+                logger.error("Error closing UDP socket", exc_info=True)
             self.receiver_sock = None
             
         self.receiver_status_var.set("OFFLINE")
@@ -2652,13 +2708,21 @@ class CamTrackDesktopApp:
         buffer_size = 4096
         self.receiver_sec_start = time.time()
         self.receiver_sec_packet_count = 0
+        consecutive_timeouts = 0
+        
+        logger.info("UDP socket receiving thread active and starting loop.")
         
         while self.receiver_running:
             try:
                 data, addr = self.receiver_sock.recvfrom(buffer_size)
+                consecutive_timeouts = 0
             except socket.timeout:
+                consecutive_timeouts += 1
+                if consecutive_timeouts % 10 == 0:
+                    logger.info(f"Still waiting for UDP packets on port {self.receiver_port.get()}... No data received for {consecutive_timeouts} seconds.")
                 continue
-            except Exception:
+            except Exception as e:
+                logger.error(f"UDP recvfrom encountered an exception: {str(e)}", exc_info=True)
                 break
                 
             if not self.receiver_running:
@@ -2678,11 +2742,28 @@ class CamTrackDesktopApp:
             # Update raw frequency display instantly
             self.root.after(0, lambda r_hz=raw_hz: self.receiver_raw_hz_var.set(f"{r_hz:.1f} Hz (Raw)"))
             
-            parsed = self.parse_incoming_packet(data)
+            try:
+                parsed = self.parse_incoming_packet(data)
+            except Exception as pe:
+                logger.error(f"Critical exception in parse_incoming_packet: {str(pe)}", exc_info=True)
+                parsed = None
             
             if parsed:
                 parsed["addr_str"] = f"{addr[0]}:{addr[1]}"
                 timestamp = parsed.get("timestamp", None)
+                p_type = parsed.get("type", "Unknown")
+                
+                # Log first packet and protocol switches
+                if self.receiver_packet_count == 1:
+                    logger.info(f"First valid tracking packet successfully received! Format: {p_type} from {addr[0]}:{addr[1]} ({len(data)} bytes)")
+                    self.active_protocol_type = p_type
+                elif p_type != getattr(self, "active_protocol_type", None):
+                    logger.info(f"Active protocol switch detected: {p_type} from {addr[0]}:{addr[1]}")
+                    self.active_protocol_type = p_type
+                
+                # Periodic receiving thread statistics to log file (every 5 seconds/300 frames)
+                if self.receiver_packet_count % 300 == 0:
+                    logger.info(f"Stream Health Stats: Received {self.receiver_packet_count} frames. Format: {p_type}. Raw Network Hz: {raw_hz:.1f}, iOS real lock Hz: {self.receiver_real_hz_var.get()}")
                 
                 # 2. Real Source Frequency (iOS Lock)
                 if timestamp is not None:
@@ -2716,8 +2797,11 @@ class CamTrackDesktopApp:
                 with self.playout_lock:
                     self.playout_buffer.append((now, parsed, raw_hz, self.receiver_packet_count, time_shift_ms))
             else:
-                log_msg = f"[{time.strftime('%H:%M:%S')}] Unknown packet from {addr[0]}:{addr[1]} ({len(data)} bytes)"
+                log_msg = f"[{time.strftime('%H:%M:%S')}] Unknown/Malformed packet from {addr[0]}:{addr[1]} ({len(data)} bytes)"
+                logger.warning(f"Malformed or unknown packet format from {addr[0]}:{addr[1]}. Packet size: {len(data)} bytes. Raw head: {data.hex()[:64]}")
                 self.root.after(0, lambda m=log_msg: self.rx_log(m))
+                
+        logger.info(f"UDP socket receiving thread stopped. Total packets processed: {self.receiver_packet_count}")
 
     def run_playout_loop(self):
         import time
@@ -2910,6 +2994,59 @@ class CamTrackDesktopApp:
             
         self.rx_console.see(tk.END)
         self.rx_console.configure(state="disabled")
+
+    def report_callback_exception(self, exc, val, tb):
+        import traceback
+        err_str = "".join(traceback.format_exception(exc, val, tb))
+        logger.critical(f"Unhandled GUI Exception in Tkinter callback:\n{err_str}")
+        messagebox.showerror(
+            "Internal Error", 
+            f"An unhandled error occurred inside the application. Detailed logs have been written to:\n"
+            f"{os.path.join(LOG_DIR, 'abu_track_desktop.log')}\n\n"
+            f"Error: {val}"
+        )
+
+    def fix_windows_firewall(self):
+        import subprocess
+        import sys
+        
+        port = 8080
+        try:
+            port = self.receiver_port.get()
+        except Exception:
+            pass
+            
+        logger.info(f"[DIAGNOSTICS] Prompting user to run elevated PowerShell command to add inbound UDP rule on port {port}...")
+        
+        ps_cmd = (
+            f"Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command "
+            f"New-NetFirewallRule -Direction Inbound -Action Allow -Protocol UDP -LocalPort {port} "
+            f"-DisplayName \\\"ABU_TRACK_UDP_{port}\\\" -Force' -Verb RunAs"
+        )
+        
+        try:
+            subprocess.Popen(["powershell", "-Command", ps_cmd], shell=True)
+            logger.info("[DIAGNOSTICS] PowerShell elevation request sent successfully.")
+            messagebox.showinfo(
+                "Firewall Setup", 
+                f"An Administrator prompt was requested to run PowerShell and add a firewall exception rule for UDP port {port}.\n\n"
+                f"Please accept the Windows prompt (UAC dialog) to complete the network exception configuration."
+            )
+        except Exception as e:
+            logger.error(f"[DIAGNOSTICS] Failed to request PowerShell elevation: {str(e)}", exc_info=True)
+            messagebox.showerror("Elevation Failed", f"Could not launch PowerShell elevation: {str(e)}")
+            
+    def open_logs_folder(self):
+        log_dir = get_log_dir()
+        if os.path.exists(log_dir):
+            try:
+                os.startfile(log_dir)
+                logger.info(f"Opened logs directory: {log_dir}")
+            except Exception as e:
+                logger.error(f"Failed to open logs directory: {str(e)}", exc_info=True)
+                messagebox.showerror("Error", f"Failed to open directory:\n{str(e)}")
+        else:
+            messagebox.showinfo("Logs Directory", f"Logs folder does not exist yet. Please start listening or generate some activity first.\nPath: {log_dir}")
 
 if __name__ == "__main__":
     root = tk.Tk()

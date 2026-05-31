@@ -465,19 +465,62 @@ struct SettingsView: View {
                                 
                                 Divider().background(Color.gray.opacity(0.3))
                                 
-                                DiagnosticRow(label: "App Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.6")
-                                DiagnosticRow(label: "Build Number", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "17")
-                                DiagnosticRow(label: "Compile Date", value: {
-                                    let formatter = DateFormatter()
-                                    formatter.dateFormat = "yyyy-MM-dd HH:mm"
-                                    if let path = Bundle.main.path(forResource: nil, ofType: nil),
-                                       let attribs = try? FileManager.default.attributesOfItem(atPath: path),
-                                       let date = attribs[.creationDate] as? Date {
-                                        return formatter.string(from: date)
-                                    }
-                                    return formatter.string(from: Date())
-                                }())
+                                DiagnosticRow(label: "App Version", value: VersionInfo.version)
+                                DiagnosticRow(label: "Build Number", value: VersionInfo.build)
+                                DiagnosticRow(label: "Compile Date", value: VersionInfo.buildTime)
                                 DiagnosticRow(label: "Release State", value: "Active Development")
+                            }
+                            .padding()
+                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
+                            .cornerRadius(14)
+                            .padding(.horizontal)
+                            .padding(.bottom, 12)
+                            
+                            // Diagnostics & Troubleshooting Logs Card
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Image(systemName: "doc.text.fill")
+                                        .foregroundColor(.cyan)
+                                        .font(.title3)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("PERSISTENT SYSTEM LOGS")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.white)
+                                        Text("Enterprise-grade diagnostic logging")
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                    }
+                                    Spacer()
+                                }
+                                
+                                Divider().background(Color.gray.opacity(0.3))
+                                
+                                Text("If you run into stream connectivity issues or raw hardware scan irregularities, export the persistent local log file for quick troubleshooting.")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                    .padding(.vertical, 2)
+                                
+                                Button(action: {
+                                    // Trigger sharing of the persistent log file
+                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                       let rootVC = windowScene.windows.first?.rootViewController {
+                                        AppLogger.shared.shareLogFile(from: rootVC, sender: nil)
+                                    }
+                                }) {
+                                    HStack {
+                                        Spacer()
+                                        Image(systemName: "square.and.arrow.up")
+                                        Text("EXPORT LOCAL APP LOGS")
+                                            .fontWeight(.bold)
+                                        Spacer()
+                                    }
+                                    .font(.caption)
+                                    .padding()
+                                    .foregroundColor(.black)
+                                    .background(Color.cyan)
+                                    .cornerRadius(10)
+                                }
                             }
                             .padding()
                             .background(Color(red: 0.05, green: 0.08, blue: 0.16))
