@@ -84,7 +84,7 @@ class LiveVideoStreamingManager: NSObject {
                 presentationTimeStamp: presentationTime,
                 duration: .invalid,
                 frameProperties: nil,
-                sourceFrameRefCon: refCon,
+                sourceFrameRefcon: refCon,
                 infoFlagsOut: &flags
             )
             
@@ -198,7 +198,7 @@ class LiveVideoStreamingManager: NSObject {
         var isKeyframe = false
         if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [CFDictionary],
            let attachment = attachments.first {
-            let notSync = CFDictionaryGetValue(attachment, Unmanaged.passUnretained(kCMSampleBufferAttachmentKey_NotSync).toOpaque())
+            let notSync = CFDictionaryGetValue(attachment, Unmanaged.passUnretained(kCMSampleAttachmentKey_NotSync).toOpaque())
             isKeyframe = (notSync == nil)
         }
         
