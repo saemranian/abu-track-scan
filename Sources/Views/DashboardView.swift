@@ -560,62 +560,76 @@ struct DashboardView: View {
     }
      private func triggerInAppCapture() {
         if trackingManager.isTrackingActive {
-            // 1. Instantaneous capture from active ARKit tracking frame (no pauses, no locks, zero freeze!)
-            guard let currentFrame = trackingManager.arSession.currentFrame else {
-                self.shutterFeedbackMessage = "CAPTURE FAILED (NO FRAME)"
-                return
-            }
+            shutterFeedbackMessage = "CAPTURING..."
             
-            let pixelBuffer = currentFrame.capturedImage
-            let timestamp = Date().timeIntervalSince1970
-            
-            guard let sessionID = trackingManager.activeSessionID else { return }
-            let fileManager = FileManager.default
-            guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-            let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
-            
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy_MM_dd_HH_mm"
-            let datePrefix = formatter.string(from: Date())
-            
-            let ext = pictureFormat == "HEIF" ? "HEIC" : "JPG"
-            let filename = "\(datePrefix)_IMG_\(entryCount + 1255).\(ext)" // Suffix count increments with entry count
-            let fileURL = sessionFolderURL.appendingPathComponent(filename)
-            
-            // Save CVPixelBuffer asynchronously in background to prevent ANY main-thread or mapping lag
-            DispatchQueue.global(qos: .userInitiated).async {
-                let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-                let context = CIContext()
-                var success = false
-                
-                if self.pictureFormat == "HEIF", #available(iOS 11.0, *) {
-                    if let heifData = context.heifRepresentation(of: ciImage, format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB(), options: [:]) {
-                        do {
-                            try heifData.write(to: fileURL)
-                            success = true
-                        } catch {
-                            print("DashboardView: Failed to write HEIF: \(error)")
-                            success = false
-                        }
+            // Asynchronously capture high-resolution frame concurrently from the active ARSession (zero tracking pause!)
+            trackingManager.arSession.captureHighResolutionFrame { (highResFrame, error) in
+                if let error = error {
+                    print("DashboardView: Failed to capture high-res frame: \(error.localizedDescription)")
+                    DispatchQueue.main.async {
+                        self.shutterFeedbackMessage = "CAPTURE FAILED"
                     }
-                } else {
-                    if let jpegData = context.jpegRepresentation(of: ciImage, colorSpace: CGColorSpaceCreateDeviceRGB(), options: [:]) {
-                        do {
-                            try jpegData.write(to: fileURL)
-                            success = true
-                        } catch {
-                            print("DashboardView: Failed to write JPEG: \(error)")
-                            success = false
-                        }
-                    }
+                    return
                 }
                 
-                if success {
-                    print("DashboardView: Instantly saved georeferenced AR photo to: \(fileURL.path)")
-                    self.handleInAppPhotoCaptured(url: fileURL, timestamp: timestamp * 1000.0, filename: filename)
-                } else {
+                guard let frame = highResFrame else {
                     DispatchQueue.main.async {
-                        self.shutterFeedbackMessage = "WRITE ERROR"
+                        self.shutterFeedbackMessage = "NO FRAME"
+                    }
+                    return
+                }
+                
+                let pixelBuffer = frame.capturedImage
+                let timestamp = Date().timeIntervalSince1970
+                
+                guard let sessionID = self.trackingManager.activeSessionID else { return }
+                let fileManager = FileManager.default
+                guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+                let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
+                
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy_MM_dd_HH_mm"
+                let datePrefix = formatter.string(from: Date())
+                
+                let ext = self.pictureFormat == "HEIF" ? "HEIC" : "JPG"
+                let filename = "\(datePrefix)_IMG_\(self.entryCount + 1255).\(ext)"
+                let fileURL = sessionFolderURL.appendingPathComponent(filename)
+                
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+                    let context = CIContext()
+                    var success = false
+                    
+                    if self.pictureFormat == "HEIF", #available(iOS 11.0, *) {
+                        if let heifData = context.heifRepresentation(of: ciImage, format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB(), options: [:]) {
+                            do {
+                                try heifData.write(to: fileURL)
+                                success = true
+                            } catch {
+                                print("DashboardView: Failed to write HEIF: \(error)")
+                                success = false
+                            }
+                        }
+                    } else {
+                        if let jpegData = context.jpegRepresentation(of: ciImage, colorSpace: CGColorSpaceCreateDeviceRGB(), options: [:]) {
+                            do {
+                                try jpegData.write(to: fileURL)
+                                success = true
+                            } catch {
+                                print("DashboardView: Failed to write JPEG: \(error)")
+                                success = false
+                            }
+                        }
+                    }
+                    
+                    DispatchQueue.main.async {
+                        if success {
+                            print("DashboardView: Instantly saved high-resolution georeferenced AR photo: \(fileURL.path)")
+                            self.shutterFeedbackMessage = "SAVED"
+                            self.handleInAppPhotoCaptured(url: fileURL, timestamp: timestamp * 1000.0, filename: filename)
+                        } else {
+                            self.shutterFeedbackMessage = "WRITE ERROR"
+                        }
                     }
                 }
             }

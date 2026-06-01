@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var locationManager: LocationManager
+    @ObservedObject var trackingManager: MotionAndTrackingManager
     @ObservedObject var streamManager = UDPStreamingManager.shared
     
     @State private var leverArmX: String = ""
@@ -316,6 +317,36 @@ struct SettingsView: View {
                                     }
                                 }
                                 .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                                
+                                Divider()
+                                    .background(Color.gray.opacity(0.3))
+                                
+                                Toggle(isOn: $trackingManager.isLiveVideoStreamingEnabled) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Enable H.264 Video Stream")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                        Text("Stream live camera frames concurrently over UDP/RTP")
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                                .toggleStyle(SwitchToggleStyle(tint: .red))
+                                
+                                if trackingManager.isLiveVideoStreamingEnabled {
+                                    HStack {
+                                        Text("Video Stream Port")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                        Spacer()
+                                        TextField("Port", value: $trackingManager.videoStreamPort, format: .number)
+                                            .keyboardType(.numberPad)
+                                            .multilineTextAlignment(.trailing)
+                                            .font(.footnote)
+                                            .foregroundColor(.cyan)
+                                            .frame(width: 80)
+                                    }
+                                }
                                 
                                 if streamManager.isStreamingEnabled {
                                     Divider()

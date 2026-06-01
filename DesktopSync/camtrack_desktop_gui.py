@@ -147,6 +147,13 @@ class CamTrackDesktopApp:
         self.receiver_frequency = 0.0
         
         self.receiver_port = tk.IntVar(value=8080)
+        self.is_video_stream_enabled = tk.BooleanVar(value=True)
+        self.video_stream_port = tk.IntVar(value=8082)
+        self.is_spout_enabled = tk.BooleanVar(value=True)
+        self.latest_decoded_frame = None
+        self.video_decoder_running = False
+        self.video_decoder_thread = None
+        self.spout_sender = None
         self.receiver_status_var = tk.StringVar(value="OFFLINE")
         self.receiver_format_var = tk.StringVar(value="No Stream Detected")
         self.receiver_frames_var = tk.StringVar(value="0")
@@ -622,12 +629,22 @@ class CamTrackDesktopApp:
         port_entry = ttk.Entry(rx_config_card, textvariable=self.receiver_port, width=10)
         port_entry.grid(row=1, column=1, sticky="w", pady=4)
         
+        ttk.Label(rx_config_card, text="H.264 Video Port:").grid(row=2, column=0, sticky="w", pady=4)
+        video_port_entry = ttk.Entry(rx_config_card, textvariable=self.video_stream_port, width=10)
+        video_port_entry.grid(row=2, column=1, sticky="w", pady=4)
+        
+        video_chk = ttk.Checkbutton(rx_config_card, text="Enable H.264 Video Stream", variable=self.is_video_stream_enabled)
+        video_chk.grid(row=3, column=0, columnspan=2, sticky="w", pady=4)
+        
+        spout_chk = ttk.Checkbutton(rx_config_card, text="Enable Spout Sharing", variable=self.is_spout_enabled)
+        spout_chk.grid(row=4, column=0, columnspan=2, sticky="w", pady=4)
+        
         # Action Buttons
         self.start_rx_btn = ttk.Button(rx_config_card, text="START LISTENING", command=self.start_receiver)
-        self.start_rx_btn.grid(row=2, column=0, sticky="ew", padx=(0, 2), pady=(8, 0), ipady=4)
+        self.start_rx_btn.grid(row=5, column=0, sticky="ew", padx=(0, 2), pady=(8, 0), ipady=4)
         
         self.stop_rx_btn = ttk.Button(rx_config_card, text="STOP", state="disabled", command=self.stop_receiver)
-        self.stop_rx_btn.grid(row=2, column=1, sticky="ew", padx=(2, 0), pady=(8, 0), ipady=4)
+        self.stop_rx_btn.grid(row=5, column=1, sticky="ew", padx=(2, 0), pady=(8, 0), ipady=4)
         
         # Card 1.5: Dynamic UDP Forwarder Server Settings
         rx_forward_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
@@ -3108,6 +3125,12 @@ class CamTrackDesktopApp:
         
         self.playout_thread = threading.Thread(target=self.run_playout_loop, daemon=True)
         self.playout_thread.start()
+        
+        if self.is_video_stream_enabled.get():
+            self.video_decoder_running = True
+            self.video_decoder_thread = threading.Thread(target=self.run_video_decoder_loop, daemon=True)
+            self.video_decoder_thread.start()
+            self.rx_log(f"VIDEO DECODER // Listener thread spawned on port {self.video_stream_port.get()}")
 
     def stop_receiver(self):
         if not self.receiver_running:
@@ -3132,6 +3155,10 @@ class CamTrackDesktopApp:
             except Exception:
                 pass
             self.forwarder_sock = None
+            
+        if self.video_decoder_running:
+            self.video_decoder_running = False
+            self.rx_log("VIDEO DECODER // Decoder thread shutdown requested.")
             
         self.receiver_status_var.set("OFFLINE")
         self.rx_status_lbl.configure(foreground=TEXT_MUTED)
@@ -3780,6 +3807,108 @@ class CamTrackDesktopApp:
         sy = cy + z3 * scale * zoom_amount
         return sx, sy
 
+    def run_video_decoder_loop(self):
+        import os
+        import time
+        import cv2
+        import threading
+        
+        port = self.video_stream_port.get()
+        sdp_content = f"""v=0
+o=- 0 0 IN IP4 127.0.0.1
+s=AbuTrack Video
+c=IN IP4 0.0.0.0
+t=0 0
+m=video {port} RTP/AVP 96
+a=rtpmap:96 H264/90000
+a=fmtp:96 packetization-mode=1
+"""
+        sdp_path = os.path.join(os.getcwd(), "temp_session.sdp")
+        try:
+            with open(sdp_path, "w") as f:
+                f.write(sdp_content)
+        except Exception as e:
+            logger.error(f"Video Decoder: Failed to write SDP session file: {str(e)}")
+            return
+            
+        logger.info(f"Video Decoder: Initializing local SDP listener on port {port}")
+        
+        # Configure FFmpeg capture parameters for lowest latency
+        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp|fflags;nobuffer|flags;low_delay|strict;experimental"
+        
+        cap = cv2.VideoCapture(sdp_path, cv2.CAP_FFMPEG)
+        if not cap.isOpened():
+            logger.error(f"Video Decoder: Failed to bind to SDP session on port {port}")
+            try:
+                os.remove(sdp_path)
+            except Exception:
+                pass
+            return
+            
+        # Initialize Spout Sender if enabled
+        if self.is_spout_enabled.get():
+            self.init_spout_sender()
+            
+        logger.info("Video Decoder: Background listening thread active.")
+        
+        # Periodically refresh the 3D Canvas visualizer to draw new video frames
+        def refresh_canvas_loop():
+            while self.video_decoder_running:
+                try:
+                    self.root.after(0, self.redraw_live_3d_canvas)
+                except Exception:
+                    pass
+                time.sleep(0.033) # refresh visualizer at 30 fps
+                
+        canvas_refresh_thread = threading.Thread(target=refresh_canvas_loop, daemon=True)
+        canvas_refresh_thread.start()
+        
+        while self.video_decoder_running:
+            ret, frame = cap.read()
+            if not ret:
+                time.sleep(0.005)
+                continue
+                
+            self.latest_decoded_frame = frame
+            
+            # Send to Spout
+            if self.spout_sender and self.is_spout_enabled.get():
+                self.send_frame_to_spout(frame)
+                
+        cap.release()
+        try:
+            os.remove(sdp_path)
+        except Exception:
+            pass
+            
+        if self.spout_sender:
+            try:
+                self.spout_sender.ReleaseSender()
+            except Exception:
+                pass
+            self.spout_sender = None
+        logger.info("Video Decoder: Listening thread cleanly terminated.")
+
+    def init_spout_sender(self):
+        try:
+            import SpoutGL
+            logger.info("Spout: Initializing SpoutGL Shared Texture Sender named 'AbuTrackVideo'")
+            self.spout_sender = SpoutGL.SpoutSender("AbuTrackVideo", 1920, 1080)
+        except Exception as e:
+            logger.error(f"Spout: Failed to load SpoutGL: {str(e)}")
+            self.spout_sender = None
+
+    def send_frame_to_spout(self, frame):
+        if not self.spout_sender:
+            return
+        try:
+            import SpoutGL
+            h, w = frame.shape[:2]
+            # 0x80E1 is GL_BGR
+            self.spout_sender.sendImage(frame, w, h, 0x80E1, False)
+        except Exception as e:
+            logger.error(f"Spout: Failed to transmit texture via SpoutGL: {str(e)}")
+
     def redraw_live_3d_canvas(self):
         try:
             if not hasattr(self, 'live_canvas') or not self.live_canvas.winfo_exists():
@@ -3794,6 +3923,24 @@ class CamTrackDesktopApp:
             h = 300
             
         self.live_canvas.delete("all")
+        
+        # Draw live video background if enabled
+        if self.is_video_stream_enabled.get() and self.latest_decoded_frame is not None:
+            try:
+                import cv2
+                from PIL import Image, ImageTk
+                
+                # Convert BGR to RGB
+                frame_rgb = cv2.cvtColor(self.latest_decoded_frame, cv2.COLOR_BGR2RGB)
+                pil_img = Image.fromarray(frame_rgb)
+                
+                # Resize image to fill the canvas
+                pil_img_resized = pil_img.resize((w, h), Image.Resampling.BILINEAR)
+                
+                self.canvas_bg_image = ImageTk.PhotoImage(image=pil_img_resized)
+                self.live_canvas.create_image(0, 0, image=self.canvas_bg_image, anchor="nw")
+            except Exception as e:
+                logger.error(f"3D Canvas: Failed to render live video background: {str(e)}")
         
         # Draw tech grid
         for cx in range(20, w, 40):

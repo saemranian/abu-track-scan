@@ -41,7 +41,7 @@ struct ContentView: View {
                 }
                 .tag(1)
             
-            SettingsView(locationManager: locationManager)
+            SettingsView(locationManager: locationManager, trackingManager: trackingManager)
                 .tabItem {
                     Image(systemName: "camera.aperture")
                     Text("Calibration")

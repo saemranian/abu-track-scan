@@ -65,6 +65,19 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     // Toggle active depth/LiDAR scanning & point cloud reconstruction
     @Published var isMappingSensorsActive: Bool = true
     
+    // Low-Latency H.264 Video Streaming Settings
+    @Published var isLiveVideoStreamingEnabled: Bool = UserDefaults.standard.bool(forKey: "isLiveVideoStreamingEnabled") {
+        didSet {
+            UserDefaults.standard.set(isLiveVideoStreamingEnabled, forKey: "isLiveVideoStreamingEnabled")
+        }
+    }
+    @Published var videoStreamPort: Int = UserDefaults.standard.integer(forKey: "videoStreamPort") == 0 ? 8082 : UserDefaults.standard.integer(forKey: "videoStreamPort") {
+        didSet {
+            UserDefaults.standard.set(videoStreamPort, forKey: "videoStreamPort")
+        }
+    }
+    private let videoEncodingQueue = DispatchQueue(label: "com.abutrack.videoencoding.dispatch", qos: .userInteractive)
+    
     // New point cloud points queue for live network stream to desktop app
     var newPointsQueue: [RawPoint3D] = []
     
@@ -140,6 +153,12 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         
         startAltimeter()
         
+        if isLiveVideoStreamingEnabled {
+            let targetIP = UserDefaults.standard.string(forKey: "streamIP") ?? "192.168.1.100"
+            let firstIP = targetIP.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "192.168.1.100"
+            LiveVideoStreamingManager.shared.startStreaming(ip: firstIP, port: videoStreamPort)
+        }
+        
         if UIApplication.shared.applicationState == .active {
             startARKitSession()
         } else {
@@ -153,6 +172,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         stopCoreMotionUpdates()
         stopAltimeter()
         stopSessionTimer()
+        LiveVideoStreamingManager.shared.stopStreaming()
     }
     
     func startSessionTimer(captureRate: Double) {
@@ -246,12 +266,18 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         let configuration = ARWorldTrackingConfiguration()
         configuration.worldAlignment = .gravityAndHeading // Aligns Y-axis with gravity, X-axis with True North!
         
-        // Select 4:3 video format if available to prevent cropping in the 4:3 viewports
+        // Select 4:3 video format if available, prioritizing high-resolution capturing video formats
         let targetRatio: CGFloat = 4.0 / 3.0
-        if let format = ARWorldTrackingConfiguration.supportedVideoFormats.first(where: { format in
+        let format = ARWorldTrackingConfiguration.supportedVideoFormats.first(where: { format in
+            let ratio = format.imageResolution.width / format.imageResolution.height
+            let is43 = abs(ratio - targetRatio) < 0.02
+            return is43 && format.isRecommendedForHighResolutionFrameCapturing
+        }) ?? ARWorldTrackingConfiguration.supportedVideoFormats.first(where: { format in
             let ratio = format.imageResolution.width / format.imageResolution.height
             return abs(ratio - targetRatio) < 0.02
-        }) {
+        })
+        
+        if let format = format {
             configuration.videoFormat = format
             print("MotionAndTrackingManager: Configured native 4:3 AR video resolution: \(format.imageResolution)")
         }
@@ -274,12 +300,18 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         let configuration = ARWorldTrackingConfiguration()
         configuration.worldAlignment = .gravityAndHeading
         
-        // Select 4:3 video format if available to prevent cropping in the 4:3 viewports
+        // Select 4:3 video format if available, prioritizing high-resolution capturing video formats
         let targetRatio: CGFloat = 4.0 / 3.0
-        if let format = ARWorldTrackingConfiguration.supportedVideoFormats.first(where: { format in
+        let format = ARWorldTrackingConfiguration.supportedVideoFormats.first(where: { format in
+            let ratio = format.imageResolution.width / format.imageResolution.height
+            let is43 = abs(ratio - targetRatio) < 0.02
+            return is43 && format.isRecommendedForHighResolutionFrameCapturing
+        }) ?? ARWorldTrackingConfiguration.supportedVideoFormats.first(where: { format in
             let ratio = format.imageResolution.width / format.imageResolution.height
             return abs(ratio - targetRatio) < 0.02
-        }) {
+        })
+        
+        if let format = format {
             configuration.videoFormat = format
         }
         
@@ -415,6 +447,15 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         
         // Absolute precision: only process frame updates when visual-inertial tracking state is normal
         guard case .normal = frame.camera.trackingState else { return }
+        
+        if isLiveVideoStreamingEnabled {
+            let pixelBuffer = frame.capturedImage
+            let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
+            let ntpTime = Date().timeIntervalSince1970 + ntpSyncOffset
+            videoEncodingQueue.async {
+                LiveVideoStreamingManager.shared.encodeAndStream(pixelBuffer: pixelBuffer, ntpTimestamp: ntpTime)
+            }
+        }
         
         let currentFrameTime = frame.timestamp
         if lastFrameTime > 0 {
