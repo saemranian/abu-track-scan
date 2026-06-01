@@ -93,6 +93,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     private var cachedLeverArmY: Double = 0.0
     private var cachedLeverArmZ: Double = 0.0
     
+    private var cachedLidarXSign: Float = 1.0
+    private var cachedLidarYSign: Float = 1.0
+    private var cachedLidarZSign: Float = 1.0
+    private var cachedLidarXSource: String = "X"
+    private var cachedLidarYSource: String = "Y"
+    private var cachedLidarZSource: String = "Z"
+    
     override init() {
         super.init()
         arSession.delegate = self
@@ -118,6 +125,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         cachedLeverArmX = RigSettings.leverArmX / 100.0
         cachedLeverArmY = RigSettings.leverArmY / 100.0
         cachedLeverArmZ = RigSettings.leverArmZ / 100.0
+        
+        cachedLidarXSign = Float(RigSettings.lidarXSign)
+        cachedLidarYSign = Float(RigSettings.lidarYSign)
+        cachedLidarZSign = Float(RigSettings.lidarZSign)
+        cachedLidarXSource = RigSettings.lidarXSource
+        cachedLidarYSource = RigSettings.lidarYSource
+        cachedLidarZSource = RigSettings.lidarZSource
         
         isTrackingActive = true
         accumulatedPointCloud.removeAll()
@@ -459,9 +473,9 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             let ry = (num7 + num12) * lx + (1.0 - (num4 + num6)) * ly + (num9 - num10) * lz
             let rz = (num8 - num11) * lx + (num9 + num10) * ly + (1.0 - (num4 + num5)) * lz
             
-            px += rx
-            py += ry
-            pz += rz
+            px -= rx
+            py -= ry
+            pz -= rz
         }
         
         // 3. Apply static Origin Offset
@@ -532,13 +546,18 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                 let offZ = Float(self.cachedOriginOffsetZ)
                 
                 let mappedPoints = currentFramePoints.map { pt -> RawPoint3D in
-                    var rx = pt.x
-                    var rz = pt.z
+                    let inputs = ["X": pt.x, "Y": pt.y, "Z": pt.z]
+                    let mx = (inputs[self.cachedLidarXSource] ?? pt.x) * self.cachedLidarXSign
+                    let my = (inputs[self.cachedLidarYSource] ?? pt.y) * self.cachedLidarYSign
+                    let mz = (inputs[self.cachedLidarZSource] ?? pt.z) * self.cachedLidarZSign
+                    
+                    var rx = mx
+                    var rz = mz
                     if self.cachedYawOffsetRad != 0 {
-                        rx = pt.x * cosYaw - pt.z * sinYaw
-                        rz = pt.x * sinYaw + pt.z * cosYaw
+                        rx = mx * cosYaw - mz * sinYaw
+                        rz = mx * sinYaw + mz * cosYaw
                     }
-                    return RawPoint3D(x: rx + offX, y: pt.y + offY, z: rz + offZ)
+                    return RawPoint3D(x: rx + offX, y: my + offY, z: rz + offZ)
                 }
                 currentFramePoints = mappedPoints
                 

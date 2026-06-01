@@ -178,11 +178,41 @@ class CamTrackDesktopApp:
         self.ws_origin_x = tk.DoubleVar(value=0.0)
         self.ws_origin_y = tk.DoubleVar(value=0.0)
         self.ws_origin_z = tk.DoubleVar(value=0.0)
+        self.ws_origin_pitch = tk.DoubleVar(value=0.0)
         self.ws_origin_yaw = tk.DoubleVar(value=0.0)
+        self.ws_origin_roll = tk.DoubleVar(value=0.0)
         
         self.ws_lever_x = tk.DoubleVar(value=0.0)
         self.ws_lever_y = tk.DoubleVar(value=0.0)
         self.ws_lever_z = tk.DoubleVar(value=0.0)
+        
+        # Coordinate system alignment preset and custom remapping
+        self.pc_align_preset = tk.StringVar(value="Default")
+        self.pc_x_sign = tk.IntVar(value=1)
+        self.pc_x_src = tk.StringVar(value="X")
+        self.pc_y_sign = tk.IntVar(value=1)
+        self.pc_y_src = tk.StringVar(value="Y")
+        self.pc_z_sign = tk.IntVar(value=1)
+        self.pc_z_src = tk.StringVar(value="Z")
+        self.pc_roll_sign = tk.IntVar(value=1)
+        self.pc_roll_src = tk.StringVar(value="Roll")
+        self.pc_pitch_sign = tk.IntVar(value=1)
+        self.pc_pitch_src = tk.StringVar(value="Pitch")
+        self.pc_yaw_sign = tk.IntVar(value=1)
+        self.pc_yaw_src = tk.StringVar(value="Yaw")
+        
+        # LiDAR custom point cloud translation mapping
+        self.pc_lidar_x_sign = tk.IntVar(value=1)
+        self.pc_lidar_x_src = tk.StringVar(value="X")
+        self.pc_lidar_y_sign = tk.IntVar(value=1)
+        self.pc_lidar_y_src = tk.StringVar(value="Y")
+        self.pc_lidar_z_sign = tk.IntVar(value=1)
+        self.pc_lidar_z_src = tk.StringVar(value="Z")
+        
+        # Live canvas origin editing and performance metrics
+        self.live_edit_origin = tk.BooleanVar(value=False)
+        self.forward_delivery_hz_var = tk.StringVar(value="0.0 Hz")
+        self.forward_timecode_var = tk.StringVar(value="00:00:00:00")
         
         # Workstation Live 3D Projected Canvas State
         self.live_points = []          # List of (x, y, z) tuples for point cloud
@@ -575,13 +605,11 @@ class CamTrackDesktopApp:
         
         self.tab_receiver.columnconfigure(0, weight=4) # Left Controls Panel
         self.tab_receiver.columnconfigure(1, weight=6) # Right Panel
-        self.tab_receiver.rowconfigure(0, weight=1)
-        
         # Left Panel
         rx_left = ttk.Frame(self.tab_receiver, padding=10)
         rx_left.grid(row=0, column=0, sticky="nsew")
         rx_left.columnconfigure(0, weight=1)
-        rx_left.rowconfigure(3, weight=1)
+        rx_left.rowconfigure(4, weight=1)
         
         # Card 1: Receiver Configuration
         rx_config_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
@@ -598,18 +626,10 @@ class CamTrackDesktopApp:
         self.start_rx_btn = ttk.Button(rx_config_card, text="START LISTENING", command=self.start_receiver)
         self.start_rx_btn.grid(row=2, column=0, sticky="ew", padx=(0, 2), pady=(8, 0), ipady=4)
         
-        self.stop_rx_btn = ttk.Button(rx_config_card, text="STOP LISTENING", command=self.stop_receiver)
+        self.stop_rx_btn = ttk.Button(rx_config_card, text="STOP", state="disabled", command=self.stop_receiver)
         self.stop_rx_btn.grid(row=2, column=1, sticky="ew", padx=(2, 0), pady=(8, 0), ipady=4)
-        self.stop_rx_btn.state(["disabled"])
         
-        # Row 3: Diagnostics & Firewall
-        self.firewall_btn = ttk.Button(rx_config_card, text="FIX WINDOWS FIREWALL (8080)", command=self.fix_windows_firewall)
-        self.firewall_btn.grid(row=3, column=0, sticky="ew", padx=(0, 2), pady=(6, 0), ipady=3)
-        
-        self.open_logs_btn = ttk.Button(rx_config_card, text="OPEN LOGS FOLDER", command=self.open_logs_folder)
-        self.open_logs_btn.grid(row=3, column=1, sticky="ew", padx=(2, 0), pady=(6, 0), ipady=3)
-        
-        # Card 1.5: Multi-Protocol Precision Forwarder
+        # Card 1.5: Dynamic UDP Forwarder Server Settings
         rx_forward_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
         rx_forward_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
         rx_forward_card.columnconfigure(1, weight=1)
@@ -631,7 +651,7 @@ class CamTrackDesktopApp:
         proto_combo = ttk.Combobox(rx_forward_card, textvariable=self.forward_protocol, values=["Live Link JSON", "FreeD Binary", "OpenTrackIO JSON"], state="readonly", width=18)
         proto_combo.grid(row=4, column=1, sticky="w", pady=4)
         
-        # Card 1.7: Workstation Coordinate Offsets & Calibration Overrides
+        # Card 1.7: Workstation Calibration & Offsets
         rx_offset_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
         rx_offset_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
         rx_offset_card.columnconfigure(1, weight=1)
@@ -639,7 +659,7 @@ class CamTrackDesktopApp:
         
         ttk.Label(rx_offset_card, text="03 // WORKSTATION CALIBRATION & OFFSETS", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
         
-        # Section A: Initial Origin Offsets
+        # Section A: Initial Origin Offsets (6-Axis)
         ttk.Label(rx_offset_card, text="Origin X (m):").grid(row=1, column=0, sticky="w", pady=2)
         ttk.Entry(rx_offset_card, textvariable=self.ws_origin_x, width=8).grid(row=1, column=1, sticky="w", pady=2)
         
@@ -652,25 +672,90 @@ class CamTrackDesktopApp:
         ttk.Label(rx_offset_card, text="Origin Yaw (°):").grid(row=2, column=2, sticky="w", pady=2)
         ttk.Entry(rx_offset_card, textvariable=self.ws_origin_yaw, width=8).grid(row=2, column=3, sticky="w", pady=2)
         
+        ttk.Label(rx_offset_card, text="Origin Pitch(°):").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_pitch, width=8).grid(row=3, column=1, sticky="w", pady=2)
+        
+        ttk.Label(rx_offset_card, text="Origin Roll (°):").grid(row=3, column=2, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_roll, width=8).grid(row=3, column=3, sticky="w", pady=2)
+        
         # Separator line
-        ttk.Separator(rx_offset_card, orient="horizontal").grid(row=3, column=0, columnspan=4, sticky="ew", pady=6)
+        ttk.Separator(rx_offset_card, orient="horizontal").grid(row=4, column=0, columnspan=4, sticky="ew", pady=6)
         
         # Section B: Camera Lever Arm Offsets
-        ttk.Label(rx_offset_card, text="Lever X (cm):").grid(row=4, column=0, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_x, width=8).grid(row=4, column=1, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Lever X (cm):").grid(row=5, column=0, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_x, width=8).grid(row=5, column=1, sticky="w", pady=2)
         
-        ttk.Label(rx_offset_card, text="Lever Y (cm):").grid(row=4, column=2, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_y, width=8).grid(row=4, column=3, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Lever Y (cm):").grid(row=5, column=2, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_y, width=8).grid(row=5, column=3, sticky="w", pady=2)
         
-        ttk.Label(rx_offset_card, text="Lever Z (cm):").grid(row=5, column=0, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_z, width=8).grid(row=5, column=1, sticky="w", pady=2)
-
+        ttk.Label(rx_offset_card, text="Lever Z (cm):").grid(row=6, column=0, sticky="w", pady=2)
+        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_z, width=8).grid(row=6, column=1, sticky="w", pady=2)
+        
+        # Card 1.8: Workstation Coordinate Alignment & Point Cloud Remapping
+        rx_alignment_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
+        rx_alignment_card.grid(row=3, column=0, sticky="ew", pady=(0, 12))
+        rx_alignment_card.columnconfigure(1, weight=1)
+        rx_alignment_card.columnconfigure(3, weight=1)
+        
+        ttk.Label(rx_alignment_card, text="04 // COORDINATE SYSTEM & LIDAR ALIGNMENT", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
+        
+        # Preset dropdown
+        ttk.Label(rx_alignment_card, text="Preset Profile:").grid(row=1, column=0, sticky="w", pady=4)
+        preset_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_align_preset, values=["Default", "Unreal Engine", "Metashape", "Custom"], state="readonly", width=15)
+        preset_combo.grid(row=1, column=1, columnspan=3, sticky="ew", pady=4)
+        preset_combo.bind("<<ComboboxSelected>>", self.on_align_preset_changed)
+        
+        # Custom position mapping
+        ttk.Label(rx_alignment_card, text="PC Pos X:").grid(row=2, column=0, sticky="w", pady=2)
+        x_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_x_sign, values=[1, -1], state="readonly", width=3)
+        x_sign_combo.grid(row=2, column=1, sticky="w", pady=2)
+        x_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_x_src, values=["X", "Y", "Z"], state="readonly", width=3)
+        x_src_combo.grid(row=2, column=2, sticky="w", pady=2)
+        
+        ttk.Label(rx_alignment_card, text="PC Pos Y:").grid(row=3, column=0, sticky="w", pady=2)
+        y_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_y_sign, values=[1, -1], state="readonly", width=3)
+        y_sign_combo.grid(row=3, column=1, sticky="w", pady=2)
+        y_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_y_src, values=["X", "Y", "Z"], state="readonly", width=3)
+        y_src_combo.grid(row=3, column=2, sticky="w", pady=2)
+        
+        ttk.Label(rx_alignment_card, text="PC Pos Z:").grid(row=4, column=0, sticky="w", pady=2)
+        z_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_z_sign, values=[1, -1], state="readonly", width=3)
+        z_sign_combo.grid(row=4, column=1, sticky="w", pady=2)
+        z_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_z_src, values=["X", "Y", "Z"], state="readonly", width=3)
+        z_src_combo.grid(row=4, column=2, sticky="w", pady=2)
+        
+        ttk.Separator(rx_alignment_card, orient="horizontal").grid(row=5, column=0, columnspan=4, sticky="ew", pady=6)
+        
+        # LiDAR Cloud Custom Translation Mapping Heading
+        ttk.Label(rx_alignment_card, text="LiDAR point cloud custom mapping:", font=("Consolas", 8, "bold"), foreground=ACCENT_CYAN).grid(row=6, column=0, columnspan=4, sticky="w", pady=(0, 4))
+        
+        # LiDAR X Mapping
+        ttk.Label(rx_alignment_card, text="LiDAR X:").grid(row=7, column=0, sticky="w", pady=2)
+        lx_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_x_sign, values=[1, -1], state="readonly", width=3)
+        lx_sign_combo.grid(row=7, column=1, sticky="w", pady=2)
+        lx_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_x_src, values=["X", "Y", "Z"], state="readonly", width=3)
+        lx_src_combo.grid(row=7, column=2, sticky="w", pady=2)
+        
+        # LiDAR Y Mapping
+        ttk.Label(rx_alignment_card, text="LiDAR Y:").grid(row=8, column=0, sticky="w", pady=2)
+        ly_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_y_sign, values=[1, -1], state="readonly", width=3)
+        ly_sign_combo.grid(row=8, column=1, sticky="w", pady=2)
+        ly_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_y_src, values=["X", "Y", "Z"], state="readonly", width=3)
+        ly_src_combo.grid(row=8, column=2, sticky="w", pady=2)
+        
+        # LiDAR Z Mapping
+        ttk.Label(rx_alignment_card, text="LiDAR Z:").grid(row=9, column=0, sticky="w", pady=2)
+        lz_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_z_sign, values=[1, -1], state="readonly", width=3)
+        lz_sign_combo.grid(row=9, column=1, sticky="w", pady=2)
+        lz_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_z_src, values=["X", "Y", "Z"], state="readonly", width=3)
+        lz_src_combo.grid(row=9, column=2, sticky="w", pady=2)
+        
         # Card 2: PC Network & Stream Diagnostics
         rx_diag_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_diag_card.grid(row=3, column=0, sticky="nsew")
+        rx_diag_card.grid(row=4, column=0, sticky="nsew")
         rx_diag_card.columnconfigure(1, weight=1)
         
-        ttk.Label(rx_diag_card, text="03 // PC NETWORK DIAGNOSTICS", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(rx_diag_card, text="05 // PC NETWORK DIAGNOSTICS", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
         
         # Local IP List
         ttk.Label(rx_diag_card, text="PC Local IP(s):").grid(row=1, column=0, sticky="w", pady=4)
@@ -717,11 +802,21 @@ class CamTrackDesktopApp:
         latency_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_latency_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
         latency_lbl.grid(row=9, column=1, sticky="e", pady=4)
         
+        # Forwarded Hz
+        ttk.Label(rx_diag_card, text="Forwarded Hz:").grid(row=10, column=0, sticky="w", pady=4)
+        forward_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.forward_delivery_hz_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
+        forward_hz_lbl.grid(row=10, column=1, sticky="e", pady=4)
+        
+        # Forwarded Timecode
+        ttk.Label(rx_diag_card, text="Forwarded Timecode:").grid(row=11, column=0, sticky="w", pady=4)
+        forward_tc_lbl = ttk.Label(rx_diag_card, textvariable=self.forward_timecode_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
+        forward_tc_lbl.grid(row=11, column=1, sticky="e", pady=4)
+        
         # Smoothing Window Slider
-        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=10, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=12, column=0, sticky="w", pady=4)
         
         smoothing_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        smoothing_frame.grid(row=10, column=1, sticky="e", pady=4)
+        smoothing_frame.grid(row=12, column=1, sticky="e", pady=4)
         
         smooth_slider = ttk.Scale(smoothing_frame, from_=0.1, to=5.0, value=1.0, variable=self.receiver_smoothing_sec, command=lambda v: self._update_smoothing_label())
         smooth_slider.pack(side="left", padx=(0, 4))
@@ -730,10 +825,10 @@ class CamTrackDesktopApp:
         self.smooth_lbl.pack(side="left")
         
         # Playout Buffer Slider
-        ttk.Label(rx_diag_card, text="Playout Buffer Delay (ms):").grid(row=11, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Playout Buffer Delay (ms):").grid(row=13, column=0, sticky="w", pady=4)
         
         buffer_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        buffer_frame.grid(row=11, column=1, sticky="e", pady=4)
+        buffer_frame.grid(row=13, column=1, sticky="e", pady=4)
         
         buffer_slider = ttk.Scale(buffer_frame, from_=0, to=1000, value=100, variable=self.receiver_buffer_ms, command=lambda v: self._update_buffer_label())
         buffer_slider.pack(side="left", padx=(0, 4))
@@ -745,15 +840,14 @@ class CamTrackDesktopApp:
         auto_chk.pack(side="left", padx=(8, 0))
         
         # Visual Ping indicator (Canvas)
-        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=12, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=14, column=0, sticky="w", pady=4)
         self.ping_canvas = tk.Canvas(rx_diag_card, width=16, height=16, bg=CARD_BG, highlightthickness=0)
-        self.ping_canvas.grid(row=12, column=1, sticky="e", pady=4)
+        self.ping_canvas.grid(row=14, column=1, sticky="e", pady=4)
         self.ping_light = self.ping_canvas.create_oval(2, 2, 14, 14, fill=FIELD_BG, outline=BORDER_COLOR)
         
         # Right Panel
         rx_right = ttk.Frame(self.tab_receiver, padding=10)
         rx_right.grid(row=0, column=1, sticky="nsew")
-        rx_right.columnconfigure(0, weight=1)
         rx_right.rowconfigure(0, weight=3) # Large numerical indicators
         rx_right.rowconfigure(1, weight=5) # Live 3D Projected Canvas
         rx_right.rowconfigure(2, weight=2) # Log console
@@ -832,6 +926,9 @@ class CamTrackDesktopApp:
         
         follow_chk = ttk.Checkbutton(toolbar, text="Follow", variable=self.live_follow, command=self.redraw_live_3d_canvas)
         follow_chk.pack(side="right", padx=(4, 0))
+        
+        edit_origin_chk = ttk.Checkbutton(toolbar, text="Edit Origin", variable=self.live_edit_origin, command=self.redraw_live_3d_canvas)
+        edit_origin_chk.pack(side="right", padx=(4, 0))
         
         self.live_view_mode_combo = ttk.Combobox(toolbar, textvariable=self.live_view_mode, values=["Orbit", "Cockpit"], state="readonly", width=8)
         self.live_view_mode_combo.pack(side="right", padx=(4, 4))
@@ -2399,6 +2496,107 @@ class CamTrackDesktopApp:
         qz = cr * cp * sy - sr * sp * cy
         return (qw, qx, qy, qz)
 
+    def apply_pc_coordinate_alignment(self, px, py, pz, roll, pitch, yaw):
+        inputs_pos = {"X": px, "Y": py, "Z": pz}
+        px_aligned = self.pc_x_sign.get() * inputs_pos[self.pc_x_src.get()]
+        py_aligned = self.pc_y_sign.get() * inputs_pos[self.pc_y_src.get()]
+        pz_aligned = self.pc_z_sign.get() * inputs_pos[self.pc_z_src.get()]
+        
+        inputs_rot = {"Roll": roll, "Pitch": pitch, "Yaw": yaw}
+        roll_aligned = self.pc_roll_sign.get() * inputs_rot[self.pc_roll_src.get()]
+        pitch_aligned = self.pc_pitch_sign.get() * inputs_rot[self.pc_pitch_src.get()]
+        yaw_aligned = self.pc_yaw_sign.get() * inputs_rot[self.pc_yaw_src.get()]
+        
+        return px_aligned, py_aligned, pz_aligned, roll_aligned, pitch_aligned, yaw_aligned
+
+    def rotate_vector_by_quaternion(self, x, y, z, qw, qx, qy, qz):
+        n1 = qx * 2.0
+        n2 = qy * 2.0
+        n3 = qz * 2.0
+        n4 = qx * n1
+        n5 = qy * n2
+        n6 = qz * n3
+        n7 = qx * n2
+        n8 = qx * n3
+        n9 = qy * n3
+        n10 = qw * n1
+        n11 = qw * n2
+        n12 = qw * n3
+        
+        rx = (1.0 - (n5 + n6)) * x + (n7 - n12) * y + (n8 + n11) * z
+        ry = (n7 + n12) * x + (1.0 - (n4 + n6)) * y + (n9 - n10) * z
+        rz = (n8 - n11) * x + (n9 + n10) * y + (1.0 - (n4 + n5)) * z
+        return rx, ry, rz
+
+    def quaternion_to_euler(self, w, x, y, z):
+        sinr_cosp = 2 * (w * x + y * z)
+        cosr_cosp = 1 - 2 * (x * x + y * y)
+        roll = math.atan2(sinr_cosp, cosr_cosp)
+        
+        sinp = 2 * (w * y - z * x)
+        if abs(sinp) >= 1:
+            pitch = math.copysign(math.pi / 2, sinp)
+        else:
+            pitch = math.asin(sinp)
+            
+        siny_cosp = 2 * (w * z + x * y)
+        cosy_cosp = 1 - 2 * (y * y + z * z)
+        yaw = math.atan2(siny_cosp, cosy_cosp)
+        
+        return math.degrees(roll), math.degrees(pitch), math.degrees(yaw)
+
+    def timestamp_to_smpte(self, timestamp, fps=30):
+        try:
+            import time
+            lt = time.localtime(timestamp)
+            subsecond = timestamp - int(timestamp)
+            frame = int(subsecond * fps)
+            return f"{lt.tm_hour:02d}:{lt.tm_min:02d}:{lt.tm_sec:02d}:{frame:02d}"
+        except Exception:
+            return "00:00:00:00"
+
+    def on_align_preset_changed(self, *args):
+        preset = self.pc_align_preset.get()
+        if preset == "Default":
+            self.pc_x_sign.set(1)
+            self.pc_x_src.set("X")
+            self.pc_y_sign.set(1)
+            self.pc_y_src.set("Y")
+            self.pc_z_sign.set(1)
+            self.pc_z_src.set("Z")
+            self.pc_roll_sign.set(1)
+            self.pc_roll_src.set("Roll")
+            self.pc_pitch_sign.set(1)
+            self.pc_pitch_src.set("Pitch")
+            self.pc_yaw_sign.set(1)
+            self.pc_yaw_src.set("Yaw")
+        elif preset == "Unreal Engine":
+            self.pc_x_sign.set(-1)
+            self.pc_x_src.set("Z")
+            self.pc_y_sign.set(1)
+            self.pc_y_src.set("X")
+            self.pc_z_sign.set(1)
+            self.pc_z_src.set("Y")
+            self.pc_roll_sign.set(1)
+            self.pc_roll_src.set("Roll")
+            self.pc_pitch_sign.set(-1)
+            self.pc_pitch_src.set("Pitch")
+            self.pc_yaw_sign.set(1)
+            self.pc_yaw_src.set("Yaw")
+        elif preset == "Metashape":
+            self.pc_x_sign.set(1)
+            self.pc_x_src.set("X")
+            self.pc_y_sign.set(1)
+            self.pc_y_src.set("Y")
+            self.pc_z_sign.set(1)
+            self.pc_z_src.set("Z")
+            self.pc_roll_sign.set(1)
+            self.pc_roll_src.set("Roll")
+            self.pc_pitch_sign.set(1)
+            self.pc_pitch_src.set("Pitch")
+            self.pc_yaw_sign.set(1)
+            self.pc_yaw_src.set("Yaw")
+
     def apply_offsets(self, px, py, pz, qw, qx, qy, qz, lx, ly, lz, rot_roll=0.0, rot_pitch=0.0, rot_yaw=0.0):
         # 1. Apply rotational offset to get camera-to-world quaternion for the DSLR camera
         q_phone = (qw, qx, qy, qz)
@@ -2413,24 +2611,9 @@ class CamTrackDesktopApp:
             q_dslr = q_phone
             
         # 2. Translate position using phone's quaternion to rotate lever arm
-        n1 = qx * 2.0
-        n2 = qy * 2.0
-        n3 = qz * 2.0
-        n4 = qx * n1
-        n5 = qy * n2
-        n6 = qz * n3
-        n7 = qx * n2
-        n8 = qx * n3
-        n9 = qy * n3
-        n10 = qw * n1
-        n11 = qw * n2
-        n12 = qw * n3
+        rx, ry, rz = self.rotate_vector_by_quaternion(lx, ly, lz, qw, qx, qy, qz)
         
-        rx = (1.0 - (n5 + n6)) * lx + (n7 - n12) * ly + (n8 + n11) * lz
-        ry = (n7 + n12) * lx + (1.0 - (n4 + n6)) * ly + (n9 - n10) * lz
-        rz = (n8 - n11) * lx + (n9 + n10) * ly + (1.0 - (n4 + n5)) * lz
-        
-        return (px + rx, py + ry, pz + rz), q_dslr
+        return (px - rx, py - ry, pz - rz), q_dslr
         
     def get_photo_timestamp(self, p_path):
         try:
@@ -3095,67 +3278,79 @@ class CamTrackDesktopApp:
                     playout_sec_packet_count = 0
                     playout_sec_start = playout_now
                 
-                # Extract raw coordinates
-                px_raw = parsed["x"]
-                py_raw = parsed["y"]
-                pz_raw = parsed["z"]
-                pitch_raw = parsed["pitch"]
-                yaw_raw = parsed["yaw"]
-                roll_raw = parsed["roll"]
+                # 1. Apply workstation Coordinate System Alignment Preset / Custom translation remapping
+                px_aligned, py_aligned, pz_aligned, roll_aligned, pitch_aligned, yaw_aligned = self.apply_pc_coordinate_alignment(
+                    px_raw, py_raw, pz_raw, roll_raw, pitch_raw, yaw_raw
+                )
                 
-                # 1. Apply workstation DSLR Lever Arm Offset (convert cm to meters)
+                # 2. Apply workstation DSLR Lever Arm Offset (convert cm to meters) and SUBTRACT
                 lx = self.ws_lever_x.get() / 100.0
                 ly = self.ws_lever_y.get() / 100.0
                 lz = self.ws_lever_z.get() / 100.0
                 
-                px = px_raw
-                py = py_raw
-                pz = pz_raw
-                yaw = yaw_raw
-                pitch = pitch_raw
-                roll = roll_raw
+                px_dslr_raw = px_aligned
+                py_dslr_raw = py_aligned
+                pz_dslr_raw = pz_aligned
+                roll = roll_aligned
+                pitch = pitch_aligned
+                yaw = yaw_aligned
                 
                 if lx != 0.0 or ly != 0.0 or lz != 0.0:
-                    qw, qx, qy, qz = self.euler_to_quaternion(roll_raw, pitch_raw, yaw_raw)
-                    # Vector rotation math using quaternion
-                    n1 = qx * 2.0
-                    n2 = qy * 2.0
-                    n3 = qz * 2.0
-                    n4 = qx * n1
-                    n5 = qy * n2
-                    n6 = qz * n3
-                    n7 = qx * n2
-                    n8 = qx * n3
-                    n9 = qy * n3
-                    n10 = qw * n1
-                    n11 = qw * n2
-                    n12 = qw * n3
-                    
-                    rx = (1.0 - (n5 + n6)) * lx + (n7 - n12) * ly + (n8 + n11) * lz
-                    ry = (n7 + n12) * lx + (1.0 - (n4 + n6)) * ly + (n9 - n10) * lz
-                    rz = (n8 - n11) * lx + (n9 + n10) * ly + (1.0 - (n4 + n5)) * lz
-                    
-                    px += rx
-                    py += ry
-                    pz += rz
+                    rx, ry, rz = self.rotate_vector_by_quaternion(lx, ly, lz, *self.euler_to_quaternion(roll, pitch, yaw))
+                    px_dslr_raw -= rx
+                    py_dslr_raw -= ry
+                    pz_dslr_raw -= rz
                 
-                # 2. Apply workstation static Origin Offsets (meters and degrees)
-                px += self.ws_origin_x.get()
-                py += self.ws_origin_y.get()
-                pz += self.ws_origin_z.get()
+                # 3. Calculate camera pose relative to the 6-axis offset origin
+                tx_o = self.ws_origin_x.get()
+                ty_o = self.ws_origin_y.get()
+                tz_o = self.ws_origin_z.get()
+                pitch_o = self.ws_origin_pitch.get()
+                yaw_o = self.ws_origin_yaw.get()
+                roll_o = self.ws_origin_roll.get()
                 
-                yaw_adj = yaw_raw + self.ws_origin_yaw.get()
-                if yaw_adj > 180.0:
-                    yaw_adj -= 360.0
-                elif yaw_adj < -180.0:
-                    yaw_adj += 360.0
-                yaw = yaw_adj
+                dx = px_dslr_raw - tx_o
+                dy = py_dslr_raw - ty_o
+                dz = pz_dslr_raw - tz_o
+                
+                q_o_w, q_o_x, q_o_y, q_o_z = self.euler_to_quaternion(roll_o, pitch_o, yaw_o)
+                # Conjugate of origin quaternion (representing inverse rotation)
+                q_o_inv_w = q_o_w
+                q_o_inv_x = -q_o_x
+                q_o_inv_y = -q_o_y
+                q_o_inv_z = -q_o_z
+                
+                px_local, py_local, pz_local = self.rotate_vector_by_quaternion(dx, dy, dz, q_o_inv_w, q_o_inv_x, q_o_inv_y, q_o_inv_z)
+                
+                q_raw_w, q_raw_x, q_raw_y, q_raw_z = self.euler_to_quaternion(roll, pitch, yaw)
+                q_local_w, q_local_x, q_local_y, q_local_z = self.multiply_quaternions(
+                    (q_o_inv_w, q_o_inv_x, q_o_inv_y, q_o_inv_z),
+                    (q_raw_w, q_raw_x, q_raw_y, q_raw_z)
+                )
+                
+                roll_local, pitch_local, yaw_local = self.quaternion_to_euler(q_local_w, q_local_x, q_local_y, q_local_z)
+                
+                # Local variables for downstream UI updates and forwarders
+                px = px_local
+                py = py_local
+                pz = pz_local
+                roll = roll_local
+                pitch = pitch_local
+                yaw = yaw_local
                 
                 # Overwrite parsed dictionary to propagate offsets to canvas and forwarders automatically!
                 parsed["x"] = px
                 parsed["y"] = py
                 parsed["z"] = pz
+                parsed["roll"] = roll
+                parsed["pitch"] = pitch
                 parsed["yaw"] = yaw
+                
+                # Preserve raw aligned coords for trajectory plotting
+                parsed["raw_aligned_x"] = px_dslr_raw
+                parsed["raw_aligned_y"] = py_dslr_raw
+                parsed["raw_aligned_z"] = pz_dslr_raw
+                
                 fmt_type = parsed["type"]
                 timestamp = parsed.get("timestamp", None)
                 addr_str = parsed.get("addr_str", "iOS")
@@ -3192,9 +3387,9 @@ class CamTrackDesktopApp:
                 
                 self.root.after(0, self.trigger_ping_blink)
                 
-                # Append camera position to live 3D trajectory
-                if not self.live_trajectory or math.sqrt((px - self.live_trajectory[-1][0])**2 + (py - self.live_trajectory[-1][1])**2 + (pz - self.live_trajectory[-1][2])**2) > 0.01:
-                    self.live_trajectory.append((px, py, pz))
+                # Append camera position to live 3D trajectory (stored in raw aligned space)
+                if not self.live_trajectory or math.sqrt((px_dslr_raw - self.live_trajectory[-1][0])**2 + (py_dslr_raw - self.live_trajectory[-1][1])**2 + (pz_dslr_raw - self.live_trajectory[-1][2])**2) > 0.01:
+                    self.live_trajectory.append((px_dslr_raw, py_dslr_raw, pz_dslr_raw))
                     
                 # Append new LiDAR points
                 new_pts = parsed.get("new_points", [])
@@ -3203,11 +3398,11 @@ class CamTrackDesktopApp:
                         if len(pt) >= 3:
                             self.live_points.append((float(pt[0]), float(pt[1]), float(pt[2])))
                             
-                # Sync cockpit/orbit camera tracking in follow mode
+                # Sync cockpit/orbit camera tracking in follow mode (centers viewport on camera's absolute position)
                 if self.live_follow.get():
-                    self.live_pan_x = px
-                    self.live_pan_y = py
-                    self.live_pan_z = pz
+                    self.live_pan_x = px_dslr_raw
+                    self.live_pan_y = py_dslr_raw
+                    self.live_pan_z = pz_dslr_raw
                     if self.live_view_mode.get() == "Cockpit":
                         self.live_rot_x = -pitch * math.pi / 180.0 - math.pi / 2.0  # Apply the -90 degree offset globally for proper horizon pitch alignment
                         self.live_rot_y = -yaw * math.pi / 180.0
@@ -3481,43 +3676,64 @@ class CamTrackDesktopApp:
         self.last_live_mouse_y = event.y
 
     def on_live_canvas_orbit(self, event):
-        if self.live_follow.get() and self.live_view_mode.get() == "Cockpit":
-            self.live_view_mode.set("Orbit")
-            
         dx = event.x - self.last_live_mouse_x
         dy = event.y - self.last_live_mouse_y
         
-        self.live_rot_y += dx * 0.005
-        self.live_rot_x += dy * 0.005
-        
+        if self.live_edit_origin.get():
+            shift_pressed = (event.state & 0x0001) != 0
+            if shift_pressed:
+                # Rotate Roll
+                self.ws_origin_roll.set(self.ws_origin_roll.get() + dx * 0.1)
+            else:
+                # Rotate Yaw and Pitch
+                self.ws_origin_yaw.set(self.ws_origin_yaw.get() + dx * 0.1)
+                self.ws_origin_pitch.set(self.ws_origin_pitch.get() - dy * 0.1)
+        else:
+            if self.live_follow.get() and self.live_view_mode.get() == "Cockpit":
+                self.live_view_mode.set("Orbit")
+            self.live_rot_y += dx * 0.005
+            self.live_rot_x += dy * 0.005
+            
         self.last_live_mouse_x = event.x
         self.last_live_mouse_y = event.y
         self.redraw_live_3d_canvas()
 
     def on_live_canvas_pan(self, event):
-        if self.live_follow.get():
-            self.live_follow.set(False)
-            
         dx = event.x - self.last_live_mouse_x
         dy = event.y - self.last_live_mouse_y
         
-        cos_y = math.cos(self.live_rot_y)
-        sin_y = math.sin(self.live_rot_y)
-        
-        self.live_pan_x -= (dx * cos_y + dy * sin_y) * 0.005 * (1.0 / self.live_zoom)
-        self.live_pan_z -= (-dx * sin_y + dy * cos_y) * 0.005 * (1.0 / self.live_zoom)
-        
+        if self.live_edit_origin.get():
+            cos_y = math.cos(self.live_rot_y)
+            sin_y = math.sin(self.live_rot_y)
+            # Translate along X/Z plane in direction camera is looking
+            tx = (dx * cos_y + dy * sin_y) * 0.01 * (1.0 / self.live_zoom)
+            tz = (-dx * sin_y + dy * cos_y) * 0.01 * (1.0 / self.live_zoom)
+            self.ws_origin_x.set(self.ws_origin_x.get() - tx)
+            self.ws_origin_z.set(self.ws_origin_z.get() - tz)
+        else:
+            if self.live_follow.get():
+                self.live_follow.set(False)
+            cos_y = math.cos(self.live_rot_y)
+            sin_y = math.sin(self.live_rot_y)
+            self.live_pan_x -= (dx * cos_y + dy * sin_y) * 0.005 * (1.0 / self.live_zoom)
+            self.live_pan_z -= (-dx * sin_y + dy * cos_y) * 0.005 * (1.0 / self.live_zoom)
+            
         self.last_live_mouse_x = event.x
         self.last_live_mouse_y = event.y
         self.redraw_live_3d_canvas()
 
     def on_live_canvas_scroll(self, event):
         delta = event.delta
-        if delta > 0:
-            self.live_zoom *= 1.1
+        if self.live_edit_origin.get():
+            # Translate Origin Y (height)
+            dy = 0.05 if delta > 0 else -0.05
+            self.ws_origin_y.set(self.ws_origin_y.get() + dy)
         else:
-            self.live_zoom /= 1.1
-        self.live_zoom = max(0.1, min(50.0, self.live_zoom))
+            if delta > 0:
+                self.live_zoom *= 1.1
+            else:
+                self.live_zoom /= 1.1
+            self.live_zoom = max(0.1, min(50.0, self.live_zoom))
         self.redraw_live_3d_canvas()
 
     def project_live_3d(self, x, y, z, width, height):
@@ -3595,35 +3811,62 @@ class CamTrackDesktopApp:
         self.live_canvas.create_line(w-10, h-10, w-30, h-10, fill="#00f0ff", width=1)
         self.live_canvas.create_line(w-10, h-10, w-10, h-30, fill="#00f0ff", width=1)
         
-        # Draw Axes
-        origin_proj = self.project_live_3d(0, 0, 0, w, h)
+        # Draw Rotated and Shifted Origin Gizmo
+        tx_o = self.ws_origin_x.get()
+        ty_o = self.ws_origin_y.get()
+        tz_o = self.ws_origin_z.get()
+        pitch_o = self.ws_origin_pitch.get()
+        yaw_o = self.ws_origin_yaw.get()
+        roll_o = self.ws_origin_roll.get()
+        
+        q_o_w, q_o_x, q_o_y, q_o_z = self.euler_to_quaternion(roll_o, pitch_o, yaw_o)
+        
+        # Rotated unit axis endpoints (length 0.5 meters)
+        vx_x, vx_y, vx_z = self.rotate_vector_by_quaternion(0.5, 0.0, 0.0, q_o_w, q_o_x, q_o_y, q_o_z)
+        vy_x, vy_y, vy_z = self.rotate_vector_by_quaternion(0.0, 0.5, 0.0, q_o_w, q_o_x, q_o_y, q_o_z)
+        vz_x, vz_y, vz_z = self.rotate_vector_by_quaternion(0.0, 0.0, 0.5, q_o_w, q_o_x, q_o_y, q_o_z)
+        
+        origin_proj = self.project_live_3d(tx_o, ty_o, tz_o, w, h)
         if origin_proj:
             ox, oy = origin_proj
             
             # X - East (Red)
-            x_proj = self.project_live_3d(0.5, 0, 0, w, h)
+            x_proj = self.project_live_3d(tx_o + vx_x, ty_o + vx_y, tz_o + vx_z, w, h)
             if x_proj:
-                self.live_canvas.create_line(ox, oy, x_proj[0], x_proj[1], fill="#ff3366", width=2)
+                self.live_canvas.create_line(ox, oy, x_proj[0], x_proj[1], fill="#ff3366", width=2.5)
                 self.live_canvas.create_text(x_proj[0]+8, x_proj[1], text="X", fill="#ff3366", font=("Consolas", 8, "bold"))
                 
             # Y - Up (Green)
-            y_proj = self.project_live_3d(0, 0.5, 0, w, h)
+            y_proj = self.project_live_3d(tx_o + vy_x, ty_o + vy_y, tz_o + vy_z, w, h)
             if y_proj:
-                self.live_canvas.create_line(ox, oy, y_proj[0], y_proj[1], fill="#00ff66", width=2)
+                self.live_canvas.create_line(ox, oy, y_proj[0], y_proj[1], fill="#00ff66", width=2.5)
                 self.live_canvas.create_text(y_proj[0], y_proj[1]-8, text="Y", fill="#00ff66", font=("Consolas", 8, "bold"))
                 
             # Z - North (Blue)
-            z_proj = self.project_live_3d(0, 0, 0.5, w, h)
+            z_proj = self.project_live_3d(tx_o + vz_x, ty_o + vz_y, tz_o + vz_z, w, h)
             if z_proj:
-                self.live_canvas.create_line(ox, oy, z_proj[0], z_proj[1], fill="#3366ff", width=2)
+                self.live_canvas.create_line(ox, oy, z_proj[0], z_proj[1], fill="#3366ff", width=2.5)
                 self.live_canvas.create_text(z_proj[0], z_proj[1]+8, text="Z", fill="#3366ff", font=("Consolas", 8, "bold"))
                 
-        # Draw LiDAR points
+        # Draw LiDAR points with custom PC LiDAR sign & source axis mapping
         if self.live_show_points.get() and self.live_points:
             step = max(1, len(self.live_points) // 1000)
             pts_to_draw = self.live_points[::step]
+            
+            l_x_sign = self.pc_lidar_x_sign.get()
+            l_x_src = self.pc_lidar_x_src.get()
+            l_y_sign = self.pc_lidar_y_sign.get()
+            l_y_src = self.pc_lidar_y_src.get()
+            l_z_sign = self.pc_lidar_z_sign.get()
+            l_z_src = self.pc_lidar_z_src.get()
+            
             for pt in pts_to_draw:
-                proj = self.project_live_3d(pt[0], pt[1], pt[2], w, h)
+                pt_inputs = {"X": pt[0], "Y": pt[1], "Z": pt[2]}
+                mx = pt_inputs.get(l_x_src, pt[0]) * l_x_sign
+                my = pt_inputs.get(l_y_src, pt[1]) * l_y_sign
+                mz = pt_inputs.get(l_z_src, pt[2]) * l_z_sign
+                
+                proj = self.project_live_3d(mx, my, mz, w, h)
                 if proj:
                     sx, sy = proj
                     if 0 <= sx <= w and 0 <= sy <= h:
@@ -3669,6 +3912,24 @@ class CamTrackDesktopApp:
             px, py, pz = parsed["x"], parsed["y"], parsed["z"]
             pitch, yaw, roll = parsed["pitch"], parsed["yaw"], parsed["roll"]
             timestamp = parsed.get("timestamp", time.time())
+            
+            # Dynamic Forwarder Performance Stats
+            now_time = time.time()
+            if not hasattr(self, 'last_forward_calc_time'):
+                self.last_forward_calc_time = now_time
+                self.forward_packet_count_window = 0
+            
+            self.forward_packet_count_window += 1
+            elapsed = now_time - self.last_forward_calc_time
+            if elapsed >= 1.0:
+                hz = float(self.forward_packet_count_window) / elapsed
+                self.root.after(0, lambda h=hz: self.forward_delivery_hz_var.set(f"{h:.1f} Hz"))
+                self.forward_packet_count_window = 0
+                self.last_forward_calc_time = now_time
+                
+            # Derive timecode from packet timestamp using SMPTE formatter
+            tc_str = self.timestamp_to_smpte(timestamp, fps=30)
+            self.root.after(0, lambda t=tc_str: self.forward_timecode_var.set(t))
             
             # Apply -90 degree offset globally around X-axis (Pitch) to align tracking data to UE!
             pitch_forward = pitch - 90.0

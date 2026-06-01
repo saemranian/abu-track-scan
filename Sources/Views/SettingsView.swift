@@ -15,6 +15,13 @@ struct SettingsView: View {
     @State private var originOffsetZ: String = ""
     @State private var originOffsetYaw: String = ""
     
+    @State private var lidarXSign: Double = 1.0
+    @State private var lidarYSign: Double = 1.0
+    @State private var lidarZSign: Double = 1.0
+    @State private var lidarXSource: String = "X"
+    @State private var lidarYSource: String = "Y"
+    @State private var lidarZSource: String = "Z"
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -208,6 +215,76 @@ struct SettingsView: View {
                                         .lineSpacing(4)
                                 }
                                 .padding(.top, 5)
+                            }
+                            .padding()
+                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
+                            .cornerRadius(14)
+                            .padding(.horizontal)
+                        }
+                        
+                        // Section 2.2: LiDAR Point Cloud Custom Mapping
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("LiDAR Point Cloud Alignment")
+                                .font(.caption)
+                                .fontWeight(.black)
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal)
+                            
+                            VStack(alignment: .leading, spacing: 15) {
+                                Text("Remap or flip point cloud axes in the 3D viewer to align spatial scans manually.")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                
+                                // X Mapping
+                                HStack {
+                                    Text("LiDAR X Axis:")
+                                        .font(.footnote)
+                                        .fontWeight(.bold)
+                                    Spacer()
+                                    Picker("X Sign", selection: $lidarXSign) {
+                                        Text("+").tag(1.0)
+                                        Text("-").tag(-1.0)
+                                    }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                    Picker("X Source", selection: $lidarXSource) {
+                                        Text("X").tag("X")
+                                        Text("Y").tag("Y")
+                                        Text("Z").tag("Z")
+                                    }.pickerStyle(MenuPickerStyle()).frame(width: 85)
+                                }
+                                
+                                // Y Mapping
+                                HStack {
+                                    Text("LiDAR Y Axis:")
+                                        .font(.footnote)
+                                        .fontWeight(.bold)
+                                    Spacer()
+                                    Picker("Y Sign", selection: $lidarYSign) {
+                                        Text("+").tag(1.0)
+                                        Text("-").tag(-1.0)
+                                    }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                    Picker("Y Source", selection: $lidarYSource) {
+                                        Text("X").tag("X")
+                                        Text("Y").tag("Y")
+                                        Text("Z").tag("Z")
+                                    }.pickerStyle(MenuPickerStyle()).frame(width: 85)
+                                }
+                                
+                                // Z Mapping
+                                HStack {
+                                    Text("LiDAR Z Axis:")
+                                        .font(.footnote)
+                                        .fontWeight(.bold)
+                                    Spacer()
+                                    Picker("Z Sign", selection: $lidarZSign) {
+                                        Text("+").tag(1.0)
+                                        Text("-").tag(-1.0)
+                                    }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
+                                    Picker("Z Source", selection: $lidarZSource) {
+                                        Text("X").tag("X")
+                                        Text("Y").tag("Y")
+                                        Text("Z").tag("Z")
+                                    }.pickerStyle(MenuPickerStyle()).frame(width: 85)
+                                }
                             }
                             .padding()
                             .background(Color(red: 0.05, green: 0.08, blue: 0.16))
@@ -644,6 +721,12 @@ struct SettingsView: View {
             .onChange(of: originOffsetY) { _ in updateOriginOffsetY() }
             .onChange(of: originOffsetZ) { _ in updateOriginOffsetZ() }
             .onChange(of: originOffsetYaw) { _ in updateOriginOffsetYaw() }
+            .onChange(of: lidarXSign) { _ in updateLidarXSign() }
+            .onChange(of: lidarYSign) { _ in updateLidarYSign() }
+            .onChange(of: lidarZSign) { _ in updateLidarZSign() }
+            .onChange(of: lidarXSource) { _ in updateLidarXSource() }
+            .onChange(of: lidarYSource) { _ in updateLidarYSource() }
+            .onChange(of: lidarZSource) { _ in updateLidarZSource() }
         }
     }
     
@@ -668,6 +751,13 @@ struct SettingsView: View {
         self.originOffsetY = oy == 0 ? "" : String(format: "%.2f", oy)
         self.originOffsetZ = oz == 0 ? "" : String(format: "%.2f", oz)
         self.originOffsetYaw = oyaw == 0 ? "" : String(format: "%.1f", oyaw)
+        
+        self.lidarXSign = RigSettings.lidarXSign
+        self.lidarYSign = RigSettings.lidarYSign
+        self.lidarZSign = RigSettings.lidarZSign
+        self.lidarXSource = RigSettings.lidarXSource
+        self.lidarYSource = RigSettings.lidarYSource
+        self.lidarZSource = RigSettings.lidarZSource
     }
     
     private func saveOffsets() {
@@ -697,6 +787,13 @@ struct SettingsView: View {
     private func updateOriginOffsetY() { RigSettings.originOffsetY = Double(originOffsetY) ?? 0.0 }
     private func updateOriginOffsetZ() { RigSettings.originOffsetZ = Double(originOffsetZ) ?? 0.0 }
     private func updateOriginOffsetYaw() { RigSettings.originOffsetYaw = Double(originOffsetYaw) ?? 0.0 }
+    
+    private func updateLidarXSign() { RigSettings.lidarXSign = lidarXSign }
+    private func updateLidarYSign() { RigSettings.lidarYSign = lidarYSign }
+    private func updateLidarZSign() { RigSettings.lidarZSign = lidarZSign }
+    private func updateLidarXSource() { RigSettings.lidarXSource = lidarXSource }
+    private func updateLidarYSource() { RigSettings.lidarYSource = lidarYSource }
+    private func updateLidarZSource() { RigSettings.lidarZSource = lidarZSource }
 }
 
 struct OffsetInputField: View {

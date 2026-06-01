@@ -145,22 +145,22 @@ class PhotoSyncManager: ObservableObject {
                 let rotatedOffset = self.rotateVector(vector: (lx, ly, lz), q: q)
                 
                 // Apply translation correction to Local Coordinates
-                let correctedX = closest.localX + rotatedOffset.0
-                let correctedY = closest.localY + rotatedOffset.1
-                let correctedZ = closest.localZ + rotatedOffset.2
+                let correctedX = closest.localX - rotatedOffset.0
+                let correctedY = closest.localY - rotatedOffset.1
+                let correctedZ = closest.localZ - rotatedOffset.2
                 
                 // Apply correction to GPS if enabled (Decimal Degrees translation)
                 var correctedLat = closest.latitude
                 var correctedLon = closest.longitude
-                let correctedGpsAlt = closest.gpsAltitude + rotatedOffset.2
+                let correctedGpsAlt = closest.gpsAltitude - rotatedOffset.2
                 
                 if closest.isGPSEnabled && closest.latitude != 0.0 {
                     // Approximations in meters to degrees
                     let latOffsetDeg = rotatedOffset.1 / 111111.0
                     let lonOffsetDeg = rotatedOffset.0 / (111111.0 * cos(closest.latitude * .pi / 180.0))
                     
-                    correctedLat += latOffsetDeg
-                    correctedLon += lonOffsetDeg
+                    correctedLat -= latOffsetDeg
+                    correctedLon -= lonOffsetDeg
                 }
                 
                 let record = SyncedPhotoRecord(
@@ -169,7 +169,7 @@ class PhotoSyncManager: ObservableObject {
                     localX: correctedX,
                     localY: correctedY,
                     localZ: correctedZ,
-                    baroAlt: closest.relativeAltitude + rotatedOffset.2,
+                    baroAlt: closest.relativeAltitude - rotatedOffset.2,
                     pitch: closest.pitch,
                     roll: closest.roll,
                     yaw: closest.yaw,

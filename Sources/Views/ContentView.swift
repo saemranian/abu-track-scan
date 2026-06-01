@@ -111,4 +111,37 @@ struct RigSettings {
         }
         set { UserDefaults.standard.set(newValue, forKey: "isGPSEnabled") }
     }
+    static var lidarXSign: Double {
+        get { 
+            let val = UserDefaults.standard.double(forKey: "lidarXSign")
+            return val == 0 ? 1.0 : val
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "lidarXSign") }
+    }
+    static var lidarYSign: Double {
+        get { 
+            let val = UserDefaults.standard.double(forKey: "lidarYSign")
+            return val == 0 ? 1.0 : val
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "lidarYSign") }
+    }
+    static var lidarZSign: Double {
+        get { 
+            let val = UserDefaults.standard.double(forKey: "lidarZSign")
+            return val == 0 ? 1.0 : val
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "lidarZSign") }
+    }
+    static var lidarXSource: String {
+        get { UserDefaults.standard.string(forKey: "lidarXSource") ?? "X" }
+        set { UserDefaults.standard.set(newValue, forKey: "lidarXSource") }
+    }
+    static var lidarYSource: String {
+        get { UserDefaults.standard.string(forKey: "lidarYSource") ?? "Y" }
+        set { UserDefaults.standard.set(newValue, forKey: "lidarYSource") }
+    }
+    static var lidarZSource: String {
+        get { UserDefaults.standard.string(forKey: "lidarZSource") ?? "Z" }
+        set { UserDefaults.standard.set(newValue, forKey: "lidarZSource") }
+    }
 }

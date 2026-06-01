@@ -482,13 +482,13 @@ struct DashboardView: View {
         
         var correctedLat = locationManager.latitude
         var correctedLon = locationManager.longitude
-        let correctedGpsAlt = locationManager.altitude + rz
+        let correctedGpsAlt = locationManager.altitude - rz
         
         if locationManager.isGPSEnabled && locationManager.latitude != 0.0 {
             let latOffsetDeg = ry / 111111.0
             let lonOffsetDeg = rx / (111111.0 * cos(locationManager.latitude * .pi / 180.0))
-            correctedLat += latOffsetDeg
-            correctedLon += lonOffsetDeg
+            correctedLat -= latOffsetDeg
+            correctedLon -= lonOffsetDeg
         }
         
         let row = String(
@@ -497,7 +497,7 @@ struct DashboardView: View {
             correctedX,
             correctedY,
             correctedZ,
-            trackingManager.relativeAltitude + rz,
+            trackingManager.relativeAltitude - rz,
             correctedLat,
             correctedLon,
             correctedGpsAlt,
