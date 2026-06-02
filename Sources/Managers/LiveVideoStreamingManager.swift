@@ -40,10 +40,11 @@ class LiveVideoStreamingManager: NSObject {
             self.sessionLock.lock()
             guard !self.isStreamingActive else {
                 self.sessionLock.unlock()
+                AppLogger.warning("LiveVideoStreamingManager: startStreaming ignored. Session already active.")
                 return
             }
             
-            print("Video Streaming: Initializing stream to \(ip):\(port) with resolution \(width)x\(height) @ \(bitrate / 1_000_000) Mbps")
+            AppLogger.info("LiveVideoStreamingManager: Starting video stream targeting \(ip):\(port) with resolution \(width)x\(height) @ \(bitrate / 1_000_000) Mbps, FPS: \(fps)")
             
             self.currentIP = ip
             self.currentPort = port
@@ -57,7 +58,7 @@ class LiveVideoStreamingManager: NSObject {
             // 2. Setup VideoToolbox Compression Session
             self.setupCompressionSession(width: width, height: height, bitrate: bitrate, fps: fps)
             
-            print("Video Streaming: Stream successfully active.")
+            AppLogger.info("LiveVideoStreamingManager: Video stream successfully initialized and active.")
         }
     }
     
@@ -68,7 +69,7 @@ class LiveVideoStreamingManager: NSObject {
                 self.sessionLock.unlock()
                 return
             }
-            print("Video Streaming: Terminating streaming sessions.")
+            AppLogger.info("LiveVideoStreamingManager: Terminating active streaming session...")
             self.isStreamingActive = false
             
             let session = self.compressionSession
@@ -78,6 +79,7 @@ class LiveVideoStreamingManager: NSObject {
             // Teardown VideoToolbox Session outside lock to prevent deadlocks
             if let session = session {
                 VTCompressionSessionInvalidate(session)
+                AppLogger.info("LiveVideoStreamingManager: VTCompressionSession invalidated successfully.")
             }
             
             // Close Socket
@@ -94,11 +96,19 @@ class LiveVideoStreamingManager: NSObject {
         
         // Generate a strictly increasing, contiguous presentation time for the hardware encoder (90kHz ticks)
         let presentationTime = CMTime(value: self.frameCount, timescale: 90000)
+        let currentFrameIndex = self.frameCount
         self.frameCount += 1
         
         // Pass the precise double NTP timestamp through sourceFrameRefCon
         let timestampUs = Int(ntpTimestamp * 1_000_000.0)
         let refCon = UnsafeMutableRawPointer(bitPattern: timestampUs)
+        
+        // Log frame submission details periodically for diagnostics
+        if currentFrameIndex % 60 == 0 {
+            let bufWidth = CVPixelBufferGetWidth(pixelBuffer)
+            let bufHeight = CVPixelBufferGetHeight(pixelBuffer)
+            AppLogger.info("LiveVideoStreamingManager: Submitting frame #\(currentFrameIndex) to VideoToolbox (Active PixelBuffer: \(bufWidth)x\(bufHeight))")
+        }
         
         var flags: VTEncodeInfoFlags = []
         let status = VTCompressionSessionEncodeFrame(
@@ -113,13 +123,14 @@ class LiveVideoStreamingManager: NSObject {
         self.sessionLock.unlock()
         
         if status != noErr {
-            print("Video Streaming: VTCompressionSessionEncodeFrame failed with status: \(status)")
+            AppLogger.error("LiveVideoStreamingManager: VTCompressionSessionEncodeFrame failed for frame #\(currentFrameIndex) with status: \(status)")
         }
     }
     
     // MARK: - Private Setup Methods
     
     private func setupCompressionSession(width: Int32, height: Int32, bitrate: Int, fps: Int) {
+        AppLogger.info("LiveVideoStreamingManager: Creating VTCompressionSession (\(width)x\(height), \(bitrate) bps, \(fps) fps)...")
         var session: VTCompressionSession?
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         
@@ -132,9 +143,12 @@ class LiveVideoStreamingManager: NSObject {
             imageBufferAttributes: nil,
             compressedDataAllocator: nil,
             outputCallback: { (outputCallbackRefCon, sourceFrameRefCon, status, infoFlags, sampleBuffer) in
-                guard status == noErr, let sampleBuffer = sampleBuffer else { return }
-                
                 let manager = Unmanaged<LiveVideoStreamingManager>.fromOpaque(outputCallbackRefCon!).takeUnretainedValue()
+                
+                guard status == noErr, let sampleBuffer = sampleBuffer else {
+                    AppLogger.error("LiveVideoStreamingManager Callback: Encoder returned error status: \(status) or empty buffer.")
+                    return
+                }
                 
                 // Decode the NTP timestamp from the source reference pointer
                 let timestampUs = Int(bitPattern: sourceFrameRefCon)
@@ -148,9 +162,11 @@ class LiveVideoStreamingManager: NSObject {
         )
         
         guard status == noErr, let createdSession = session else {
-            print("Video Streaming: Failed to create VTCompressionSession: \(status)")
+            AppLogger.critical("LiveVideoStreamingManager: Failed to create VTCompressionSession: status \(status)")
             return
         }
+        
+        AppLogger.info("LiveVideoStreamingManager: Session created successfully. Setting properties...")
         
         // Configure Hardware encoding options for ultra low latency virtual production
         // Main profile is universally supported across all iOS hardware models and resolutions
@@ -171,12 +187,15 @@ class LiveVideoStreamingManager: NSObject {
         }
         self.compressionSession = createdSession
         sessionLock.unlock()
+        
+        AppLogger.info("LiveVideoStreamingManager: Hardware compression session fully prepared and active.")
     }
     
     private func setupUDPSocket(ip: String, port: Int) {
+        AppLogger.info("LiveVideoStreamingManager: Binding UDP streaming socket targeting \(ip):\(port)...")
         let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         guard fd >= 0 else {
-            print("Video Streaming Socket: Failed to create socket")
+            AppLogger.error("LiveVideoStreamingManager: Failed to create local BSD socket.")
             return
         }
         
@@ -194,7 +213,7 @@ class LiveVideoStreamingManager: NSObject {
         
         let resolved = inet_addr(ip)
         if resolved == 0xffffffff && ip != "255.255.255.255" {
-            print("Video Streaming Socket: Invalid target IP: \(ip)")
+            AppLogger.error("LiveVideoStreamingManager: Invalid target IP parsed: \(ip)")
             close(fd)
             return
         }
@@ -210,7 +229,7 @@ class LiveVideoStreamingManager: NSObject {
         self.isSocketConfigured = true
         sessionLock.unlock()
         
-        print("Video Streaming Socket: Bound UDP streaming socket targeting \(ip):\(port)")
+        AppLogger.info("LiveVideoStreamingManager: Bound BSD UDP socket successfully.")
     }
     
     private func closeSocket() {
@@ -222,6 +241,7 @@ class LiveVideoStreamingManager: NSObject {
         
         if fd >= 0 {
             close(fd)
+            AppLogger.info("LiveVideoStreamingManager: Bound BSD UDP socket closed cleanly.")
         }
     }
     
@@ -232,7 +252,10 @@ class LiveVideoStreamingManager: NSObject {
         let socketReady = self.isSocketConfigured && self.socketFD >= 0
         self.sessionLock.unlock()
         
-        guard socketReady else { return }
+        guard socketReady else {
+            AppLogger.warning("LiveVideoStreamingManager: processEncodedFrame ignored. Socket not ready.")
+            return
+        }
         
         // 1. Check if it's a keyframe (I-Frame)
         var isKeyframe = false
@@ -246,6 +269,8 @@ class LiveVideoStreamingManager: NSObject {
         if isKeyframe, let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {
             var paramSetCount = 0
             CMVideoFormatDescriptionGetH264ParameterSetAtIndex(formatDesc, parameterSetIndex: 0, parameterSetPointerOut: nil, parameterSetSizeOut: nil, parameterSetCountOut: &paramSetCount, nalUnitHeaderLengthOut: nil)
+            
+            AppLogger.info("LiveVideoStreamingManager: Keyframe generated. Extracting \(paramSetCount) Parameter Sets (SPS/PPS)...")
             
             for i in 0..<paramSetCount {
                 var paramPtr: UnsafePointer<UInt8>?
@@ -271,7 +296,10 @@ class LiveVideoStreamingManager: NSObject {
             return CMBlockBufferCopyDataBytes(blockBuffer, atOffset: 0, dataLength: totalLength, destination: baseAddress)
         }
         
-        guard status == noErr else { return }
+        guard status == noErr else {
+            AppLogger.error("LiveVideoStreamingManager: CMBlockBufferCopyDataBytes failed with status: \(status)")
+            return
+        }
         
         buffer.withUnsafeBytes { (bytesPtr: UnsafeRawBufferPointer) in
             guard let basePointer = bytesPtr.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
@@ -291,6 +319,7 @@ class LiveVideoStreamingManager: NSObject {
                     let isLastNalu = (offset + Int(naluLength) >= totalLength)
                     sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, isLast: isLastNalu)
                 } else {
+                    AppLogger.warning("LiveVideoStreamingManager: Aborting AVCC loop. Out of bounds slice size detected.")
                     break // Out of bounds NALU length!
                 }
                 offset += Int(naluLength)
@@ -307,6 +336,11 @@ class LiveVideoStreamingManager: NSObject {
         
         let naluHeader = nalu[0]
         let naluType = naluHeader & 0x1F
+        
+        // Periodic check to log key frame headers
+        if naluType == 7 || naluType == 8 {
+            AppLogger.info("LiveVideoStreamingManager: Transmitting parameter set type \(naluType), size \(nalu.count) bytes.")
+        }
         
         if nalu.count <= maxPayloadSize {
             // Send as a single RTP packet (RFC 6184)

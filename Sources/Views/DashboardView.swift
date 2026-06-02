@@ -76,6 +76,7 @@ struct DashboardView: View {
     @State private var lastCapturedPhotoName = ""
     @State private var shutterFeedbackMessage = ""
     @State private var isCameraReady = false
+    @State private var showCameraComposition = false
     
     var body: some View {
         NavigationView {
@@ -132,6 +133,12 @@ struct DashboardView: View {
                             
                             ZStack(alignment: .bottomTrailing) {
                                 ZStack {
+                                    if showCameraComposition {
+                                        ARPreviewContainer(trackingManager: trackingManager)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            .opacity(0.8)
+                                    }
+                                    
                                     PointCloudVisualizerView(
                                         points: trackingManager.accumulatedPointCloud,
                                         isTracking: trackingManager.isTrackingActive,
@@ -160,7 +167,7 @@ struct DashboardView: View {
                                     )
                                 }
                                 .frame(height: 290)
-                                .background(Color(red: 0.03, green: 0.04, blue: 0.08))
+                                .background(showCameraComposition ? Color.clear : Color(red: 0.03, green: 0.04, blue: 0.08))
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
@@ -230,6 +237,17 @@ struct DashboardView: View {
                                             .background(Color.black.opacity(0.6))
                                             .cornerRadius(4)
                                             .overlay(RoundedRectangle(cornerRadius: 4).stroke(showCamera ? Color.red.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
+                                    }
+                                    
+                                    Button(action: { showCameraComposition.toggle() }) {
+                                        Text("AR COMP")
+                                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                                            .foregroundColor(showCameraComposition ? .green : .gray)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(4)
+                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(showCameraComposition ? Color.green.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
                                     }
                                     
                                     Button(action: { trackingManager.isMappingSensorsActive.toggle() }) {
