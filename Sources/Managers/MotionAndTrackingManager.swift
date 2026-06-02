@@ -161,7 +161,31 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         if isLiveVideoStreamingEnabled {
             let targetIP = UserDefaults.standard.string(forKey: "streamIP") ?? "192.168.1.100"
             let firstIP = targetIP.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "192.168.1.100"
-            LiveVideoStreamingManager.shared.startStreaming(ip: firstIP, port: videoStreamPort)
+            
+            var width: Int32 = 960
+            var height: Int32 = 540
+            var bitrate: Int = 1_500_000
+            
+            let quality = videoStreamQuality
+            if quality.contains("Low") {
+                width = 640
+                height = 480
+                bitrate = 800_000
+            } else if quality.contains("Medium") {
+                width = 960
+                height = 540
+                bitrate = 1_500_000
+            } else if quality.contains("High") {
+                width = 1280
+                height = 720
+                bitrate = 3_000_000
+            } else if quality.contains("Cinematic") || quality.contains("Max") {
+                width = 1920
+                height = 1080
+                bitrate = 8_000_000
+            }
+            
+            LiveVideoStreamingManager.shared.startStreaming(ip: firstIP, port: videoStreamPort, width: width, height: height, bitrate: bitrate)
         }
         
         if UIApplication.shared.applicationState == .active {
