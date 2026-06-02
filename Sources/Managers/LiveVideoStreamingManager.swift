@@ -28,6 +28,10 @@ class LiveVideoStreamingManager: NSObject {
     private var currentPort: Int = 0
     private var isStreamingActive = false
     
+    private var targetWidth: Int32 = 1920
+    private var currentBitrate: Int = 1_500_000
+    private var currentFPS: Int = 30
+    
     // Continuous frame counter to act as a guaranteed strictly increasing presentation time clock source
     private var frameCount: Int64 = 0
     
@@ -44,10 +48,13 @@ class LiveVideoStreamingManager: NSObject {
                 return
             }
             
-            AppLogger.info("LiveVideoStreamingManager: Starting video stream targeting \(ip):\(port) with resolution \(width)x\(height) @ \(bitrate / 1_000_000) Mbps, FPS: \(fps)")
+            AppLogger.info("LiveVideoStreamingManager: Initializing video stream targeting \(ip):\(port) with target width \(width) @ \(bitrate / 1_000) Kbps")
             
             self.currentIP = ip
             self.currentPort = port
+            self.targetWidth = width
+            self.currentBitrate = bitrate
+            self.currentFPS = fps
             self.frameCount = 0
             self.isStreamingActive = true
             self.sessionLock.unlock()
@@ -55,10 +62,7 @@ class LiveVideoStreamingManager: NSObject {
             // 1. Setup UDP Socket
             self.setupUDPSocket(ip: ip, port: port)
             
-            // 2. Setup VideoToolbox Compression Session
-            self.setupCompressionSession(width: width, height: height, bitrate: bitrate, fps: fps)
-            
-            AppLogger.info("LiveVideoStreamingManager: Video stream successfully initialized and active.")
+            AppLogger.info("LiveVideoStreamingManager: UDP Socket bound. Session will lazily compile on first frame.")
         }
     }
     
@@ -89,10 +93,33 @@ class LiveVideoStreamingManager: NSObject {
     
     func encodeAndStream(pixelBuffer: CVPixelBuffer, ntpTimestamp: Double) {
         self.sessionLock.lock()
-        guard self.isStreamingActive, let session = self.compressionSession else {
+        guard self.isStreamingActive else {
             self.sessionLock.unlock()
             return
         }
+        
+        // Lazy compression session initialization to match exact input frame properties and aspect ratio
+        if self.compressionSession == nil {
+            let inputWidth = Int32(CVPixelBufferGetWidth(pixelBuffer))
+            let inputHeight = Int32(CVPixelBufferGetHeight(pixelBuffer))
+            
+            // Calculate target size keeping 4:3 aspect ratio matching camera sensor perfectly
+            let targetW = self.targetWidth > 0 ? self.targetWidth : inputWidth
+            let targetH = targetW * inputHeight / inputWidth
+            
+            AppLogger.info("LiveVideoStreamingManager: Lazily initializing VTCompressionSession with size \(targetW)x\(targetH) (Source: \(inputWidth)x\(inputHeight))")
+            
+            self.sessionLock.unlock()
+            self.setupCompressionSession(width: targetW, height: targetH, inputWidth: inputWidth, inputHeight: inputHeight, bitrate: self.currentBitrate, fps: self.currentFPS)
+            self.sessionLock.lock()
+            
+            guard self.compressionSession != nil else {
+                self.sessionLock.unlock()
+                return
+            }
+        }
+        
+        let session = self.compressionSession!
         
         // Generate a strictly increasing, contiguous presentation time for the hardware encoder (90kHz ticks)
         let presentationTime = CMTime(value: self.frameCount, timescale: 90000)
@@ -129,10 +156,17 @@ class LiveVideoStreamingManager: NSObject {
     
     // MARK: - Private Setup Methods
     
-    private func setupCompressionSession(width: Int32, height: Int32, bitrate: Int, fps: Int) {
-        AppLogger.info("LiveVideoStreamingManager: Creating VTCompressionSession (\(width)x\(height), \(bitrate) bps, \(fps) fps)...")
+    private func setupCompressionSession(width: Int32, height: Int32, inputWidth: Int32, inputHeight: Int32, bitrate: Int, fps: Int) {
+        AppLogger.info("LiveVideoStreamingManager: Creating VTCompressionSession (\(width)x\(height), input: \(inputWidth)x\(inputHeight), \(bitrate) bps, \(fps) fps)...")
         var session: VTCompressionSession?
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        
+        // Hardware scale NV12 input buffer configuration attributes
+        let attributes: [CFString: Any] = [
+            kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+            kCVPixelBufferWidthKey: inputWidth,
+            kCVPixelBufferHeightKey: inputHeight
+        ]
         
         let status = VTCompressionSessionCreate(
             allocator: kCFAllocatorDefault,
@@ -140,10 +174,14 @@ class LiveVideoStreamingManager: NSObject {
             height: height,
             codecType: kCMVideoCodecType_H264,
             encoderSpecification: nil,
-            imageBufferAttributes: nil,
+            imageBufferAttributes: attributes as CFDictionary,
             compressedDataAllocator: nil,
             outputCallback: { (outputCallbackRefCon, sourceFrameRefCon, status, infoFlags, sampleBuffer) in
-                let manager = Unmanaged<LiveVideoStreamingManager>.fromOpaque(outputCallbackRefCon!).takeUnretainedValue()
+                guard let refCon = outputCallbackRefCon else {
+                    AppLogger.error("LiveVideoStreamingManager Callback: outputCallbackRefCon is nil!")
+                    return
+                }
+                let manager = Unmanaged<LiveVideoStreamingManager>.fromOpaque(refCon).takeUnretainedValue()
                 
                 guard status == noErr, let sampleBuffer = sampleBuffer else {
                     AppLogger.error("LiveVideoStreamingManager Callback: Encoder returned error status: \(status) or empty buffer.")
