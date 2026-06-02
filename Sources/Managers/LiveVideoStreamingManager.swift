@@ -28,6 +28,9 @@ class LiveVideoStreamingManager: NSObject {
     private var currentPort: Int = 0
     private var isStreamingActive = false
     
+    // Continuous frame counter to act as a guaranteed strictly increasing presentation time clock source
+    private var frameCount: Int64 = 0
+    
     override init() {
         super.init()
     }
@@ -44,6 +47,7 @@ class LiveVideoStreamingManager: NSObject {
             
             self.currentIP = ip
             self.currentPort = port
+            self.frameCount = 0
             self.isStreamingActive = true
             self.sessionLock.unlock()
             
@@ -88,8 +92,9 @@ class LiveVideoStreamingManager: NSObject {
             return
         }
         
-        // Use presentation timestamp or arbitrary incrementing ticks
-        let presentationTime = CMTime(value: Int64(ntpTimestamp * 1000.0), timescale: 1000)
+        // Generate a strictly increasing, contiguous presentation time for the hardware encoder (90kHz ticks)
+        let presentationTime = CMTime(value: self.frameCount, timescale: 90000)
+        self.frameCount += 1
         
         // Pass the precise double NTP timestamp through sourceFrameRefCon
         let timestampUs = Int(ntpTimestamp * 1_000_000.0)
@@ -148,11 +153,12 @@ class LiveVideoStreamingManager: NSObject {
         }
         
         // Configure Hardware encoding options for ultra low latency virtual production
+        // Main profile is universally supported across all iOS hardware models and resolutions
         VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_RealTime, value: kCFBooleanTrue)
-        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_High_AutoLevel)
-        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_AverageBitRate, value: bitrate as CFNumber)
-        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_ExpectedFrameRate, value: fps as CFNumber)
-        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_MaxKeyFrameInterval, value: fps as CFNumber) // I-frame every 1s
+        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_Main_AutoLevel)
+        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_AverageBitRate, value: NSNumber(value: bitrate))
+        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_ExpectedFrameRate, value: NSNumber(value: fps))
+        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_MaxKeyFrameInterval, value: NSNumber(value: fps)) // I-frame every 1s
         VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_AllowFrameReordering, value: kCFBooleanFalse) // No B-Frames
         
         // Start session
@@ -277,6 +283,8 @@ class LiveVideoStreamingManager: NSObject {
                 naluLength = CFSwapInt32BigToHost(naluLength)
                 
                 offset += 4
+                
+                guard naluLength > 0 else { continue }
                 
                 if offset + Int(naluLength) <= totalLength {
                     let naluData = buffer.subdata(in: offset..<(offset + Int(naluLength)))
