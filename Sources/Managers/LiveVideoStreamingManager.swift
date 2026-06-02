@@ -91,6 +91,84 @@ class LiveVideoStreamingManager: NSObject {
         }
     }
     
+    private func copyPixelBuffer(_ src: CVPixelBuffer) -> CVPixelBuffer? {
+        let width = CVPixelBufferGetWidth(src)
+        let height = CVPixelBufferGetHeight(src)
+        let format = CVPixelBufferGetPixelFormatType(src)
+        
+        var dst: CVPixelBuffer?
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferMetalCompatibilityKey: kCFBooleanTrue,
+            kCVPixelBufferIOSurfacePropertiesKey: [:] as [CFString: Any]
+        ]
+        
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            format,
+            attrs as CFDictionary,
+            &dst
+        )
+        
+        guard status == kCVReturnSuccess, let copy = dst else {
+            return nil
+        }
+        
+        CVPixelBufferLockBaseAddress(src, .readOnly)
+        CVPixelBufferLockBaseAddress(copy, [])
+        defer {
+            CVPixelBufferUnlockBaseAddress(copy, [])
+            CVPixelBufferUnlockBaseAddress(src, .readOnly)
+        }
+        
+        let planeCount = CVPixelBufferGetPlaneCount(src)
+        if planeCount > 0 {
+            for plane in 0..<planeCount {
+                guard let srcAddr = CVPixelBufferGetBaseAddressOfPlane(src, plane),
+                      let dstAddr = CVPixelBufferGetBaseAddressOfPlane(copy, plane) else {
+                    continue
+                }
+                let heightPlane = CVPixelBufferGetHeightOfPlane(src, plane)
+                let srcBytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(src, plane)
+                let dstBytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(copy, plane)
+                
+                if srcBytesPerRow == dstBytesPerRow {
+                    let size = srcBytesPerRow * heightPlane
+                    memcpy(dstAddr, srcAddr, size)
+                } else {
+                    for y in 0..<heightPlane {
+                        let srcRow = srcAddr + y * srcBytesPerRow
+                        let dstRow = dstAddr + y * dstBytesPerRow
+                        memcpy(dstRow, srcRow, min(srcBytesPerRow, dstBytesPerRow))
+                    }
+                }
+            }
+        } else {
+            guard let srcAddr = CVPixelBufferGetBaseAddress(src),
+                  let dstAddr = CVPixelBufferGetBaseAddress(copy) else {
+                return nil
+            }
+            let height = CVPixelBufferGetHeight(src)
+            let srcBytesPerRow = CVPixelBufferGetBytesPerRow(src)
+            let dstBytesPerRow = CVPixelBufferGetBytesPerRow(copy)
+            
+            if srcBytesPerRow == dstBytesPerRow {
+                let size = srcBytesPerRow * height
+                memcpy(dstAddr, srcAddr, size)
+            } else {
+                for y in 0..<height {
+                    let srcRow = srcAddr + y * srcBytesPerRow
+                    let dstRow = dstAddr + y * dstBytesPerRow
+                    memcpy(dstRow, srcRow, min(srcBytesPerRow, dstBytesPerRow))
+                }
+            }
+        }
+        
+        CVBufferPropagateAttachments(src, copy)
+        return copy
+    }
+
     func encodeAndStream(pixelBuffer: CVPixelBuffer, ntpTimestamp: Double) {
         self.sessionLock.lock()
         guard self.isStreamingActive else {
@@ -121,6 +199,13 @@ class LiveVideoStreamingManager: NSObject {
         
         let session = self.compressionSession!
         
+        // Safely copy the pixel buffer to decouple its memory lifetime from ARKit's aggressive frame recycling pool
+        guard let copiedBuffer = self.copyPixelBuffer(pixelBuffer) else {
+            self.sessionLock.unlock()
+            AppLogger.error("LiveVideoStreamingManager: Failed to clone CVPixelBuffer for encoding.")
+            return
+        }
+        
         // Generate a strictly increasing, contiguous presentation time for the hardware encoder (90kHz ticks)
         let presentationTime = CMTime(value: self.frameCount, timescale: 90000)
         let currentFrameIndex = self.frameCount
@@ -132,15 +217,15 @@ class LiveVideoStreamingManager: NSObject {
         
         // Log frame submission details periodically for diagnostics
         if currentFrameIndex % 60 == 0 {
-            let bufWidth = CVPixelBufferGetWidth(pixelBuffer)
-            let bufHeight = CVPixelBufferGetHeight(pixelBuffer)
+            let bufWidth = CVPixelBufferGetWidth(copiedBuffer)
+            let bufHeight = CVPixelBufferGetHeight(copiedBuffer)
             AppLogger.info("LiveVideoStreamingManager: Submitting frame #\(currentFrameIndex) to VideoToolbox (Active PixelBuffer: \(bufWidth)x\(bufHeight))")
         }
         
         var flags: VTEncodeInfoFlags = []
         let status = VTCompressionSessionEncodeFrame(
             session,
-            imageBuffer: pixelBuffer,
+            imageBuffer: copiedBuffer,
             presentationTimeStamp: presentationTime,
             duration: .invalid,
             frameProperties: nil,
