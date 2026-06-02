@@ -346,6 +346,27 @@ struct SettingsView: View {
                                             .foregroundColor(.cyan)
                                             .frame(width: 80)
                                     }
+                                    
+                                    Divider()
+                                        .background(Color.gray.opacity(0.3))
+                                    
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Video Stream Quality")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                        
+                                        Picker("Quality", selection: $trackingManager.videoStreamQuality) {
+                                            Text("Low").tag("Low (480p @ 800Kbps)")
+                                            Text("Medium").tag("Medium (540p @ 1.5Mbps)")
+                                            Text("High").tag("High (720p @ 3.0Mbps)")
+                                            Text("Max").tag("Cinematic (1080p @ 8.0Mbps)")
+                                        }
+                                        .pickerStyle(.segmented)
+                                        
+                                        Text("Lower resolutions (Low/Medium) eliminate Wi-Fi congestion. Select High/Max only for fast, direct connections.")
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                    }
                                 }
                                 
                                 if streamManager.isStreamingEnabled {

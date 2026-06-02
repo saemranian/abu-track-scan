@@ -21183,3 +21183,367 @@ OSError: [WinError 10038] An operation was attempted on something that is not a 
 2026-06-02 15:10:04,056 [INFO] Thread-12 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.
 2026-06-02 15:10:05,716 [INFO] Thread-16 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.
 2026-06-02 15:10:32,416 [INFO] MainThread: Window closing event triggered. Terminating threads and socket connections cleanly.
+2026-06-02 16:23:34,750 [INFO] MainThread: ============================================================
+2026-06-02 16:23:34,750 [INFO] MainThread: Abu Track Desktop App Initializing (Local Time: 2026-06-02 16:23:34.750831)
+2026-06-02 16:23:34,750 [INFO] MainThread: Python: 3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]
+2026-06-02 16:23:34,750 [INFO] MainThread: Executable Mode: PyInstaller Bundle
+2026-06-02 16:23:34,750 [INFO] MainThread: Log directory configured at: C:\Users\USer\.gemini\antigravity\scratch\ios_app_cam_track_01\dist\app_logs
+2026-06-02 16:23:34,751 [INFO] MainThread: ============================================================
+2026-06-02 16:23:35,617 [INFO] MainThread: generated new fontManager
+2026-06-02 16:23:38,216 [INFO] MainThread: Window closing event triggered. Terminating threads and socket connections cleanly.
+2026-06-02 16:25:18,889 [INFO] MainThread: ============================================================
+2026-06-02 16:25:18,889 [INFO] MainThread: Abu Track Desktop App Initializing (Local Time: 2026-06-02 16:25:18.889325)
+2026-06-02 16:25:18,889 [INFO] MainThread: Python: 3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]
+2026-06-02 16:25:18,889 [INFO] MainThread: Executable Mode: PyInstaller Bundle
+2026-06-02 16:25:18,889 [INFO] MainThread: Log directory configured at: C:\Users\USer\.gemini\antigravity\scratch\ios_app_cam_track_01\dist\app_logs
+2026-06-02 16:25:18,889 [INFO] MainThread: ============================================================
+2026-06-02 16:25:19,768 [INFO] MainThread: generated new fontManager
+2026-06-02 16:25:41,692 [INFO] MainThread: Receiver startup requested. Targeting port: 8080
+2026-06-02 16:25:41,692 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8080
+2026-06-02 16:25:41,692 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8081 [Live Link JSON]
+2026-06-02 16:25:41,693 [INFO] Thread-2 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-06-02 16:25:41,736 [INFO] Thread-2 (run_receiver_socket): First valid tracking packet successfully received! Format: Live Link (AbuTrack) from 192.168.70.40:63667 (270 bytes)
+2026-06-02 16:25:41,778 [INFO] Thread-4 (run_video_decoder_loop): Video Decoder: Initializing local PyAV listener on port 8082
+2026-06-02 16:25:41,794 [INFO] Thread-4 (run_video_decoder_loop): Spout: Initializing SpoutGL Shared Texture Sender named 'AbuTrackVideo'
+2026-06-02 16:25:41,794 [ERROR] Thread-4 (run_video_decoder_loop): Spout: Failed to load SpoutGL: __init__(): incompatible constructor arguments. The following argument types are supported:
+    1. SpoutGL._spoutgl.SpoutSender()
+
+Invoked with: 'AbuTrackVideo', 1920, 1080
+2026-06-02 16:25:41,794 [INFO] Thread-4 (run_video_decoder_loop): Video Decoder: PyAV background listening thread active.
+2026-06-02 16:25:43,888 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:25:46,473 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:25:49,062 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:25:51,638 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:25:54,211 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:25:56,789 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:25:59,367 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:01,947 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:04,529 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:07,108 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:09,692 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:12,274 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:14,854 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:17,423 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:18,655 [INFO] Thread-2 (run_receiver_socket): Stream Health Stats: Received 300 frames. Format: Live Link (AbuTrack). Raw Network Hz: 10.0, iOS real lock Hz: 10.0 Hz (iOS Lock)
+2026-06-02 16:26:19,995 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:22,576 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:25,157 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:27,733 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:30,315 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:32,890 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:35,467 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:38,033 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:40,609 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:43,182 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:45,746 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:48,326 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:49,535 [INFO] Thread-2 (run_receiver_socket): Stream Health Stats: Received 600 frames. Format: Live Link (AbuTrack). Raw Network Hz: 10.0, iOS real lock Hz: 10.0 Hz (iOS Lock)
+2026-06-02 16:26:50,901 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:53,483 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:56,064 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:26:58,634 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:01,206 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:03,784 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:06,360 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:08,941 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:11,513 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:14,079 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:16,648 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:19,220 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:19,536 [INFO] Thread-2 (run_receiver_socket): Stream Health Stats: Received 900 frames. Format: Live Link (AbuTrack). Raw Network Hz: 10.5, iOS real lock Hz: 10.1 Hz (iOS Lock)
+2026-06-02 16:27:21,791 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:24,366 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:26,958 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:29,541 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:32,118 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:34,702 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:37,275 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:39,856 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:42,420 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:44,997 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:47,570 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:49,687 [INFO] Thread-2 (run_receiver_socket): Stream Health Stats: Received 1200 frames. Format: Live Link (AbuTrack). Raw Network Hz: 7.9, iOS real lock Hz: 10.0 Hz (iOS Lock)
+2026-06-02 16:27:50,146 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:52,720 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:55,293 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:27:57,872 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:00,450 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:03,031 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:05,603 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:08,184 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:10,764 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:13,339 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:15,920 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:18,493 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:19,666 [INFO] Thread-2 (run_receiver_socket): Stream Health Stats: Received 1500 frames. Format: Live Link (AbuTrack). Raw Network Hz: 8.1, iOS real lock Hz: 10.0 Hz (iOS Lock)
+2026-06-02 16:28:21,063 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:23,638 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:26,213 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:28,787 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:31,358 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:33,931 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:36,504 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:39,078 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:41,658 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:44,233 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:46,812 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:49,387 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:49,741 [INFO] Thread-2 (run_receiver_socket): Stream Health Stats: Received 1800 frames. Format: Live Link (AbuTrack). Raw Network Hz: 13.8, iOS real lock Hz: 9.9 Hz (iOS Lock)
+2026-06-02 16:28:51,964 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:54,536 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:57,105 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:28:59,687 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:02,272 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:04,835 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:07,409 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:09,964 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-06-02 16:29:09,965 [ERROR] Thread-2 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 3193, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-06-02 16:29:09,965 [INFO] MainThread: UDP socket closed successfully.
+2026-06-02 16:29:09,965 [INFO] Thread-2 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 1983
+2026-06-02 16:29:09,965 [INFO] MainThread: Forwarder socket closed successfully.
+2026-06-02 16:29:09,986 [INFO] Thread-4 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.
+2026-06-02 16:29:30,376 [INFO] MainThread: Receiver startup requested. Targeting port: 8080
+2026-06-02 16:29:30,376 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8080
+2026-06-02 16:29:30,376 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8081 [Live Link JSON]
+2026-06-02 16:29:30,378 [INFO] Thread-5 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-06-02 16:29:30,379 [INFO] Thread-7 (run_video_decoder_loop): Video Decoder: Initializing local PyAV listener on port 8082
+2026-06-02 16:29:30,385 [INFO] Thread-7 (run_video_decoder_loop): Spout: Initializing SpoutGL Shared Texture Sender named 'AbuTrackVideo'
+2026-06-02 16:29:30,386 [ERROR] Thread-7 (run_video_decoder_loop): Spout: Failed to load SpoutGL: __init__(): incompatible constructor arguments. The following argument types are supported:
+    1. SpoutGL._spoutgl.SpoutSender()
+
+Invoked with: 'AbuTrackVideo', 1920, 1080
+2026-06-02 16:29:30,386 [INFO] Thread-7 (run_video_decoder_loop): Video Decoder: PyAV background listening thread active.
+2026-06-02 16:29:30,473 [INFO] Thread-5 (run_receiver_socket): First valid tracking packet successfully received! Format: Live Link (AbuTrack) from 192.168.70.40:63667 (271 bytes)
+2026-06-02 16:29:32,474 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:35,049 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:37,624 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:40,203 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:42,770 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:45,350 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:47,927 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:50,508 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:53,081 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:55,653 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:29:58,230 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:30:00,806 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:30:01,481 [INFO] Thread-5 (run_receiver_socket): Stream Health Stats: Received 300 frames. Format: Live Link (AbuTrack). Raw Network Hz: 15.0, iOS real lock Hz: 10.0 Hz (iOS Lock)
+2026-06-02 16:30:03,377 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:30:05,951 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:30:08,532 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:30:10,119 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-06-02 16:30:10,119 [ERROR] Thread-5 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 3193, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-06-02 16:30:10,119 [INFO] MainThread: UDP socket closed successfully.
+2026-06-02 16:30:10,120 [INFO] Thread-5 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 317
+2026-06-02 16:30:10,120 [INFO] MainThread: Forwarder socket closed successfully.
+2026-06-02 16:30:11,110 [INFO] Thread-7 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.
+2026-06-02 16:34:46,132 [INFO] MainThread: Window closing event triggered. Terminating threads and socket connections cleanly.
+2026-06-02 16:34:50,192 [INFO] MainThread: ============================================================
+2026-06-02 16:34:50,192 [INFO] MainThread: Abu Track Desktop App Initializing (Local Time: 2026-06-02 16:34:50.192290)
+2026-06-02 16:34:50,192 [INFO] MainThread: Python: 3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]
+2026-06-02 16:34:50,192 [INFO] MainThread: Executable Mode: PyInstaller Bundle
+2026-06-02 16:34:50,192 [INFO] MainThread: Log directory configured at: C:\Users\USer\.gemini\antigravity\scratch\ios_app_cam_track_01\dist\app_logs
+2026-06-02 16:34:50,192 [INFO] MainThread: ============================================================
+2026-06-02 16:34:51,052 [INFO] MainThread: generated new fontManager
+2026-06-02 16:35:03,733 [INFO] MainThread: Receiver startup requested. Targeting port: 8080
+2026-06-02 16:35:03,733 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8080
+2026-06-02 16:35:03,733 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8081 [Live Link JSON]
+2026-06-02 16:35:03,734 [INFO] Thread-2 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-06-02 16:35:03,762 [INFO] Thread-2 (run_receiver_socket): First valid tracking packet successfully received! Format: Live Link (AbuTrack) from 192.168.70.40:50412 (471 bytes)
+2026-06-02 16:35:03,818 [INFO] Thread-4 (run_video_decoder_loop): Video Decoder: Initializing local PyAV listener on port 8082
+2026-06-02 16:35:03,835 [INFO] Thread-4 (run_video_decoder_loop): Spout: Initializing SpoutGL Shared Texture Sender named 'AbuTrackVideo'
+2026-06-02 16:35:03,835 [ERROR] Thread-4 (run_video_decoder_loop): Spout: Failed to load SpoutGL: __init__(): incompatible constructor arguments. The following argument types are supported:
+    1. SpoutGL._spoutgl.SpoutSender()
+
+Invoked with: 'AbuTrackVideo', 1920, 1080
+2026-06-02 16:35:03,835 [INFO] Thread-4 (run_video_decoder_loop): Video Decoder: PyAV background listening thread active.
+2026-06-02 16:35:05,917 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:08,489 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:11,064 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:13,642 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:16,226 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:18,803 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:21,373 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:23,946 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:26,511 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:29,079 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:31,649 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:34,223 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:35,791 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 8080... No data received for 10 seconds.
+2026-06-02 16:35:36,793 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:39,376 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:41,955 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:44,528 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:45,895 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 808... No data received for 20 seconds.
+2026-06-02 16:35:47,101 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:49,682 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:52,268 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:54,851 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:35:55,953 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 8081... No data received for 30 seconds.
+2026-06-02 16:35:57,424 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:00,009 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:02,594 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:05,167 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:06,051 [INFO] Thread-2 (run_receiver_socket): Still waiting for UDP packets on port 8081... No data received for 40 seconds.
+2026-06-02 16:36:07,743 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:08,427 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-06-02 16:36:08,427 [ERROR] Thread-2 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 3193, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-06-02 16:36:08,427 [INFO] MainThread: UDP socket closed successfully.
+2026-06-02 16:36:08,428 [INFO] Thread-2 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 219
+2026-06-02 16:36:08,428 [INFO] MainThread: Forwarder socket closed successfully.
+2026-06-02 16:36:09,264 [INFO] MainThread: Receiver startup requested. Targeting port: 8081
+2026-06-02 16:36:09,265 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8081
+2026-06-02 16:36:09,265 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8080 [Live Link JSON]
+2026-06-02 16:36:09,266 [INFO] Thread-5 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-06-02 16:36:09,267 [INFO] Thread-7 (run_video_decoder_loop): Video Decoder: Initializing local PyAV listener on port 8082
+2026-06-02 16:36:09,268 [INFO] Thread-7 (run_video_decoder_loop): Spout: Initializing SpoutGL Shared Texture Sender named 'AbuTrackVideo'
+2026-06-02 16:36:09,268 [ERROR] Thread-7 (run_video_decoder_loop): Spout: Failed to load SpoutGL: __init__(): incompatible constructor arguments. The following argument types are supported:
+    1. SpoutGL._spoutgl.SpoutSender()
+
+Invoked with: 'AbuTrackVideo', 1920, 1080
+2026-06-02 16:36:09,268 [INFO] Thread-7 (run_video_decoder_loop): Video Decoder: PyAV background listening thread active.
+2026-06-02 16:36:09,268 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:09,332 [INFO] Thread-5 (run_receiver_socket): First valid tracking packet successfully received! Format: Live Link (AbuTrack) from 192.168.70.40:64592 (269 bytes)
+2026-06-02 16:36:09,769 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:10,270 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:10,323 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:10,824 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:11,325 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:11,826 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:12,327 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:12,828 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:12,845 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:13,346 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:13,847 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:14,348 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:14,849 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:15,350 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:15,406 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:15,907 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:16,408 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:16,909 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:17,411 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:17,911 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:17,921 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:18,423 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:18,923 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:19,424 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:19,925 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:20,426 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:20,489 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:20,990 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:21,491 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:21,992 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:22,493 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:22,994 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:23,001 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:23,502 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:24,003 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:24,504 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:25,005 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:25,506 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:25,566 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:26,067 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:26,568 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:27,069 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:27,570 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:28,071 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:28,077 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:28,578 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:29,079 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:29,580 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:30,081 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:30,582 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:30,657 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:31,158 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:31,658 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:32,160 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:32,661 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:33,156 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:33,656 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:34,157 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:34,658 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:35,159 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:35,226 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:35,727 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:36,227 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:36,728 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:37,229 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:37,730 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:37,740 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:38,241 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:38,742 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:39,242 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:39,743 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:40,244 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:40,307 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:40,808 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:41,309 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:41,810 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:42,311 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:42,811 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:42,818 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:43,318 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:43,820 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:44,320 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:44,821 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:45,322 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:45,396 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:45,897 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:46,398 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:46,730 [INFO] Thread-5 (run_receiver_socket): Stream Health Stats: Received 300 frames. Format: Live Link (AbuTrack). Raw Network Hz: 9.7, iOS real lock Hz: 10.0 Hz (iOS Lock)
+2026-06-02 16:36:46,898 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:47,399 [WARNING] Thread-4 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:47,896 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:48,397 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:48,898 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:49,398 [WARNING] Thread-7 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 5] I/O error: 'rtp://0.0.0.0:8082')
+2026-06-02 16:36:49,827 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-06-02 16:36:49,828 [ERROR] Thread-5 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 3193, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-06-02 16:36:49,828 [INFO] MainThread: UDP socket closed successfully.
+2026-06-02 16:36:49,828 [INFO] Thread-5 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 331
+2026-06-02 16:36:49,828 [INFO] MainThread: Forwarder socket closed successfully.
+2026-06-02 16:36:49,899 [INFO] Thread-7 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.
+2026-06-02 16:36:49,971 [INFO] Thread-4 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.
+2026-06-02 16:38:55,369 [INFO] MainThread: Receiver startup requested. Targeting port: 8081
+2026-06-02 16:38:55,369 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8081
+2026-06-02 16:38:55,369 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8080 [Live Link JSON]
+2026-06-02 16:38:55,371 [INFO] Thread-8 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-06-02 16:38:55,372 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Initializing local PyAV listener on port 8082
+2026-06-02 16:38:55,378 [INFO] Thread-10 (run_video_decoder_loop): Spout: Initializing SpoutGL Shared Texture Sender named 'AbuTrackVideo'
+2026-06-02 16:38:55,378 [ERROR] Thread-10 (run_video_decoder_loop): Spout: Failed to load SpoutGL: __init__(): incompatible constructor arguments. The following argument types are supported:
+    1. SpoutGL._spoutgl.SpoutSender()
+
+Invoked with: 'AbuTrackVideo', 1920, 1080
+2026-06-02 16:38:55,378 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: PyAV background listening thread active.
+2026-06-02 16:38:55,453 [INFO] Thread-8 (run_receiver_socket): First valid tracking packet successfully received! Format: Live Link (AbuTrack) from 192.168.70.40:64592 (271 bytes)
+2026-06-02 16:38:57,456 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:00,051 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:02,640 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:05,217 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:07,791 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:10,354 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:12,917 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:15,492 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:18,061 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:20,633 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'rtp://0.0.0.0:8082')
+2026-06-02 16:39:20,888 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-06-02 16:39:20,888 [ERROR] Thread-8 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 3193, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-06-02 16:39:20,888 [INFO] MainThread: UDP socket closed successfully.
+2026-06-02 16:39:20,889 [INFO] Thread-8 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 196
+2026-06-02 16:39:20,889 [INFO] MainThread: Forwarder socket closed successfully.
+2026-06-02 16:39:21,134 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.

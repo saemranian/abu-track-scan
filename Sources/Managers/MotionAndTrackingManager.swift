@@ -76,6 +76,11 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             UserDefaults.standard.set(videoStreamPort, forKey: "videoStreamPort")
         }
     }
+    @Published var videoStreamQuality: String = UserDefaults.standard.string(forKey: "videoStreamQuality") ?? "Medium (540p @ 1.5Mbps)" {
+        didSet {
+            UserDefaults.standard.set(videoStreamQuality, forKey: "videoStreamQuality")
+        }
+    }
     private let videoEncodingQueue = DispatchQueue(label: "com.abutrack.videoencoding.dispatch", qos: .userInteractive)
     
     // New point cloud points queue for live network stream to desktop app

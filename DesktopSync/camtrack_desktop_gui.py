@@ -149,7 +149,7 @@ class CamTrackDesktopApp:
         self.receiver_port = tk.IntVar(value=8080)
         self.is_video_stream_enabled = tk.BooleanVar(value=True)
         self.video_stream_port = tk.IntVar(value=8082)
-        self.is_spout_enabled = tk.BooleanVar(value=True)
+        self.is_spout_enabled = tk.BooleanVar(value=False)
         self.latest_decoded_frame = None
         self.latest_decoded_pil_image = None
         self.video_decoder_running = False
