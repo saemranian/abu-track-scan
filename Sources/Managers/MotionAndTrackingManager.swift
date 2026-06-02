@@ -457,9 +457,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             let pixelBuffer = frame.capturedImage
             let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
             let ntpTime = Date().timeIntervalSince1970 + ntpSyncOffset
-            videoEncodingQueue.async {
-                LiveVideoStreamingManager.shared.encodeAndStream(pixelBuffer: pixelBuffer, ntpTimestamp: ntpTime)
-            }
+            LiveVideoStreamingManager.shared.encodeAndStream(pixelBuffer: pixelBuffer, ntpTimestamp: ntpTime)
         }
         
         let currentFrameTime = frame.timestamp
