@@ -151,6 +151,7 @@ class CamTrackDesktopApp:
         self.video_stream_port = tk.IntVar(value=8082)
         self.is_spout_enabled = tk.BooleanVar(value=True)
         self.latest_decoded_frame = None
+        self.latest_decoded_pil_image = None
         self.video_decoder_running = False
         self.video_decoder_thread = None
         self.spout_sender = None
@@ -3808,48 +3809,24 @@ class CamTrackDesktopApp:
         return sx, sy
 
     def run_video_decoder_loop(self):
-        import os
         import time
-        import cv2
         import threading
         
-        port = self.video_stream_port.get()
-        sdp_content = f"""v=0
-o=- 0 0 IN IP4 127.0.0.1
-s=AbuTrack Video
-c=IN IP4 0.0.0.0
-t=0 0
-m=video {port} RTP/AVP 96
-a=rtpmap:96 H264/90000
-a=fmtp:96 packetization-mode=1
-"""
-        sdp_path = os.path.join(os.getcwd(), "temp_session.sdp")
         try:
-            with open(sdp_path, "w") as f:
-                f.write(sdp_content)
-        except Exception as e:
-            logger.error(f"Video Decoder: Failed to write SDP session file: {str(e)}")
+            import av
+        except ImportError:
+            logger.error("Video Decoder: Failed to import PyAV ('av' package). H.264 stream decoding disabled.", exc_info=True)
+            self.rx_log("VIDEO DECODER // ERROR: PyAV 'av' library not found!")
             return
             
-        logger.info(f"Video Decoder: Initializing local SDP listener on port {port}")
+        port = self.video_stream_port.get()
+        logger.info(f"Video Decoder: Initializing local PyAV listener on port {port}")
         
-        # Configure FFmpeg capture parameters for lowest latency
-        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp|fflags;nobuffer|flags;low_delay|strict;experimental"
-        
-        cap = cv2.VideoCapture(sdp_path, cv2.CAP_FFMPEG)
-        if not cap.isOpened():
-            logger.error(f"Video Decoder: Failed to bind to SDP session on port {port}")
-            try:
-                os.remove(sdp_path)
-            except Exception:
-                pass
-            return
-            
-        # Initialize Spout Sender if enabled
+        # Configure Spout Sender if enabled
         if self.is_spout_enabled.get():
             self.init_spout_sender()
             
-        logger.info("Video Decoder: Background listening thread active.")
+        logger.info("Video Decoder: PyAV background listening thread active.")
         
         # Periodically refresh the 3D Canvas visualizer to draw new video frames
         def refresh_canvas_loop():
@@ -3858,29 +3835,57 @@ a=fmtp:96 packetization-mode=1
                     self.root.after(0, self.redraw_live_3d_canvas)
                 except Exception:
                     pass
-                time.sleep(0.033) # refresh visualizer at 30 fps
+                time.sleep(0.050) # refresh visualizer at 20 fps to prevent Tkinter choke
                 
         canvas_refresh_thread = threading.Thread(target=refresh_canvas_loop, daemon=True)
         canvas_refresh_thread.start()
         
         while self.video_decoder_running:
-            ret, frame = cap.read()
-            if not ret:
-                time.sleep(0.005)
-                continue
+            container = None
+            try:
+                # Open RTP connection. We pass timeout options to prevent hanging.
+                # timeout is in microseconds: 1,000,000 = 1 sec
+                # standard 'timeout' parameter in av.open is (open_timeout, read_timeout)
+                container = av.open(
+                    f"rtp://0.0.0.0:{port}", 
+                    "r", 
+                    options={
+                        "protocol_whitelist": "file,rtp,udp",
+                        "timeout": "1000000",
+                        "buffer_size": "2097152" # 2MB buffer for lower packet loss
+                    },
+                    timeout=(2.0, 2.0)
+                )
+                logger.info(f"Video Decoder: Bound successfully to rtp://0.0.0.0:{port}")
                 
-            self.latest_decoded_frame = frame
-            
-            # Send to Spout
-            if self.spout_sender and self.is_spout_enabled.get():
-                self.send_frame_to_spout(frame)
+                # Parse packets and decode H.264 streams
+                for frame in container.decode(video=0):
+                    if not self.video_decoder_running:
+                        break
+                    
+                    # Convert to PIL Image in background thread (RGB format, ultra-fast)
+                    pil_img = frame.to_image()
+                    self.latest_decoded_pil_image = pil_img
+                    
+                    # Store BGR numpy array and send to Spout if enabled
+                    frame_bgr = frame.to_ndarray(format="bgr24")
+                    self.latest_decoded_frame = frame_bgr
+                    
+                    if self.spout_sender and self.is_spout_enabled.get():
+                        self.send_frame_to_spout(frame_bgr)
+                        
+            except Exception as e:
+                if not self.video_decoder_running:
+                    break
+                logger.warning(f"Video Decoder: Stream connection lost or timed out. Retrying... ({str(e)})")
+                time.sleep(0.5)
+            finally:
+                if container:
+                    try:
+                        container.close()
+                    except Exception:
+                        pass
                 
-        cap.release()
-        try:
-            os.remove(sdp_path)
-        except Exception:
-            pass
-            
         if self.spout_sender:
             try:
                 self.spout_sender.ReleaseSender()
@@ -3925,17 +3930,13 @@ a=fmtp:96 packetization-mode=1
         self.live_canvas.delete("all")
         
         # Draw live video background if enabled
-        if self.is_video_stream_enabled.get() and self.latest_decoded_frame is not None:
+        if self.is_video_stream_enabled.get() and getattr(self, "latest_decoded_pil_image", None) is not None:
             try:
-                import cv2
                 from PIL import Image, ImageTk
                 
-                # Convert BGR to RGB
-                frame_rgb = cv2.cvtColor(self.latest_decoded_frame, cv2.COLOR_BGR2RGB)
-                pil_img = Image.fromarray(frame_rgb)
-                
-                # Resize image to fill the canvas
-                pil_img_resized = pil_img.resize((w, h), Image.Resampling.BILINEAR)
+                # Resize image using ultra-fast NEAREST resampling filter (compatible with all Pillow versions)
+                resample_filter = getattr(Image, "Resampling", Image).NEAREST
+                pil_img_resized = self.latest_decoded_pil_image.resize((w, h), resample_filter)
                 
                 self.canvas_bg_image = ImageTk.PhotoImage(image=pil_img_resized)
                 self.live_canvas.create_image(0, 0, image=self.canvas_bg_image, anchor="nw")
