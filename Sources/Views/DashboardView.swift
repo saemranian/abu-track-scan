@@ -140,6 +140,8 @@ struct DashboardView: View {
                                     }
                                     
                                     PointCloudVisualizerView(
+                                        trackingManager: trackingManager,
+                                        showCameraComposition: showCameraComposition,
                                         points: trackingManager.accumulatedPointCloud,
                                         isTracking: trackingManager.isTrackingActive,
                                         rotX: isFollowModeActive ? -trackingManager.pitch * Double.pi / 180.0 - Double.pi / 2.0 : rotX,
@@ -1013,6 +1015,8 @@ struct DashboardView: View {
 // MARK: - Point Cloud Projection SwiftUI Canvas Component
 
 struct PointCloudVisualizerView: View {
+    var trackingManager: MotionAndTrackingManager? = nil
+    var showCameraComposition: Bool = false
     let points: [RawPoint3D]
     let isTracking: Bool
     let rotX: Double
@@ -1064,125 +1068,217 @@ struct PointCloudVisualizerView: View {
                 return
             }
             
-            // Draw axis markers safely
-            let origin3D = (x: 0.0, y: 0.0, z: 0.0)
-            let projectedOrigin = project(point: origin3D, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
-            
-            if projectedOrigin.x >= 0 && projectedOrigin.x <= size.width && projectedOrigin.y >= 0 && projectedOrigin.y <= size.height {
-                let axes = [
-                    (pt: (x: 0.5, y: 0.0, z: 0.0), col: Color.red),   // X - Red
-                    (pt: (x: 0.0, y: 0.5, z: 0.0), col: Color.green), // Y - Green
-                    (pt: (x: 0.0, y: 0.0, z: 0.5), col: Color.blue)   // Z - Blue
-                ]
-                
-                for ax in axes {
-                    let projPt = project(point: ax.pt, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
-                    if projPt.x >= 0 && projPt.x <= size.width && projPt.y >= 0 && projPt.y <= size.height {
-                        context.stroke(
-                            Path { path in
-                                path.move(to: projectedOrigin)
-                                path.addLine(to: projPt)
-                            },
-                            with: .color(ax.col.opacity(0.7)),
-                            lineWidth: 2.0
-                        )
-                    }
-                }
-            }
-            
-            // Project and draw the 3D points in combined paths to avoid 100% CPU lock
-            var greenPath = Path()
-            var yellowPath = Path()
-            var redPath = Path()
-            
-            for pt in points {
-                let pt3D = (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z))
-                let proj = project(point: pt3D, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
-                
-                // Rapid viewport bounds check to ignore off-screen projections
-                guard proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height else {
-                    continue
+            if showCameraComposition, let trackingManager = trackingManager, let frame = trackingManager.arSession.currentFrame {
+                let orientation: UIInterfaceOrientation
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                    orientation = windowScene.interfaceOrientation
+                } else {
+                    orientation = .portrait
                 }
                 
-                // Pre-sort by distance utilizing squared-distances to skip heavy sqrt math
-                var pointColorType = 0 // 0 = Green, 1 = Yellow, 2 = Red
-                if let cam = cameraPosition {
-                    let dx = Double(pt.x) - cam.x
-                    let dy = Double(pt.y) - cam.y
-                    let dz = Double(pt.z) - cam.z
-                    let distSq = dx*dx + dy*dy + dz*dz
+                // Cache offsets for fast calculation
+                let offX = Float(RigSettings.originOffsetX)
+                let offY = Float(RigSettings.originOffsetY)
+                let offZ = Float(RigSettings.originOffsetZ)
+                let yawOffsetRad = RigSettings.originOffsetYaw * (.pi / 180.0)
+                let cosYaw = Float(cos(-yawOffsetRad))
+                let sinYaw = Float(sin(-yawOffsetRad))
+                
+                var greenPath = Path()
+                var yellowPath = Path()
+                var redPath = Path()
+                
+                for pt in points {
+                    // 1. Transform from aligned space back to raw ARKit world space
+                    let dx = pt.x - offX
+                    let dy = pt.y - offY
+                    let dz = pt.z - offZ
                     
-                    if distSq <= 3.24 { // 1.8m^2
+                    let rx = dx * cosYaw - dz * sinYaw
+                    let rz = dx * sinYaw + dz * cosYaw
+                    
+                    let rawPoint = simd_float3(Float(rx), Float(dy), Float(rz))
+                    
+                    // 2. Project using actual ARKit camera lens matrix (includes lens distortion)
+                    let proj = frame.camera.projectPoint(rawPoint, orientation: orientation, viewportSize: size)
+                    
+                    // Rapid viewport bounds check to ignore off-screen projections
+                    guard proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height else {
+                        continue
+                    }
+                    
+                    // Color by distance
+                    var pointColorType = 0
+                    let camPos = frame.camera.transform.columns.3
+                    let deltaX = rawPoint.x - camPos.x
+                    let deltaY = rawPoint.y - camPos.y
+                    let deltaZ = rawPoint.z - camPos.z
+                    let distSq = deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ
+                    
+                    if distSq <= 3.24 { // 1.8m
                         pointColorType = 0
-                    } else if distSq <= 10.24 { // 3.2m^2
+                    } else if distSq <= 10.24 { // 3.2m
                         pointColorType = 1
                     } else {
                         pointColorType = 2
                     }
-                } else {
-                    let distFromOriginSq = pt3D.x*pt3D.x + pt3D.y*pt3D.y + pt3D.z*pt3D.z
-                    if distFromOriginSq <= 4.0 { // 2.0m^2
-                        pointColorType = 0
-                    } else if distFromOriginSq <= 16.0 { // 4.0m^2
-                        pointColorType = 1
+                    
+                    let rect = CGRect(x: proj.x - 0.75, y: proj.y - 0.75, width: 1.5, height: 1.5) // Slightly larger points for composition visibility!
+                    if pointColorType == 0 {
+                        greenPath.addRect(rect)
+                    } else if pointColorType == 1 {
+                        yellowPath.addRect(rect)
                     } else {
-                        pointColorType = 2
+                        redPath.addRect(rect)
                     }
                 }
                 
-                // Draw as sharp micro-squares (extremely fast, visually identical to circles at 0.75 size)
-                let rect = CGRect(x: proj.x - 0.375, y: proj.y - 0.375, width: 0.75, height: 0.75)
-                if pointColorType == 0 {
-                    greenPath.addRect(rect)
-                } else if pointColorType == 1 {
-                    yellowPath.addRect(rect)
-                } else {
-                    redPath.addRect(rect)
-                }
-            }
-            
-            // Execute drawing exactly 3 times (huge CPU optimization)
-            context.fill(greenPath, with: .color(Color.green.opacity(0.8)))
-            context.fill(yellowPath, with: .color(Color.yellow.opacity(0.8)))
-            context.fill(redPath, with: .color(Color.red.opacity(0.8)))
-            
-            // Draw Trajectory Path
-            if showTrajectory, let pathPoints = trajectory, pathPoints.count > 1 {
-                context.stroke(
-                    Path { path in
-                        let firstPt = pathPoints[0]
-                        let projFirst = project(point: (x: Double(firstPt.x), y: Double(firstPt.y), z: Double(firstPt.z)), center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
-                        if projFirst.x >= 0 && projFirst.x <= size.width && projFirst.y >= 0 && projFirst.y <= size.height {
-                            path.move(to: projFirst)
-                        }
-                        
-                        for i in 1..<pathPoints.count {
-                            let pt = pathPoints[i]
-                            let proj = project(point: (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z)), center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
-                            if proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height {
-                                if i == 1 || path.isEmpty {
-                                    path.move(to: proj)
-                                } else {
-                                    path.addLine(to: proj)
+                context.fill(greenPath, with: .color(Color.green.opacity(0.85)))
+                context.fill(yellowPath, with: .color(Color.yellow.opacity(0.85)))
+                context.fill(redPath, with: .color(Color.red.opacity(0.85)))
+                
+                // Draw Trajectory Path if requested
+                if showTrajectory, let pathPoints = trajectory, pathPoints.count > 1 {
+                    context.stroke(
+                        Path { path in
+                            var hasMoved = false
+                            for pt in pathPoints {
+                                let dx = pt.x - offX
+                                let dy = pt.y - offY
+                                let dz = pt.z - offZ
+                                let rx = dx * cosYaw - dz * sinYaw
+                                let rz = dx * sinYaw + dz * cosYaw
+                                
+                                let rawPoint = simd_float3(Float(rx), Float(dy), Float(rz))
+                                let proj = frame.camera.projectPoint(rawPoint, orientation: orientation, viewportSize: size)
+                                
+                                if proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height {
+                                    if !hasMoved {
+                                        path.move(to: proj)
+                                        hasMoved = true
+                                    } else {
+                                        path.addLine(to: proj)
+                                    }
                                 }
                             }
-                        }
-                    },
-                    with: .color(Color.yellow.opacity(0.85)),
-                    lineWidth: 1.5
-                )
-            }
-            
-            // Draw Camera Position
-            if showCamera, let camPos = cameraPosition {
-                let projCam = project(point: camPos, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
+                        },
+                        with: .color(Color.yellow.opacity(0.9)),
+                        lineWidth: 2.0
+                    )
+                }
                 
-                if projCam.x >= 0 && projCam.x <= size.width && projCam.y >= 0 && projCam.y <= size.height {
-                    let outerRect = CGRect(x: projCam.x - 7, y: projCam.y - 7, width: 14, height: 14)
-                    let innerRect = CGRect(x: projCam.x - 3, y: projCam.y - 3, width: 6, height: 6)
+            } else {
+                // FALLBACK to standard manual projection loop (3D orthographic Orbit/Pan/Zoom viewport)
+                let origin3D = (x: 0.0, y: 0.0, z: 0.0)
+                let projectedOrigin = project(point: origin3D, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
+                
+                if projectedOrigin.x >= 0 && projectedOrigin.x <= size.width && projectedOrigin.y >= 0 && projectedOrigin.y <= size.height {
+                    let axes = [
+                        (pt: (x: 0.5, y: 0.0, z: 0.0), col: Color.red),   // X - Red
+                        (pt: (x: 0.0, y: 0.5, z: 0.0), col: Color.green), // Y - Green
+                        (pt: (x: 0.0, y: 0.0, z: 0.5), col: Color.blue)   // Z - Blue
+                    ]
                     
-                    context.stroke(Path(ellipseIn: outerRect), with: .color(.yellow), lineWidth: 1.5)
-                    context.fill(Path(ellipseIn: innerRect), with: .color(.red))
+                    for ax in axes {
+                        let projPt = project(point: ax.pt, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
+                        if projPt.x >= 0 && projPt.x <= size.width && projPt.y >= 0 && projPt.y <= size.height {
+                            context.stroke(
+                                Path { path in
+                                    path.move(to: projectedOrigin)
+                                    path.addLine(to: projPt)
+                                },
+                                with: .color(ax.col.opacity(0.7)),
+                                lineWidth: 2.0
+                            )
+                        }
+                    }
+                }
+                
+                var greenPath = Path()
+                var yellowPath = Path()
+                var redPath = Path()
+                
+                for pt in points {
+                    let pt3D = (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z))
+                    let proj = project(point: pt3D, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
+                    
+                    guard proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height else {
+                        continue
+                    }
+                    
+                    var pointColorType = 0
+                    if let cam = cameraPosition {
+                        let dx = Double(pt.x) - cam.x
+                        let dy = Double(pt.y) - cam.y
+                        let dz = Double(pt.z) - cam.z
+                        let distSq = dx*dx + dy*dy + dz*dz
+                        
+                        if distSq <= 3.24 {
+                            pointColorType = 0
+                        } else if distSq <= 10.24 {
+                            pointColorType = 1
+                        } else {
+                            pointColorType = 2
+                        }
+                    } else {
+                        let distFromOriginSq = pt3D.x*pt3D.x + pt3D.y*pt3D.y + pt3D.z*pt3D.z
+                        if distFromOriginSq <= 4.0 {
+                            pointColorType = 0
+                        } else if distFromOriginSq <= 16.0 {
+                            pointColorType = 1
+                        } else {
+                            pointColorType = 2
+                        }
+                    }
+                    
+                    let rect = CGRect(x: proj.x - 0.375, y: proj.y - 0.375, width: 0.75, height: 0.75)
+                    if pointColorType == 0 {
+                        greenPath.addRect(rect)
+                    } else if pointColorType == 1 {
+                        yellowPath.addRect(rect)
+                    } else {
+                        redPath.addRect(rect)
+                    }
+                }
+                
+                context.fill(greenPath, with: .color(Color.green.opacity(0.8)))
+                context.fill(yellowPath, with: .color(Color.yellow.opacity(0.8)))
+                context.fill(redPath, with: .color(Color.red.opacity(0.8)))
+                
+                if showTrajectory, let pathPoints = trajectory, pathPoints.count > 1 {
+                    context.stroke(
+                        Path { path in
+                            let firstPt = pathPoints[0]
+                            let projFirst = project(point: (x: Double(firstPt.x), y: Double(firstPt.y), z: Double(firstPt.z)), center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
+                            if projFirst.x >= 0 && projFirst.x <= size.width && projFirst.y >= 0 && projFirst.y <= size.height {
+                                path.move(to: projFirst)
+                            }
+                            
+                            for i in 1..<pathPoints.count {
+                                let pt = pathPoints[i]
+                                let proj = project(point: (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z)), center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
+                                if proj.x >= 0 && proj.x <= size.width && proj.y >= 0 && proj.y <= size.height {
+                                    if i == 1 || path.isEmpty {
+                                        path.move(to: proj)
+                                    } else {
+                                        path.addLine(to: proj)
+                                    }
+                                }
+                            }
+                        },
+                        with: .color(Color.yellow.opacity(0.85)),
+                        lineWidth: 1.5
+                    )
+                }
+                
+                if showCamera, let camPos = cameraPosition {
+                    let projCam = project(point: camPos, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
+                    if projCam.x >= 0 && projCam.x <= size.width && projCam.y >= 0 && projCam.y <= size.height {
+                        let outerRect = CGRect(x: projCam.x - 7, y: projCam.y - 7, width: 14, height: 14)
+                        let innerRect = CGRect(x: projCam.x - 3, y: projCam.y - 3, width: 6, height: 6)
+                        context.stroke(Path(ellipseIn: outerRect), with: .color(.yellow), lineWidth: 1.5)
+                        context.fill(Path(ellipseIn: innerRect), with: .color(.red))
+                    }
                 }
             }
         }
