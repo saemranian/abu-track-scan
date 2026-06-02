@@ -119,10 +119,8 @@ class LiveVideoStreamingManager: NSObject {
                 let timestampUs = Int(bitPattern: sourceFrameRefCon)
                 let originalNtpTime = Double(timestampUs) / 1_000_000.0
                 
-                let retainedBuffer = sampleBuffer
-                manager.encodingQueue.async {
-                    manager.processEncodedFrame(sampleBuffer: retainedBuffer, ntpTimestamp: originalNtpTime)
-                }
+                // Process and packetize the sample buffer synchronously while it's guaranteed valid
+                manager.processEncodedFrame(sampleBuffer: sampleBuffer, ntpTimestamp: originalNtpTime)
             },
             refcon: selfPtr,
             compressionSessionOut: &self.compressionSession
@@ -279,7 +277,10 @@ class LiveVideoStreamingManager: NSObject {
             // 2. Payload (Full NALU)
             packet.append(nalu)
             
-            sendPacket(packet)
+            let rtpPacket = packet
+            encodingQueue.async { [weak self] in
+                self?.sendPacket(rtpPacket)
+            }
         } else {
             // Fragment large NALU using FU-A Packets (Type 28)
             let nri = naluHeader & 0x60
@@ -323,7 +324,10 @@ class LiveVideoStreamingManager: NSObject {
                 let chunk = payloadData.subdata(in: bytesSent..<(bytesSent + chunkSize))
                 packet.append(chunk)
                 
-                sendPacket(packet)
+                let rtpPacket = packet
+                encodingQueue.async { [weak self] in
+                    self?.sendPacket(rtpPacket)
+                }
                 
                 bytesSent += chunkSize
             }

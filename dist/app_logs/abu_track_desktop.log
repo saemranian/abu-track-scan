@@ -21547,3 +21547,11 @@ OSError: [WinError 10038] An operation was attempted on something that is not a 
 2026-06-02 16:39:20,889 [INFO] Thread-8 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 196
 2026-06-02 16:39:20,889 [INFO] MainThread: Forwarder socket closed successfully.
 2026-06-02 16:39:21,134 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.
+2026-06-02 16:56:03,167 [INFO] MainThread: ============================================================
+2026-06-02 16:56:03,167 [INFO] MainThread: Abu Track Desktop App Initializing (Local Time: 2026-06-02 16:56:03.167472)
+2026-06-02 16:56:03,167 [INFO] MainThread: Python: 3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]
+2026-06-02 16:56:03,167 [INFO] MainThread: Executable Mode: PyInstaller Bundle
+2026-06-02 16:56:03,167 [INFO] MainThread: Log directory configured at: C:\Users\USer\.gemini\antigravity\scratch\ios_app_cam_track_01\dist\app_logs
+2026-06-02 16:56:03,167 [INFO] MainThread: ============================================================
+2026-06-02 16:56:03,907 [INFO] MainThread: generated new fontManager
+2026-06-02 16:56:22,706 [INFO] MainThread: Window closing event triggered. Terminating threads and socket connections cleanly.
