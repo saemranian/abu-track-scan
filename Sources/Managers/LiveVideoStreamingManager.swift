@@ -11,6 +11,7 @@ class LiveVideoStreamingManager: NSObject {
     static let shared = LiveVideoStreamingManager()
     
     private var compressionSession: VTCompressionSession?
+    private var pixelTransferSession: VTPixelTransferSession?
     private let encodingQueue = DispatchQueue(label: "com.abutrack.videoencoding", qos: .userInteractive)
     
     // Thread safety lock to secure properties across parallel queues
@@ -78,6 +79,7 @@ class LiveVideoStreamingManager: NSObject {
             
             let session = self.compressionSession
             self.compressionSession = nil
+            self.pixelTransferSession = nil
             self.sessionLock.unlock()
             
             // Teardown VideoToolbox Session outside lock to prevent deadlocks
@@ -91,84 +93,6 @@ class LiveVideoStreamingManager: NSObject {
         }
     }
     
-    private func copyPixelBuffer(_ src: CVPixelBuffer) -> CVPixelBuffer? {
-        let width = CVPixelBufferGetWidth(src)
-        let height = CVPixelBufferGetHeight(src)
-        let format = CVPixelBufferGetPixelFormatType(src)
-        
-        var dst: CVPixelBuffer?
-        let attrs: [CFString: Any] = [
-            kCVPixelBufferMetalCompatibilityKey: kCFBooleanTrue,
-            kCVPixelBufferIOSurfacePropertiesKey: [:] as [CFString: Any]
-        ]
-        
-        let status = CVPixelBufferCreate(
-            kCFAllocatorDefault,
-            width,
-            height,
-            format,
-            attrs as CFDictionary,
-            &dst
-        )
-        
-        guard status == kCVReturnSuccess, let copy = dst else {
-            return nil
-        }
-        
-        CVPixelBufferLockBaseAddress(src, .readOnly)
-        CVPixelBufferLockBaseAddress(copy, [])
-        defer {
-            CVPixelBufferUnlockBaseAddress(copy, [])
-            CVPixelBufferUnlockBaseAddress(src, .readOnly)
-        }
-        
-        let planeCount = CVPixelBufferGetPlaneCount(src)
-        if planeCount > 0 {
-            for plane in 0..<planeCount {
-                guard let srcAddr = CVPixelBufferGetBaseAddressOfPlane(src, plane),
-                      let dstAddr = CVPixelBufferGetBaseAddressOfPlane(copy, plane) else {
-                    continue
-                }
-                let heightPlane = CVPixelBufferGetHeightOfPlane(src, plane)
-                let srcBytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(src, plane)
-                let dstBytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(copy, plane)
-                
-                if srcBytesPerRow == dstBytesPerRow {
-                    let size = srcBytesPerRow * heightPlane
-                    memcpy(dstAddr, srcAddr, size)
-                } else {
-                    for y in 0..<heightPlane {
-                        let srcRow = srcAddr + y * srcBytesPerRow
-                        let dstRow = dstAddr + y * dstBytesPerRow
-                        memcpy(dstRow, srcRow, min(srcBytesPerRow, dstBytesPerRow))
-                    }
-                }
-            }
-        } else {
-            guard let srcAddr = CVPixelBufferGetBaseAddress(src),
-                  let dstAddr = CVPixelBufferGetBaseAddress(copy) else {
-                return nil
-            }
-            let height = CVPixelBufferGetHeight(src)
-            let srcBytesPerRow = CVPixelBufferGetBytesPerRow(src)
-            let dstBytesPerRow = CVPixelBufferGetBytesPerRow(copy)
-            
-            if srcBytesPerRow == dstBytesPerRow {
-                let size = srcBytesPerRow * height
-                memcpy(dstAddr, srcAddr, size)
-            } else {
-                for y in 0..<height {
-                    let srcRow = srcAddr + y * srcBytesPerRow
-                    let dstRow = dstAddr + y * dstBytesPerRow
-                    memcpy(dstRow, srcRow, min(srcBytesPerRow, dstBytesPerRow))
-                }
-            }
-        }
-        
-        CVBufferPropagateAttachments(src, copy)
-        return copy
-    }
-
     func encodeAndStream(pixelBuffer: CVPixelBuffer, ntpTimestamp: Double) {
         self.sessionLock.lock()
         guard self.isStreamingActive else {
@@ -198,11 +122,31 @@ class LiveVideoStreamingManager: NSObject {
         }
         
         let session = self.compressionSession!
-        
-        // Safely copy the pixel buffer to decouple its memory lifetime from ARKit's aggressive frame recycling pool
-        guard let copiedBuffer = self.copyPixelBuffer(pixelBuffer) else {
+        guard let transferSession = self.pixelTransferSession else {
             self.sessionLock.unlock()
-            AppLogger.error("LiveVideoStreamingManager: Failed to clone CVPixelBuffer for encoding.")
+            AppLogger.error("LiveVideoStreamingManager: VTPixelTransferSession is nil.")
+            return
+        }
+        
+        guard let pool = VTCompressionSessionGetPixelBufferPool(session) else {
+            self.sessionLock.unlock()
+            AppLogger.error("LiveVideoStreamingManager: Failed to retrieve CVPixelBufferPool from active compression session.")
+            return
+        }
+        
+        var clonedBuffer: CVPixelBuffer?
+        let poolStatus = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &clonedBuffer)
+        guard poolStatus == kCVReturnSuccess, let copy = clonedBuffer else {
+            self.sessionLock.unlock()
+            AppLogger.error("LiveVideoStreamingManager: Failed to allocate CVPixelBuffer from compression pool (status: \(poolStatus)).")
+            return
+        }
+        
+        // Deep copy and scale the frame directly on the GPU/VPP hardware unit to isolate memory lifecycles safely
+        let transferStatus = VTPixelTransferSessionTransferImage(transferSession, from: pixelBuffer, to: copy)
+        guard transferStatus == noErr else {
+            self.sessionLock.unlock()
+            AppLogger.error("LiveVideoStreamingManager: VTPixelTransferSessionTransferImage failed with status: \(transferStatus)")
             return
         }
         
@@ -217,15 +161,15 @@ class LiveVideoStreamingManager: NSObject {
         
         // Log frame submission details periodically for diagnostics
         if currentFrameIndex % 60 == 0 {
-            let bufWidth = CVPixelBufferGetWidth(copiedBuffer)
-            let bufHeight = CVPixelBufferGetHeight(copiedBuffer)
-            AppLogger.info("LiveVideoStreamingManager: Submitting frame #\(currentFrameIndex) to VideoToolbox (Active PixelBuffer: \(bufWidth)x\(bufHeight))")
+            let bufWidth = CVPixelBufferGetWidth(copy)
+            let bufHeight = CVPixelBufferGetHeight(copy)
+            AppLogger.info("LiveVideoStreamingManager: Submitting GPU-copied frame #\(currentFrameIndex) to VideoToolbox (Size: \(bufWidth)x\(bufHeight))")
         }
         
         var flags: VTEncodeInfoFlags = []
         let status = VTCompressionSessionEncodeFrame(
             session,
-            imageBuffer: copiedBuffer,
+            imageBuffer: copy,
             presentationTimeStamp: presentationTime,
             duration: .invalid,
             frameProperties: nil,
@@ -246,11 +190,13 @@ class LiveVideoStreamingManager: NSObject {
         var session: VTCompressionSession?
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         
-        // Hardware scale NV12 input buffer configuration attributes
+        // Hardware scale NV12 input buffer configuration attributes matching target sizes
         let attributes: [CFString: Any] = [
             kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
-            kCVPixelBufferWidthKey: inputWidth,
-            kCVPixelBufferHeightKey: inputHeight
+            kCVPixelBufferWidthKey: width,
+            kCVPixelBufferHeightKey: height,
+            kCVPixelBufferMetalCompatibilityKey: kCFBooleanTrue,
+            kCVPixelBufferIOSurfacePropertiesKey: [:] as [CFString: Any]
         ]
         
         let status = VTCompressionSessionCreate(
@@ -303,12 +249,22 @@ class LiveVideoStreamingManager: NSObject {
         // Start session
         VTCompressionSessionPrepareToEncodeFrames(createdSession)
         
+        // Create VTPixelTransferSession for GPU-accelerated frame copying and scaling
+        var transferSession: VTPixelTransferSession?
+        let transferStatus = VTPixelTransferSessionCreate(allocator: kCFAllocatorDefault, pixelTransferSessionOut: &transferSession)
+        if transferStatus == noErr {
+            AppLogger.info("LiveVideoStreamingManager: VTPixelTransferSession created successfully.")
+        } else {
+            AppLogger.error("LiveVideoStreamingManager: Failed to create VTPixelTransferSession with status: \(transferStatus)")
+        }
+        
         // Save to instance variable under lock
         sessionLock.lock()
         if let oldSession = self.compressionSession {
             VTCompressionSessionInvalidate(oldSession)
         }
         self.compressionSession = createdSession
+        self.pixelTransferSession = transferSession
         sessionLock.unlock()
         
         AppLogger.info("LiveVideoStreamingManager: Hardware compression session fully prepared and active.")
