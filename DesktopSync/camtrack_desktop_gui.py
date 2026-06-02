@@ -3273,6 +3273,7 @@ class CamTrackDesktopApp:
 
     def run_playout_loop(self):
         import time
+        import math
         last_playout_time = None
         playout_packet_count = 0
         playout_sec_start = time.time()
@@ -3280,177 +3281,189 @@ class CamTrackDesktopApp:
         self.buffered_delivery_hz = 0.0
         
         while self.playout_running:
-            now = time.time()
-            buffer_delay = self.receiver_buffer_ms.get() / 1000.0
-            
-            packet_to_play = None
-            with self.playout_lock:
-                if self.playout_buffer:
-                    # Look at the oldest packet
-                    arrival_time, parsed, r_hz, raw_count, shift_ms = self.playout_buffer[0]
-                    if now - arrival_time >= buffer_delay:
-                        packet_to_play = self.playout_buffer.pop(0)
-            
-            if packet_to_play:
-                arrival_time, parsed, r_hz, raw_count, shift_ms = packet_to_play
+            try:
+                now = time.time()
+                buffer_delay = self.receiver_buffer_ms.get() / 1000.0
                 
-                playout_now = time.time()
-                playout_packet_count += 1
-                playout_sec_packet_count += 1
+                packet_to_play = None
+                with self.playout_lock:
+                    if self.playout_buffer:
+                        # Look at the oldest packet
+                        arrival_time, parsed, r_hz, raw_count, shift_ms = self.playout_buffer[0]
+                        if now - arrival_time >= buffer_delay:
+                            packet_to_play = self.playout_buffer.pop(0)
                 
-                # Calculate playout (buffered) average frequency over window
-                window_sec = max(0.1, self.receiver_smoothing_sec.get())
-                elapsed = playout_now - playout_sec_start
-                if elapsed >= window_sec:
-                    self.buffered_delivery_hz = float(playout_sec_packet_count) / elapsed
-                    playout_sec_packet_count = 0
-                    playout_sec_start = playout_now
-                
-                # 1. Apply workstation Coordinate System Alignment Preset / Custom translation remapping
-                px_aligned, py_aligned, pz_aligned, roll_aligned, pitch_aligned, yaw_aligned = self.apply_pc_coordinate_alignment(
-                    px_raw, py_raw, pz_raw, roll_raw, pitch_raw, yaw_raw
-                )
-                
-                # 2. Apply workstation DSLR Lever Arm Offset (convert cm to meters) and SUBTRACT
-                lx = self.ws_lever_x.get() / 100.0
-                ly = self.ws_lever_y.get() / 100.0
-                lz = self.ws_lever_z.get() / 100.0
-                
-                px_dslr_raw = px_aligned
-                py_dslr_raw = py_aligned
-                pz_dslr_raw = pz_aligned
-                roll = roll_aligned
-                pitch = pitch_aligned
-                yaw = yaw_aligned
-                
-                if lx != 0.0 or ly != 0.0 or lz != 0.0:
-                    rx, ry, rz = self.rotate_vector_by_quaternion(lx, ly, lz, *self.euler_to_quaternion(roll, pitch, yaw))
-                    px_dslr_raw -= rx
-                    py_dslr_raw -= ry
-                    pz_dslr_raw -= rz
-                
-                # 3. Calculate camera pose relative to the 6-axis offset origin
-                tx_o = self.ws_origin_x.get()
-                ty_o = self.ws_origin_y.get()
-                tz_o = self.ws_origin_z.get()
-                pitch_o = self.ws_origin_pitch.get()
-                yaw_o = self.ws_origin_yaw.get()
-                roll_o = self.ws_origin_roll.get()
-                
-                dx = px_dslr_raw - tx_o
-                dy = py_dslr_raw - ty_o
-                dz = pz_dslr_raw - tz_o
-                
-                q_o_w, q_o_x, q_o_y, q_o_z = self.euler_to_quaternion(roll_o, pitch_o, yaw_o)
-                # Conjugate of origin quaternion (representing inverse rotation)
-                q_o_inv_w = q_o_w
-                q_o_inv_x = -q_o_x
-                q_o_inv_y = -q_o_y
-                q_o_inv_z = -q_o_z
-                
-                px_local, py_local, pz_local = self.rotate_vector_by_quaternion(dx, dy, dz, q_o_inv_w, q_o_inv_x, q_o_inv_y, q_o_inv_z)
-                
-                q_raw_w, q_raw_x, q_raw_y, q_raw_z = self.euler_to_quaternion(roll, pitch, yaw)
-                q_local_w, q_local_x, q_local_y, q_local_z = self.multiply_quaternions(
-                    (q_o_inv_w, q_o_inv_x, q_o_inv_y, q_o_inv_z),
-                    (q_raw_w, q_raw_x, q_raw_y, q_raw_z)
-                )
-                
-                roll_local, pitch_local, yaw_local = self.quaternion_to_euler(q_local_w, q_local_x, q_local_y, q_local_z)
-                
-                # Local variables for downstream UI updates and forwarders
-                px = px_local
-                py = py_local
-                pz = pz_local
-                roll = roll_local
-                pitch = pitch_local
-                yaw = yaw_local
-                
-                # Overwrite parsed dictionary to propagate offsets to canvas and forwarders automatically!
-                parsed["x"] = px
-                parsed["y"] = py
-                parsed["z"] = pz
-                parsed["roll"] = roll
-                parsed["pitch"] = pitch
-                parsed["yaw"] = yaw
-                
-                # Preserve raw aligned coords for trajectory plotting
-                parsed["raw_aligned_x"] = px_dslr_raw
-                parsed["raw_aligned_y"] = py_dslr_raw
-                parsed["raw_aligned_z"] = pz_dslr_raw
-                
-                fmt_type = parsed["type"]
-                timestamp = parsed.get("timestamp", None)
-                addr_str = parsed.get("addr_str", "iOS")
-                
-                if getattr(self, 'last_detected_format', None) != fmt_type:
-                    self.last_detected_format = fmt_type
-                    self.root.after(0, lambda f=fmt_type: self.rx_log(f"PROTOCOL SWAP DETECTED // Active Protocol: {f}"))
-                
-                is_active = parsed.get("is_mapping_active", True)
-                if getattr(self, 'last_mapping_state', None) != is_active:
-                    self.last_mapping_state = is_active
-                    state_str = "ACTIVE (LiDAR Reconstruction)" if is_active else "PAUSED (Pose-only tracking optimized)"
-                    self.root.after(0, lambda s=state_str: self.rx_log(f"MAPPING SENSORS STATE // {s}"))
-                
-                # Format time shift / latency string
-                latency_str = "No Sync (N/A)"
-                if timestamp is not None:
-                    latency_str = f"{shift_ms:+.1f} ms"
-                elif "FreeD" in fmt_type:
-                    latency_str = "No Sync (N/A) - FreeD has no timestamp payload"
-                
-                # Update UI elements
-                self.root.after(0, lambda fmt=fmt_type: self.receiver_format_var.set(fmt))
-                self.root.after(0, lambda c=playout_packet_count: self.receiver_frames_var.set(str(c)))
-                self.root.after(0, lambda hz=self.buffered_delivery_hz: self.receiver_hz_var.set(f"{hz:.1f} Hz"))
-                self.root.after(0, lambda lat=latency_str: self.receiver_latency_var.set(lat))
-                
-                self.root.after(0, lambda x=px: self.pose_x_var.set(f"{x:.4f} m"))
-                self.root.after(0, lambda y=py: self.pose_y_var.set(f"{y:.4f} m"))
-                self.root.after(0, lambda z=pz: self.pose_z_var.set(f"{z:.4f} m"))
-                self.root.after(0, lambda r=roll: self.pose_roll_var.set(f"{r:.2f}°"))
-                self.root.after(0, lambda p=pitch: self.pose_pitch_var.set(f"{p:.2f}°"))
-                self.root.after(0, lambda y=yaw: self.pose_yaw_var.set(f"{y:.2f}°"))
-                
-                self.root.after(0, self.trigger_ping_blink)
-                
-                # Append camera position to live 3D trajectory (stored in raw aligned space)
-                if not self.live_trajectory or math.sqrt((px_dslr_raw - self.live_trajectory[-1][0])**2 + (py_dslr_raw - self.live_trajectory[-1][1])**2 + (pz_dslr_raw - self.live_trajectory[-1][2])**2) > 0.01:
-                    self.live_trajectory.append((px_dslr_raw, py_dslr_raw, pz_dslr_raw))
+                if packet_to_play:
+                    arrival_time, parsed, r_hz, raw_count, shift_ms = packet_to_play
                     
-                # Append new LiDAR points
-                new_pts = parsed.get("new_points", [])
-                if new_pts:
-                    for pt in new_pts:
-                        if len(pt) >= 3:
-                            self.live_points.append((float(pt[0]), float(pt[1]), float(pt[2])))
-                            
-                # Sync cockpit/orbit camera tracking in follow mode (centers viewport on camera's absolute position)
-                if self.live_follow.get():
-                    self.live_pan_x = px_dslr_raw
-                    self.live_pan_y = py_dslr_raw
-                    self.live_pan_z = pz_dslr_raw
-                    if self.live_view_mode.get() == "Cockpit":
-                        self.live_rot_x = -pitch * math.pi / 180.0 - math.pi / 2.0  # Apply the -90 degree offset globally for proper horizon pitch alignment
-                        self.live_rot_y = -yaw * math.pi / 180.0
-                        self.live_rot_z = -roll * math.pi / 180.0
+                    playout_now = time.time()
+                    playout_packet_count += 1
+                    playout_sec_packet_count += 1
                     
-                self.root.after(0, self.redraw_live_3d_canvas)
-                
-                # Dynamic Multi-Protocol Forwarder Server
-                if self.forward_enabled.get():
-                    self.forward_packet_to_unreal(parsed)
-                
-                # Console logs
-                if timestamp is not None:
-                    log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Shift: {shift_ms:+.1f}ms"
+                    # Calculate playout (buffered) average frequency over window
+                    window_sec = max(0.1, self.receiver_smoothing_sec.get())
+                    elapsed = playout_now - playout_sec_start
+                    if elapsed >= window_sec:
+                        self.buffered_delivery_hz = float(playout_sec_packet_count) / elapsed
+                        playout_sec_packet_count = 0
+                        playout_sec_start = playout_now
+                    
+                    # Extract raw coordinates safely from parsed packet to prevent NameError / crash
+                    px_raw = parsed.get("x", 0.0)
+                    py_raw = parsed.get("y", 0.0)
+                    pz_raw = parsed.get("z", 0.0)
+                    roll_raw = parsed.get("roll", 0.0)
+                    pitch_raw = parsed.get("pitch", 0.0)
+                    yaw_raw = parsed.get("yaw", 0.0)
+                    
+                    # 1. Apply workstation Coordinate System Alignment Preset / Custom translation remapping
+                    px_aligned, py_aligned, pz_aligned, roll_aligned, pitch_aligned, yaw_aligned = self.apply_pc_coordinate_alignment(
+                        px_raw, py_raw, pz_raw, roll_raw, pitch_raw, yaw_raw
+                    )
+                    
+                    # 2. Apply workstation DSLR Lever Arm Offset (convert cm to meters) and SUBTRACT
+                    lx = self.ws_lever_x.get() / 100.0
+                    ly = self.ws_lever_y.get() / 100.0
+                    lz = self.ws_lever_z.get() / 100.0
+                    
+                    px_dslr_raw = px_aligned
+                    py_dslr_raw = py_aligned
+                    pz_dslr_raw = pz_aligned
+                    roll = roll_aligned
+                    pitch = pitch_aligned
+                    yaw = yaw_aligned
+                    
+                    if lx != 0.0 or ly != 0.0 or lz != 0.0:
+                        rx, ry, rz = self.rotate_vector_by_quaternion(lx, ly, lz, *self.euler_to_quaternion(roll, pitch, yaw))
+                        px_dslr_raw -= rx
+                        py_dslr_raw -= ry
+                        pz_dslr_raw -= rz
+                    
+                    # 3. Calculate camera pose relative to the 6-axis offset origin
+                    tx_o = self.ws_origin_x.get()
+                    ty_o = self.ws_origin_y.get()
+                    tz_o = self.ws_origin_z.get()
+                    pitch_o = self.ws_origin_pitch.get()
+                    yaw_o = self.ws_origin_yaw.get()
+                    roll_o = self.ws_origin_roll.get()
+                    
+                    dx = px_dslr_raw - tx_o
+                    dy = py_dslr_raw - ty_o
+                    dz = pz_dslr_raw - tz_o
+                    
+                    q_o_w, q_o_x, q_o_y, q_o_z = self.euler_to_quaternion(roll_o, pitch_o, yaw_o)
+                    # Conjugate of origin quaternion (representing inverse rotation)
+                    q_o_inv_w = q_o_w
+                    q_o_inv_x = -q_o_x
+                    q_o_inv_y = -q_o_y
+                    q_o_inv_z = -q_o_z
+                    
+                    px_local, py_local, pz_local = self.rotate_vector_by_quaternion(dx, dy, dz, q_o_inv_w, q_o_inv_x, q_o_inv_y, q_o_inv_z)
+                    
+                    q_raw_w, q_raw_x, q_raw_y, q_raw_z = self.euler_to_quaternion(roll, pitch, yaw)
+                    q_local_w, q_local_x, q_local_y, q_local_z = self.multiply_quaternions(
+                        (q_o_inv_w, q_o_inv_x, q_o_inv_y, q_o_inv_z),
+                        (q_raw_w, q_raw_x, q_raw_y, q_raw_z)
+                    )
+                    
+                    roll_local, pitch_local, yaw_local = self.quaternion_to_euler(q_local_w, q_local_x, q_local_y, q_local_z)
+                    
+                    # Local variables for downstream UI updates and forwarders
+                    px = px_local
+                    py = py_local
+                    pz = pz_local
+                    roll = roll_local
+                    pitch = pitch_local
+                    yaw = yaw_local
+                    
+                    # Overwrite parsed dictionary to propagate offsets to canvas and forwarders automatically!
+                    parsed["x"] = px
+                    parsed["y"] = py
+                    parsed["z"] = pz
+                    parsed["roll"] = roll
+                    parsed["pitch"] = pitch
+                    parsed["yaw"] = yaw
+                    
+                    # Preserve raw aligned coords for trajectory plotting
+                    parsed["raw_aligned_x"] = px_dslr_raw
+                    parsed["raw_aligned_y"] = py_dslr_raw
+                    parsed["raw_aligned_z"] = pz_dslr_raw
+                    
+                    fmt_type = parsed["type"]
+                    timestamp = parsed.get("timestamp", None)
+                    addr_str = parsed.get("addr_str", "iOS")
+                    
+                    if getattr(self, 'last_detected_format', None) != fmt_type:
+                        self.last_detected_format = fmt_type
+                        self.root.after(0, lambda f=fmt_type: self.rx_log(f"PROTOCOL SWAP DETECTED // Active Protocol: {f}"))
+                    
+                    is_active = parsed.get("is_mapping_active", True)
+                    if getattr(self, 'last_mapping_state', None) != is_active:
+                        self.last_mapping_state = is_active
+                        state_str = "ACTIVE (LiDAR Reconstruction)" if is_active else "PAUSED (Pose-only tracking optimized)"
+                        self.root.after(0, lambda s=state_str: self.rx_log(f"MAPPING SENSORS STATE // {s}"))
+                    
+                    # Format time shift / latency string
+                    latency_str = "No Sync (N/A)"
+                    if timestamp is not None:
+                        latency_str = f"{shift_ms:+.1f} ms"
+                    elif "FreeD" in fmt_type:
+                        latency_str = "No Sync (N/A) - FreeD has no timestamp payload"
+                    
+                    # Update UI elements
+                    self.root.after(0, lambda fmt=fmt_type: self.receiver_format_var.set(fmt))
+                    self.root.after(0, lambda c=playout_packet_count: self.receiver_frames_var.set(str(c)))
+                    self.root.after(0, lambda hz=self.buffered_delivery_hz: self.receiver_hz_var.set(f"{hz:.1f} Hz"))
+                    self.root.after(0, lambda lat=latency_str: self.receiver_latency_var.set(lat))
+                    
+                    self.root.after(0, lambda x=px: self.pose_x_var.set(f"{x:.4f} m"))
+                    self.root.after(0, lambda y=py: self.pose_y_var.set(f"{y:.4f} m"))
+                    self.root.after(0, lambda z=pz: self.pose_z_var.set(f"{z:.4f} m"))
+                    self.root.after(0, lambda r=roll: self.pose_roll_var.set(f"{r:.2f}°"))
+                    self.root.after(0, lambda p=pitch: self.pose_pitch_var.set(f"{p:.2f}°"))
+                    self.root.after(0, lambda y=yaw: self.pose_yaw_var.set(f"{y:.2f}°"))
+                    
+                    self.root.after(0, self.trigger_ping_blink)
+                    
+                    # Append camera position to live 3D trajectory (stored in raw aligned space)
+                    if not self.live_trajectory or math.sqrt((px_dslr_raw - self.live_trajectory[-1][0])**2 + (py_dslr_raw - self.live_trajectory[-1][1])**2 + (pz_dslr_raw - self.live_trajectory[-1][2])**2) > 0.01:
+                        self.live_trajectory.append((px_dslr_raw, py_dslr_raw, pz_dslr_raw))
+                        
+                    # Append new LiDAR points
+                    new_pts = parsed.get("new_points", [])
+                    if new_pts:
+                        for pt in new_pts:
+                            if len(pt) >= 3:
+                                self.live_points.append((float(pt[0]), float(pt[1]), float(pt[2])))
+                                
+                    # Sync cockpit/orbit camera tracking in follow mode (centers viewport on camera's absolute position)
+                    if self.live_follow.get():
+                        self.live_pan_x = px_dslr_raw
+                        self.live_pan_y = py_dslr_raw
+                        self.live_pan_z = pz_dslr_raw
+                        if self.live_view_mode.get() == "Cockpit":
+                            self.live_rot_x = -pitch * math.pi / 180.0 - math.pi / 2.0  # Apply the -90 degree offset globally for proper horizon pitch alignment
+                            self.live_rot_y = -yaw * math.pi / 180.0
+                            self.live_rot_z = -roll * math.pi / 180.0
+                        
+                    self.root.after(0, self.redraw_live_3d_canvas)
+                    
+                    # Dynamic Multi-Protocol Forwarder Server
+                    if self.forward_enabled.get():
+                        self.forward_packet_to_unreal(parsed)
+                    
+                    # Console logs
+                    if timestamp is not None:
+                        log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Shift: {shift_ms:+.1f}ms"
+                    else:
+                        log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) [FreeD]"
+                    self.root.after(0, lambda m=log_msg: self.rx_log(m))
                 else:
-                    log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) [FreeD]"
-                self.root.after(0, lambda m=log_msg: self.rx_log(m))
-            else:
-                # Sleep a tiny bit to avoid spinning the CPU
-                time.sleep(0.001)
+                    # Sleep a tiny bit to avoid spinning the CPU
+                    time.sleep(0.001)
+            except Exception as e:
+                logger.error(f"Playout Thread: Exception in playout loop: {str(e)}", exc_info=True)
+                time.sleep(0.010)
 
     def parse_incoming_packet(self, data):
         # 1. Standard (29 bytes) and Extended (37 bytes) FreeD Binary formats
