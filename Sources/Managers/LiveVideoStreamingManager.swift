@@ -261,7 +261,7 @@ class LiveVideoStreamingManager: NSObject {
         // Safely copy data bytes to a contiguous buffer to prevent memory access issues on non-contiguous memory blocks
         var buffer = Data(count: totalLength)
         let status = buffer.withUnsafeMutableBytes { (bufferPtr: UnsafeMutableRawBufferPointer) -> OSStatus in
-            guard let baseAddress = bufferPtr.baseAddress else { return kCMBlockBufferStructureError }
+            guard let baseAddress = bufferPtr.baseAddress else { return -1 }
             return CMBlockBufferCopyDataBytes(blockBuffer, atOffset: 0, dataLength: totalLength, destination: baseAddress)
         }
         
