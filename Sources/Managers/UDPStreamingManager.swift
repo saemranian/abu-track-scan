@@ -314,6 +314,21 @@ class UDPStreamingManager: ObservableObject {
         bsdSender.send(data: data)
     }
     
+    private func getThermalStateString() -> String {
+        switch ProcessInfo.processInfo.thermalState {
+        case .nominal:
+            return "NOMINAL"
+        case .fair:
+            return "FAIR"
+        case .serious:
+            return "SERIOUS"
+        case .critical:
+            return "CRITICAL"
+        @unknown default:
+            return "UNKNOWN"
+        }
+    }
+    
     private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
         let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
         var json: [String: Any] = [
@@ -322,7 +337,8 @@ class UDPStreamingManager: ObservableObject {
             "rotation": [pitch, yaw, roll],
             "focalLength": 24.0,
             "timestamp": Date().timeIntervalSince1970 + ntpSyncOffset,
-            "isMappingActive": isMappingActive
+            "isMappingActive": isMappingActive,
+            "thermalState": getThermalStateString()
         ]
         if let pts = newPoints, !pts.isEmpty {
             json["new_points"] = pts.map { [$0.x, $0.y, $0.z] }
@@ -407,6 +423,7 @@ class UDPStreamingManager: ObservableObject {
             "sourceId": 101,
             "timestamp": timestamp,
             "isMappingActive": isMappingActive,
+            "thermalState": getThermalStateString(),
             "transforms": [
                 [
                     "translation": ["x": x, "y": y, "z": z],

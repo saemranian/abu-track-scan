@@ -45,6 +45,7 @@ struct DashboardView: View {
     // Hardware Load Diagnostic State
     @State private var cpuUsage: Double = 0.0
     @State private var ramUsage: Double = 0.0
+    @State private var thermalStateStr: String = "NOMINAL"
     @State private var localEpochTimeStr: String = "00:00:00.000"
     @State private var hardwareTimer: Timer?
     
@@ -319,6 +320,8 @@ struct DashboardView: View {
                                 Divider().background(Color.gray.opacity(0.1))
                                 TelemetryRow(label: "SYS HARDWARE LOAD (CPU/RAM)", value: String(format: "CPU: %.1f%%  RAM: %.1f%%", cpuUsage, ramUsage), highlight: cpuUsage > 80.0 || ramUsage > 80.0 ? .red : .green)
                                 Divider().background(Color.gray.opacity(0.1))
+                                TelemetryRow(label: "IPHONE THERMAL STATE (TEMP)", value: thermalStateStr, highlight: thermalStateStr == "NOMINAL" ? .green : (thermalStateStr == "FAIR" ? .yellow : .red))
+                                Divider().background(Color.gray.opacity(0.1))
                                 TelemetryRow(label: "MOBILE EPOCH SYSTEM TIME", value: localEpochTimeStr, highlight: .orange)
                                 Divider().background(Color.gray.opacity(0.1))
                                 TelemetryRow(label: "MOBILE LOCAL IP ADDRESS", value: UDPStreamingManager.getLocalIPAddress(), highlight: .green)
@@ -374,6 +377,7 @@ struct DashboardView: View {
                 if ticks % 20 == 0 { // every 1.0s, update CPU/RAM metrics
                     self.cpuUsage = getCPUUsage()
                     self.ramUsage = getMemoryUsage().used
+                    self.thermalStateStr = getThermalStateString()
                 }
             }
         }
@@ -653,6 +657,16 @@ struct DashboardView: View {
         let seconds = Int(interval) % 60
         let tenths = Int((interval.truncatingRemainder(dividingBy: 1)) * 10)
         return String(format: "%02d:%02d.%d", minutes, seconds, tenths)
+    }
+    
+    private func getThermalStateString() -> String {
+        switch ProcessInfo.processInfo.thermalState {
+        case .nominal: return "NOMINAL"
+        case .fair: return "FAIR"
+        case .serious: return "SERIOUS"
+        case .critical: return "CRITICAL"
+        @unknown default: return "UNKNOWN"
+        }
     }
     
     private func getCPUUsage() -> Double {

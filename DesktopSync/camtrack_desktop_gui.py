@@ -167,6 +167,8 @@ class CamTrackDesktopApp:
         self.receiver_auto_calibrate = tk.BooleanVar(value=True)
         self.timeshift_history = []
         self.receiver_pc_time_var = tk.StringVar(value="00:00:00.000")
+        self.receiver_thermal_var = tk.StringVar(value="UNKNOWN")
+        self.root_exists = True
         
         self.pose_x_var = tk.StringVar(value="0.0000 m")
         self.pose_y_var = tk.StringVar(value="0.0000 m")
@@ -240,6 +242,7 @@ class CamTrackDesktopApp:
         self.root.report_callback_exception = self.report_callback_exception
         self.root.protocol("WM_DELETE_WINDOW", self.on_window_closing)
         self.root.after(33, self.update_pc_local_time)
+        self.root.after(50, self.periodic_ui_refresh)
         
     def setup_styles(self):
         style = ttk.Style()
@@ -830,11 +833,16 @@ class CamTrackDesktopApp:
         forward_tc_lbl = ttk.Label(rx_diag_card, textvariable=self.forward_timecode_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
         forward_tc_lbl.grid(row=11, column=1, sticky="e", pady=4)
         
+        # iPhone Thermal State
+        ttk.Label(rx_diag_card, text="iPhone Thermal State:").grid(row=12, column=0, sticky="w", pady=4)
+        self.thermal_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_thermal_var, foreground=TEXT_MUTED, font=("Consolas", 9, "bold"))
+        self.thermal_lbl.grid(row=12, column=1, sticky="e", pady=4)
+        
         # Smoothing Window Slider
-        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=12, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=13, column=0, sticky="w", pady=4)
         
         smoothing_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        smoothing_frame.grid(row=12, column=1, sticky="e", pady=4)
+        smoothing_frame.grid(row=13, column=1, sticky="e", pady=4)
         
         smooth_slider = ttk.Scale(smoothing_frame, from_=0.1, to=5.0, value=1.0, variable=self.receiver_smoothing_sec, command=lambda v: self._update_smoothing_label())
         smooth_slider.pack(side="left", padx=(0, 4))
@@ -843,10 +851,10 @@ class CamTrackDesktopApp:
         self.smooth_lbl.pack(side="left")
         
         # Playout Buffer Slider
-        ttk.Label(rx_diag_card, text="Playout Buffer Delay (ms):").grid(row=13, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Playout Buffer Delay (ms):").grid(row=14, column=0, sticky="w", pady=4)
         
         buffer_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        buffer_frame.grid(row=13, column=1, sticky="e", pady=4)
+        buffer_frame.grid(row=14, column=1, sticky="e", pady=4)
         
         buffer_slider = ttk.Scale(buffer_frame, from_=0, to=1000, value=100, variable=self.receiver_buffer_ms, command=lambda v: self._update_buffer_label())
         buffer_slider.pack(side="left", padx=(0, 4))
@@ -858,9 +866,9 @@ class CamTrackDesktopApp:
         auto_chk.pack(side="left", padx=(8, 0))
         
         # Visual Ping indicator (Canvas)
-        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=14, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=15, column=0, sticky="w", pady=4)
         self.ping_canvas = tk.Canvas(rx_diag_card, width=16, height=16, bg=CARD_BG, highlightthickness=0)
-        self.ping_canvas.grid(row=14, column=1, sticky="e", pady=4)
+        self.ping_canvas.grid(row=15, column=1, sticky="e", pady=4)
         self.ping_light = self.ping_canvas.create_oval(2, 2, 14, 14, fill=FIELD_BG, outline=BORDER_COLOR)
         
         # Right Panel
@@ -3446,7 +3454,9 @@ class CamTrackDesktopApp:
                             self.live_rot_y = -yaw * math.pi / 180.0
                             self.live_rot_z = -roll * math.pi / 180.0
                         
-                    self.root.after(0, self.redraw_live_3d_canvas)
+                    # Update thermal state safely on the main thread
+                    thermal = parsed.get("thermal_state", "NOMINAL")
+                    self.root.after(0, lambda t=thermal: self.update_thermal_display(t))
                     
                     # Dynamic Multi-Protocol Forwarder Server
                     if self.forward_enabled.get():
@@ -3542,7 +3552,8 @@ class CamTrackDesktopApp:
                             "roll": rot.get("roll", 0.0),
                             "timestamp": timestamp,
                             "new_points": new_points,
-                            "is_mapping_active": is_mapping_active
+                            "is_mapping_active": is_mapping_active,
+                            "thermal_state": payload.get("thermalState", "NOMINAL")
                         }
             except Exception as e:
                 print(f"OpenTrackIO parse failed: {e}")
@@ -3565,7 +3576,8 @@ class CamTrackDesktopApp:
                     "pitch": pitch, "yaw": yaw, "roll": roll,
                     "timestamp": timestamp,
                     "new_points": new_points,
-                    "is_mapping_active": is_mapping_active
+                    "is_mapping_active": is_mapping_active,
+                    "thermal_state": payload.get("thermalState", "NOMINAL")
                 }
         except Exception:
             pass
@@ -3841,18 +3853,6 @@ class CamTrackDesktopApp:
             
         logger.info("Video Decoder: PyAV background listening thread active.")
         
-        # Periodically refresh the 3D Canvas visualizer to draw new video frames
-        def refresh_canvas_loop():
-            while self.video_decoder_running:
-                try:
-                    self.root.after(0, self.redraw_live_3d_canvas)
-                except Exception:
-                    pass
-                time.sleep(0.050) # refresh visualizer at 20 fps to prevent Tkinter choke
-                
-        canvas_refresh_thread = threading.Thread(target=refresh_canvas_loop, daemon=True)
-        canvas_refresh_thread.start()
-        
         while self.video_decoder_running:
             container = None
             try:
@@ -3926,6 +3926,27 @@ class CamTrackDesktopApp:
             self.spout_sender.sendImage(frame, w, h, 0x80E1, False)
         except Exception as e:
             logger.error(f"Spout: Failed to transmit texture via SpoutGL: {str(e)}")
+            
+    def periodic_ui_refresh(self):
+        try:
+            if hasattr(self, 'root_exists') and self.root_exists:
+                if self.receiver_running:
+                    self.redraw_live_3d_canvas()
+                self.root.after(50, self.periodic_ui_refresh)
+        except Exception:
+            pass
+            
+    def update_thermal_display(self, state):
+        try:
+            self.receiver_thermal_var.set(state)
+            if state == "NOMINAL":
+                self.thermal_lbl.configure(foreground=ACCENT_GREEN)
+            elif state == "FAIR":
+                self.thermal_lbl.configure(foreground=ACCENT_AMBER)
+            else: # SERIOUS, CRITICAL, or UNKNOWN
+                self.thermal_lbl.configure(foreground=ACCENT_RED)
+        except Exception:
+            pass
 
     def redraw_live_3d_canvas(self):
         try:
