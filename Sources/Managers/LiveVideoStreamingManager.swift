@@ -67,30 +67,28 @@ class LiveVideoStreamingManager: NSObject {
     }
     
     func encodeAndStream(pixelBuffer: CVPixelBuffer, ntpTimestamp: Double) {
-        encodingQueue.async {
-            guard self.isStreamingActive, let session = self.compressionSession else { return }
-            
-            // Use presentation timestamp or arbitrary incrementing ticks
-            let presentationTime = CMTime(value: Int64(ntpTimestamp * 1000.0), timescale: 1000)
-            
-            // Pass the precise double NTP timestamp through sourceFrameRefCon
-            let timestampUs = Int(ntpTimestamp * 1_000_000.0)
-            let refCon = UnsafeMutableRawPointer(bitPattern: timestampUs)
-            
-            var flags: VTEncodeInfoFlags = []
-            let status = VTCompressionSessionEncodeFrame(
-                session,
-                imageBuffer: pixelBuffer,
-                presentationTimeStamp: presentationTime,
-                duration: .invalid,
-                frameProperties: nil,
-                sourceFrameRefcon: refCon,
-                infoFlagsOut: &flags
-            )
-            
-            if status != noErr {
-                print("Video Streaming: VTCompressionSessionEncodeFrame failed with status: \(status)")
-            }
+        guard self.isStreamingActive, let session = self.compressionSession else { return }
+        
+        // Use presentation timestamp or arbitrary incrementing ticks
+        let presentationTime = CMTime(value: Int64(ntpTimestamp * 1000.0), timescale: 1000)
+        
+        // Pass the precise double NTP timestamp through sourceFrameRefCon
+        let timestampUs = Int(ntpTimestamp * 1_000_000.0)
+        let refCon = UnsafeMutableRawPointer(bitPattern: timestampUs)
+        
+        var flags: VTEncodeInfoFlags = []
+        let status = VTCompressionSessionEncodeFrame(
+            session,
+            imageBuffer: pixelBuffer,
+            presentationTimeStamp: presentationTime,
+            duration: .invalid,
+            frameProperties: nil,
+            sourceFrameRefcon: refCon,
+            infoFlagsOut: &flags
+        )
+        
+        if status != noErr {
+            print("Video Streaming: VTCompressionSessionEncodeFrame failed with status: \(status)")
         }
     }
     
@@ -121,7 +119,10 @@ class LiveVideoStreamingManager: NSObject {
                 let timestampUs = Int(bitPattern: sourceFrameRefCon)
                 let originalNtpTime = Double(timestampUs) / 1_000_000.0
                 
-                manager.processEncodedFrame(sampleBuffer: sampleBuffer, ntpTimestamp: originalNtpTime)
+                let retainedBuffer = sampleBuffer
+                manager.encodingQueue.async {
+                    manager.processEncodedFrame(sampleBuffer: retainedBuffer, ntpTimestamp: originalNtpTime)
+                }
             },
             refcon: selfPtr,
             compressionSessionOut: &self.compressionSession
