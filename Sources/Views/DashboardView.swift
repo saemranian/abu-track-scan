@@ -162,6 +162,7 @@ struct DashboardView: View {
                                         rotY: $rotY,
                                         panX: $panX,
                                         panY: $panY,
+                                        panZ: $panZ,
                                         zoom: $zoom,
                                         onInteractionBegan: {
                                             isFollowModeActive = false
@@ -218,6 +219,25 @@ struct DashboardView: View {
                                             .background(Color.black.opacity(0.6))
                                             .cornerRadius(4)
                                             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.cyan.opacity(0.6), lineWidth: 0.5))
+                                    }
+                                    
+                                    Button(action: {
+                                        isFollowModeActive = false
+                                        rotX = -0.4
+                                        rotY = -0.6
+                                        panX = 0.0
+                                        panY = 0.0
+                                        panZ = 0.0
+                                        zoom = 1.0
+                                    }) {
+                                        Text("RESET")
+                                            .font(.system(size: 8, weight: .black, design: .monospaced))
+                                            .foregroundColor(.red)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(4)
+                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.red.opacity(0.6), lineWidth: 0.5))
                                     }
                                     
                                     Button(action: { showTrajectory.toggle() }) {
@@ -1099,8 +1119,6 @@ struct PointCloudVisualizerView: View {
                 let sinYaw = Float(sin(-yawOffsetRad))
                 
                 var greenPath = Path()
-                var yellowPath = Path()
-                var redPath = Path()
                 
                 for pt in pointsToRender {
                     // 1. Transform from aligned space back to raw ARKit world space
@@ -1121,8 +1139,7 @@ struct PointCloudVisualizerView: View {
                         continue
                     }
                     
-                    // Color by distance
-                    var pointColorType = 0
+                    // Filter: only show green points (within 1.8m) in composition mode
                     let camPos = frame.camera.transform.columns.3
                     let deltaX = rawPoint.x - camPos.x
                     let deltaY = rawPoint.y - camPos.y
@@ -1130,26 +1147,12 @@ struct PointCloudVisualizerView: View {
                     let distSq = deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ
                     
                     if distSq <= 3.24 { // 1.8m
-                        pointColorType = 0
-                    } else if distSq <= 10.24 { // 3.2m
-                        pointColorType = 1
-                    } else {
-                        pointColorType = 2
-                    }
-                    
-                    let rect = CGRect(x: proj.x - 0.75, y: proj.y - 0.75, width: 1.5, height: 1.5) // Slightly larger points for composition visibility!
-                    if pointColorType == 0 {
+                        let rect = CGRect(x: proj.x - 0.75, y: proj.y - 0.75, width: 1.5, height: 1.5) // Slightly larger points for composition visibility!
                         greenPath.addRect(rect)
-                    } else if pointColorType == 1 {
-                        yellowPath.addRect(rect)
-                    } else {
-                        redPath.addRect(rect)
                     }
                 }
                 
                 context.fill(greenPath, with: .color(Color.green.opacity(0.85)))
-                context.fill(yellowPath, with: .color(Color.yellow.opacity(0.85)))
-                context.fill(redPath, with: .color(Color.red.opacity(0.85)))
                 
                 // Draw Trajectory Path if requested
                 if showTrajectory, let pathPoints = trajectory, pathPoints.count > 1 {
@@ -1248,10 +1251,12 @@ struct PointCloudVisualizerView: View {
                     let rect = CGRect(x: proj.x - 0.375, y: proj.y - 0.375, width: 0.75, height: 0.75)
                     if pointColorType == 0 {
                         greenPath.addRect(rect)
-                    } else if pointColorType == 1 {
-                        yellowPath.addRect(rect)
-                    } else {
-                        redPath.addRect(rect)
+                    } else if !showCameraComposition {
+                        if pointColorType == 1 {
+                            yellowPath.addRect(rect)
+                        } else {
+                            redPath.addRect(rect)
+                        }
                     }
                 }
                 
@@ -1410,6 +1415,7 @@ struct MultiTouchGestureOverlay: UIViewRepresentable {
     @Binding var rotY: Double
     @Binding var panX: Double
     @Binding var panY: Double
+    @Binding var panZ: Double
     @Binding var zoom: Double
     var onInteractionBegan: (() -> Void)? = nil
     
@@ -1446,8 +1452,12 @@ struct MultiTouchGestureOverlay: UIViewRepresentable {
                     parent.rotY += Double(translation.x) * 0.005
                     parent.rotX += Double(translation.y) * 0.005
                 } else if gesture.numberOfTouches == 2 {
-                    parent.panX -= Double(translation.x) * 0.005
-                    parent.panY += Double(translation.y) * 0.005
+                    let cosY = cos(parent.rotY)
+                    let sinY = sin(parent.rotY)
+                    let scale = 0.005 / parent.zoom
+                    parent.panX -= Double(translation.x) * cosY * scale
+                    parent.panZ += Double(translation.x) * sinY * scale
+                    parent.panY += Double(translation.y) * scale
                 }
                 gesture.setTranslation(.zero, in: gesture.view)
             case .ended, .cancelled:

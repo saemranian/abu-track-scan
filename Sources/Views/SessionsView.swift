@@ -534,6 +534,7 @@ struct SessionDetailView: View {
                             rotY: $rotY,
                             panX: $panX,
                             panY: $panY,
+                            panZ: $panZ,
                             zoom: $zoom
                         )
                     }
@@ -544,6 +545,30 @@ struct SessionDetailView: View {
                     
                     // Interactive Buttons
                     HStack(spacing: 8) {
+                        Button(action: {
+                            rotX = -0.4
+                            rotY = -0.6
+                            panX = 0.0
+                            panY = 0.0
+                            panZ = 0.0
+                            zoom = 1.0
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise")
+                                Text("RESET")
+                            }
+                            .font(.system(size: 8, weight: .black))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(4)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.red.opacity(0.6), lineWidth: 1)
+                            )
+                        }
+                        
                         Button(action: { showTrajectory.toggle() }) {
                             HStack(spacing: 4) {
                                 Image(systemName: showTrajectory ? "point.topleft.down.to.point.bottomright.curvepath" : "point.topleft.down.to.point.bottomright.curvepath.fill")
