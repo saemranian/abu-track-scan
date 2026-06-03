@@ -165,6 +165,7 @@ struct DashboardView: View {
                                         zoom: $zoom,
                                         onInteractionBegan: {
                                             isFollowModeActive = false
+                                            showCameraComposition = false
                                         }
                                     )
                                 }
@@ -1067,6 +1068,19 @@ struct PointCloudVisualizerView: View {
                 )
                 return
             }
+            let maxPoints = 5000
+            let pointsToRender: [RawPoint3D]
+            if points.count > maxPoints {
+                let step = points.count / maxPoints
+                var temp: [RawPoint3D] = []
+                temp.reserveCapacity(maxPoints)
+                for i in stride(from: 0, to: points.count, by: step) {
+                    temp.append(points[i])
+                }
+                pointsToRender = temp
+            } else {
+                pointsToRender = points
+            }
             
             if showCameraComposition, let trackingManager = trackingManager, let frame = trackingManager.arSession.currentFrame {
                 let orientation: UIInterfaceOrientation
@@ -1088,7 +1102,7 @@ struct PointCloudVisualizerView: View {
                 var yellowPath = Path()
                 var redPath = Path()
                 
-                for pt in points {
+                for pt in pointsToRender {
                     // 1. Transform from aligned space back to raw ARKit world space
                     let dx = pt.x - offX
                     let dy = pt.y - offY
@@ -1198,7 +1212,7 @@ struct PointCloudVisualizerView: View {
                 var yellowPath = Path()
                 var redPath = Path()
                 
-                for pt in points {
+                for pt in pointsToRender {
                     let pt3D = (x: Double(pt.x), y: Double(pt.y), z: Double(pt.z))
                     let proj = project(point: pt3D, center: center, rotX: rotX, rotY: rotY, rotZ: rotZ)
                     

@@ -173,6 +173,33 @@ class CamTrackDesktopApp:
         self.receiver_thermal_var = tk.StringVar(value="UNKNOWN")
         self.root_exists = True
         
+        # Thread-safe lock for points & trajectory access
+        self.data_lock = threading.Lock()
+        
+        # Raw received camera pose for composition projection
+        self.cam_raw_x = 0.0
+        self.cam_raw_y = 0.0
+        self.cam_raw_z = 0.0
+        self.cam_raw_roll = 0.0
+        self.cam_raw_pitch = 0.0
+        self.cam_raw_yaw = 0.0
+        
+        # Thread-safe cached GUI variables (accessed by background playout thread)
+        self.cached_receiver_smoothing_sec = 1.0
+        self.cached_ws_lever_x = 0.0
+        self.cached_ws_lever_y = 0.0
+        self.cached_ws_lever_z = 0.0
+        self.cached_ws_origin_x = 0.0
+        self.cached_ws_origin_y = 0.0
+        self.cached_ws_origin_z = 0.0
+        self.cached_ws_origin_pitch = 0.0
+        self.cached_ws_origin_yaw = 0.0
+        self.cached_ws_origin_roll = 0.0
+        self.cached_live_follow = True
+        self.cached_live_view_mode = "Orbit"
+        self.cached_forward_enabled = False
+        self.cached_receiver_auto_calibrate = True
+        
         self.pose_x_var = tk.StringVar(value="0.0000 m")
         self.pose_y_var = tk.StringVar(value="0.0000 m")
         self.pose_z_var = tk.StringVar(value="0.0000 m")
@@ -3085,6 +3112,7 @@ class CamTrackDesktopApp:
             port = 8080
             self.receiver_port.set(8080)
         
+        self.cache_gui_variables()
         logger.info(f"Receiver startup requested. Targeting port: {port}")
         
         try:
@@ -3264,7 +3292,7 @@ class CamTrackDesktopApp:
                     if len(self.timeshift_history) > 100:
                         self.timeshift_history.pop(0)
                         
-                    if self.receiver_auto_calibrate.get() and len(self.timeshift_history) >= 20:
+                    if self.cached_receiver_auto_calibrate and len(self.timeshift_history) >= 20:
                         jitter = max(self.timeshift_history) - min(self.timeshift_history)
                         recommended_buffer = max(10.0, min(1000.0, jitter + 15.0))
                         self.root.after(0, lambda val=recommended_buffer: [
@@ -3294,7 +3322,7 @@ class CamTrackDesktopApp:
         while self.playout_running:
             try:
                 now = time.time()
-                buffer_delay = self.receiver_buffer_ms.get() / 1000.0
+                buffer_delay = self.cached_receiver_buffer_ms / 1000.0
                 
                 packet_to_play = None
                 with self.playout_lock:
@@ -3312,7 +3340,7 @@ class CamTrackDesktopApp:
                     playout_sec_packet_count += 1
                     
                     # Calculate playout (buffered) average frequency over window
-                    window_sec = max(0.1, self.receiver_smoothing_sec.get())
+                    window_sec = max(0.1, self.cached_receiver_smoothing_sec)
                     elapsed = playout_now - playout_sec_start
                     if elapsed >= window_sec:
                         self.buffered_delivery_hz = float(playout_sec_packet_count) / elapsed
@@ -3327,15 +3355,23 @@ class CamTrackDesktopApp:
                     pitch_raw = parsed.get("pitch", 0.0)
                     yaw_raw = parsed.get("yaw", 0.0)
                     
+                    # Save raw camera variables for background projection matching
+                    self.cam_raw_x = px_raw
+                    self.cam_raw_y = py_raw
+                    self.cam_raw_z = pz_raw
+                    self.cam_raw_roll = roll_raw
+                    self.cam_raw_pitch = pitch_raw
+                    self.cam_raw_yaw = yaw_raw
+                    
                     # 1. Apply workstation Coordinate System Alignment Preset / Custom translation remapping
                     px_aligned, py_aligned, pz_aligned, roll_aligned, pitch_aligned, yaw_aligned = self.apply_pc_coordinate_alignment(
                         px_raw, py_raw, pz_raw, roll_raw, pitch_raw, yaw_raw
                     )
                     
                     # 2. Apply workstation DSLR Lever Arm Offset (convert cm to meters) and SUBTRACT
-                    lx = self.ws_lever_x.get() / 100.0
-                    ly = self.ws_lever_y.get() / 100.0
-                    lz = self.ws_lever_z.get() / 100.0
+                    lx = self.cached_ws_lever_x / 100.0
+                    ly = self.cached_ws_lever_y / 100.0
+                    lz = self.cached_ws_lever_z / 100.0
                     
                     px_dslr_raw = px_aligned
                     py_dslr_raw = py_aligned
@@ -3351,12 +3387,12 @@ class CamTrackDesktopApp:
                         pz_dslr_raw -= rz
                     
                     # 3. Calculate camera pose relative to the 6-axis offset origin
-                    tx_o = self.ws_origin_x.get()
-                    ty_o = self.ws_origin_y.get()
-                    tz_o = self.ws_origin_z.get()
-                    pitch_o = self.ws_origin_pitch.get()
-                    yaw_o = self.ws_origin_yaw.get()
-                    roll_o = self.ws_origin_roll.get()
+                    tx_o = self.cached_ws_origin_x
+                    ty_o = self.cached_ws_origin_y
+                    tz_o = self.cached_ws_origin_z
+                    pitch_o = self.cached_ws_origin_pitch
+                    yaw_o = self.cached_ws_origin_yaw
+                    roll_o = self.cached_ws_origin_roll
                     
                     dx = px_dslr_raw - tx_o
                     dy = py_dslr_raw - ty_o
@@ -3439,33 +3475,33 @@ class CamTrackDesktopApp:
                     
                     self.root.after(0, self.trigger_ping_blink)
                     
-                    # Append camera position to live 3D trajectory (stored in raw aligned space)
-                    if not self.live_trajectory or math.sqrt((px_dslr_raw - self.live_trajectory[-1][0])**2 + (py_dslr_raw - self.live_trajectory[-1][1])**2 + (pz_dslr_raw - self.live_trajectory[-1][2])**2) > 0.01:
-                        self.live_trajectory.append((px_dslr_raw, py_dslr_raw, pz_dslr_raw))
-                        
-                    # Append new LiDAR points
-                    new_pts = parsed.get("new_points", [])
-                    if new_pts:
-                        for pt in new_pts:
-                            if len(pt) >= 3:
-                                self.live_points.append((float(pt[0]), float(pt[1]), float(pt[2])))
+                    with self.data_lock:
+                        # Append camera position to live 3D trajectory (stored in raw aligned space)
+                        if not self.live_trajectory or math.sqrt((px_dslr_raw - self.live_trajectory[-1][0])**2 + (py_dslr_raw - self.live_trajectory[-1][1])**2 + (pz_dslr_raw - self.live_trajectory[-1][2])**2) > 0.01:
+                            self.live_trajectory.append((px_dslr_raw, py_dslr_raw, pz_dslr_raw))
+                            
+                        # Append new LiDAR points
+                        new_pts = parsed.get("new_points", [])
+                        if new_pts:
+                            for pt in new_pts:
+                                if len(pt) >= 3:
+                                    self.live_points.append((float(pt[0]), float(pt[1]), float(pt[2])))
                                 
-                    # Sync cockpit/orbit camera tracking in follow mode (centers viewport on camera's absolute position)
-                    if self.live_follow.get():
+                    # Sync cockpit/orbit camera tracking in follow mode (centers viewport on camera's absolute position & rotation)
+                    if self.cached_live_follow:
                         self.live_pan_x = px_dslr_raw
                         self.live_pan_y = py_dslr_raw
                         self.live_pan_z = pz_dslr_raw
-                        if self.live_view_mode.get() == "Cockpit":
-                            self.live_rot_x = -pitch * math.pi / 180.0 - math.pi / 2.0  # Apply the -90 degree offset globally for proper horizon pitch alignment
-                            self.live_rot_y = -yaw * math.pi / 180.0
-                            self.live_rot_z = -roll * math.pi / 180.0
+                        self.live_rot_x = -pitch * math.pi / 180.0 - math.pi / 2.0
+                        self.live_rot_y = -yaw * math.pi / 180.0
+                        self.live_rot_z = -roll * math.pi / 180.0
                         
                     # Update thermal state safely on the main thread
                     thermal = parsed.get("thermal_state", "NOMINAL")
                     self.root.after(0, lambda t=thermal: self.update_thermal_display(t))
                     
                     # Dynamic Multi-Protocol Forwarder Server
-                    if self.forward_enabled.get():
+                    if self.cached_forward_enabled:
                         self.forward_packet_to_unreal(parsed)
                     
                     # Console logs
@@ -3707,16 +3743,36 @@ class CamTrackDesktopApp:
                 self.forwarder_sock = None
                 self.rx_log("FORWARD STATE // Disabled and socket unbound.")
 
+    def cache_gui_variables(self):
+        try:
+            self.cached_receiver_smoothing_sec = self.receiver_smoothing_sec.get()
+            self.cached_ws_lever_x = self.ws_lever_x.get()
+            self.cached_ws_lever_y = self.ws_lever_y.get()
+            self.cached_ws_lever_z = self.ws_lever_z.get()
+            self.cached_ws_origin_x = self.ws_origin_x.get()
+            self.cached_ws_origin_y = self.ws_origin_y.get()
+            self.cached_ws_origin_z = self.ws_origin_z.get()
+            self.cached_ws_origin_pitch = self.ws_origin_pitch.get()
+            self.cached_ws_origin_yaw = self.ws_origin_yaw.get()
+            self.cached_ws_origin_roll = self.ws_origin_roll.get()
+            self.cached_live_follow = self.live_follow.get()
+            self.cached_live_view_mode = self.live_view_mode.get()
+            self.cached_forward_enabled = self.forward_enabled.get()
+            self.cached_receiver_auto_calibrate = self.receiver_auto_calibrate.get()
+        except Exception:
+            pass
+
     def reset_live_view(self):
-        if self.live_trajectory:
-            last_pt = self.live_trajectory[-1]
-            self.live_pan_x = last_pt[0]
-            self.live_pan_y = last_pt[1]
-            self.live_pan_z = last_pt[2]
-        else:
-            self.live_pan_x = 0.0
-            self.live_pan_y = 0.0
-            self.live_pan_z = 0.0
+        with self.data_lock:
+            if self.live_trajectory:
+                last_pt = self.live_trajectory[-1]
+                self.live_pan_x = last_pt[0]
+                self.live_pan_y = last_pt[1]
+                self.live_pan_z = last_pt[2]
+            else:
+                self.live_pan_x = 0.0
+                self.live_pan_y = 0.0
+                self.live_pan_z = 0.0
             
         self.live_rot_x = -0.4
         self.live_rot_y = -0.6
@@ -3726,8 +3782,9 @@ class CamTrackDesktopApp:
         self.redraw_live_3d_canvas()
 
     def clear_live_data(self):
-        self.live_points = []
-        self.live_trajectory = []
+        with self.data_lock:
+            self.live_points = []
+            self.live_trajectory = []
         self.redraw_live_3d_canvas()
 
     def on_live_canvas_press(self, event):
@@ -3830,15 +3887,16 @@ class CamTrackDesktopApp:
         if self.live_view_mode.get() == "Cockpit":
             # True perspective projection matching iPhone camera wide lens
             # Translate relative to camera:
-            dx = x - self.live_pan_x
-            dy = y - self.live_pan_y
-            dz = z - self.live_pan_z
+            # We use the raw camera translation and rotation to ensure perfect alignment with the background video stream
+            dx = x - self.cam_raw_x
+            dy = y - self.cam_raw_y
+            dz = z - self.cam_raw_z
             
             # Compute camera orientation quaternion in the aligned workspace space
             q_w, q_x, q_y, q_z = self.euler_to_quaternion(
-                self.cam_actual_roll, 
-                self.cam_actual_pitch, 
-                self.cam_actual_yaw
+                self.cam_raw_roll, 
+                self.cam_raw_pitch, 
+                self.cam_raw_yaw
             )
             
             # Transform to camera space using conjugate rotation (inverse):
@@ -4001,8 +4059,12 @@ class CamTrackDesktopApp:
     def periodic_ui_refresh(self):
         try:
             if hasattr(self, 'root_exists') and self.root_exists:
+                self.cache_gui_variables()
                 if self.receiver_running:
-                    self.redraw_live_3d_canvas()
+                    try:
+                        self.redraw_live_3d_canvas()
+                    except Exception as e:
+                        logger.error(f"Error redrawing live 3D canvas: {e}", exc_info=True)
                 self.root.after(50, self.periodic_ui_refresh)
         except Exception:
             pass
@@ -4020,6 +4082,7 @@ class CamTrackDesktopApp:
             pass
 
     def redraw_live_3d_canvas(self):
+        self.cache_gui_variables()
         try:
             if not hasattr(self, 'live_canvas') or not self.live_canvas.winfo_exists():
                 return
@@ -4101,10 +4164,15 @@ class CamTrackDesktopApp:
                 self.live_canvas.create_line(ox, oy, z_proj[0], z_proj[1], fill="#3366ff", width=2.5)
                 self.live_canvas.create_text(z_proj[0], z_proj[1]+8, text="Z", fill="#3366ff", font=("Consolas", 8, "bold"))
                 
+        # Thread-safe copy of points and trajectory lists
+        with self.data_lock:
+            pts_copy = list(self.live_points)
+            traj_copy = list(self.live_trajectory)
+
         # Draw LiDAR points with custom PC LiDAR sign & source axis mapping
-        if self.live_show_points.get() and self.live_points:
-            step = max(1, len(self.live_points) // 1000)
-            pts_to_draw = self.live_points[::step]
+        if self.live_show_points.get() and pts_copy:
+            step = max(1, len(pts_copy) // 1000)
+            pts_to_draw = pts_copy[::step]
             
             l_x_sign = self.pc_lidar_x_sign.get()
             l_x_src = self.pc_lidar_x_src.get()
@@ -4126,9 +4194,9 @@ class CamTrackDesktopApp:
                         self.live_canvas.create_oval(sx-1, sy-1, sx+1, sy+1, fill="#00ff66", outline="")
                         
         # Draw camera trajectory path
-        if self.live_show_path.get() and len(self.live_trajectory) > 1:
+        if self.live_show_path.get() and len(traj_copy) > 1:
             line_pts = []
-            for pt in self.live_trajectory:
+            for pt in traj_copy:
                 proj = self.project_live_3d(pt[0], pt[1], pt[2], w, h)
                 if proj:
                     line_pts.extend(proj)
@@ -4136,15 +4204,15 @@ class CamTrackDesktopApp:
                 self.live_canvas.create_line(line_pts, fill="#ffcc00", width=1.5, smooth=True)
                 
         # Draw current camera indicator
-        if self.live_trajectory:
-            last_pt = self.live_trajectory[-1]
+        if traj_copy:
+            last_pt = traj_copy[-1]
             proj = self.project_live_3d(last_pt[0], last_pt[1], last_pt[2], w, h)
             if proj:
                 sx, sy = proj
                 self.live_canvas.create_oval(sx-5, sy-5, sx+5, sy+5, fill="#ff3366", outline="white", width=1.5)
                 self.live_canvas.create_text(
                     15, h-15, 
-                    text=f"CAM: ({last_pt[0]:+.2f}, {last_pt[1]:+.2f}, {last_pt[2]:+.2f}) | PTS: {len(self.live_points)}", 
+                    text=f"CAM: ({last_pt[0]:+.2f}, {last_pt[1]:+.2f}, {last_pt[2]:+.2f}) | PTS: {len(pts_copy)}", 
                     anchor="w", fill="#00f0ff", font=("Consolas", 8, "bold")
                 )
 
