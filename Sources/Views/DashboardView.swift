@@ -1154,8 +1154,8 @@ struct PointCloudVisualizerView: View {
                 
                 context.fill(greenPath, with: .color(Color.green.opacity(0.85)))
                 
-                // Draw Trajectory Path if requested
-                if showTrajectory, let pathPoints = trajectory, pathPoints.count > 1 {
+                // Draw Trajectory Path if requested (disabled in camera composition mode to avoid cluttering the camera view)
+                if !showCameraComposition, showTrajectory, let pathPoints = trajectory, pathPoints.count > 1 {
                     context.stroke(
                         Path { path in
                             var hasMoved = false
@@ -1456,7 +1456,7 @@ struct MultiTouchGestureOverlay: UIViewRepresentable {
                     let sinY = sin(parent.rotY)
                     let scale = 0.005 / parent.zoom
                     parent.panX -= Double(translation.x) * cosY * scale
-                    parent.panZ += Double(translation.x) * sinY * scale
+                    parent.panZ -= Double(translation.x) * sinY * scale
                     parent.panY += Double(translation.y) * scale
                 }
                 gesture.setTranslation(.zero, in: gesture.view)
@@ -1471,6 +1471,16 @@ struct MultiTouchGestureOverlay: UIViewRepresentable {
             parent.zoom *= Double(gesture.scale)
             parent.zoom = max(0.2, min(5.0, parent.zoom))
             gesture.scale = 1.0
+        }
+
+        @objc func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
+            parent.rotX = -0.4
+            parent.rotY = -0.6
+            parent.panX = 0.0
+            parent.panY = 0.0
+            parent.panZ = 0.0
+            parent.zoom = 1.0
+            parent.onInteractionBegan?()
         }
     }
     
@@ -1490,6 +1500,10 @@ struct MultiTouchGestureOverlay: UIViewRepresentable {
         
         let pinchGesture = UIPinchGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePinch(_:)))
         view.addGestureRecognizer(pinchGesture)
+        
+        let doubleTapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDoubleTap(_:)))
+        doubleTapGesture.numberOfTapsRequired = 2
+        view.addGestureRecognizer(doubleTapGesture)
         
         return view
     }

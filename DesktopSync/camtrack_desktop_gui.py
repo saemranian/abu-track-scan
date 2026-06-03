@@ -4054,7 +4054,7 @@ class CamTrackDesktopApp:
             scale = 0.005 * (1.0 / self.live_zoom)
             # Pan left/right moves along camera horizontal right vector
             self.live_pan_x -= dx * cos_y * scale
-            self.live_pan_z += dx * sin_y * scale
+            self.live_pan_z -= dx * sin_y * scale
             # Pan up/down moves along world vertical Y axis
             self.live_pan_y += dy * scale
             
@@ -4587,7 +4587,30 @@ class CamTrackDesktopApp:
         except Exception as e:
             logger.error("Failed to forward UDP packet", exc_info=True)
 
+def kill_zombie_processes():
+    import os
+    import subprocess
+    try:
+        current_pid = os.getpid()
+        for proc_name in ["abu_track_desktop.exe", "camtrack_desktop_gui.exe"]:
+            cmd = f'tasklist /FI "IMAGENAME eq {proc_name}" /FO CSV /NH'
+            res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            for line in res.stdout.splitlines():
+                if proc_name in line:
+                    parts = line.split(',')
+                    if len(parts) > 1:
+                        pid_str = parts[1].strip('"')
+                        try:
+                            pid = int(pid_str)
+                            if pid != current_pid:
+                                subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True)
+                        except ValueError:
+                            pass
+    except Exception:
+        pass
+
 if __name__ == "__main__":
+    kill_zombie_processes()
     root = tk.Tk()
     app = CamTrackDesktopApp(root)
     root.mainloop()
