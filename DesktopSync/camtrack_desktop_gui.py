@@ -152,6 +152,9 @@ class CamTrackDesktopApp:
         self.is_spout_enabled = tk.BooleanVar(value=False)
         self.latest_decoded_frame = None
         self.latest_decoded_pil_image = None
+        self.cam_actual_roll = 0.0
+        self.cam_actual_pitch = 0.0
+        self.cam_actual_yaw = 0.0
         self.video_decoder_running = False
         self.video_decoder_thread = None
         self.spout_sender = None
@@ -3383,6 +3386,9 @@ class CamTrackDesktopApp:
                     roll = roll_local
                     pitch = pitch_local
                     yaw = yaw_local
+                    self.cam_actual_roll = roll
+                    self.cam_actual_pitch = pitch
+                    self.cam_actual_yaw = yaw
                     
                     # Overwrite parsed dictionary to propagate offsets to canvas and forwarders automatically!
                     parsed["x"] = px
@@ -3823,15 +3829,34 @@ class CamTrackDesktopApp:
         
         if self.live_view_mode.get() == "Cockpit":
             # True perspective projection matching iPhone camera wide lens
-            # 24mm equivalent on a 36mm wide sensor (active 16:9 height is 20.25mm)
-            # Correct for negative depth sign along camera viewing direction
-            cam_depth = -depth2
-            if cam_depth <= 0.01:
+            # Translate relative to camera:
+            dx = x - self.live_pan_x
+            dy = y - self.live_pan_y
+            dz = z - self.live_pan_z
+            
+            # Compute camera orientation quaternion in the aligned workspace space
+            q_w, q_x, q_y, q_z = self.euler_to_quaternion(
+                self.cam_actual_roll, 
+                self.cam_actual_pitch, 
+                self.cam_actual_yaw
+            )
+            
+            # Transform to camera space using conjugate rotation (inverse):
+            xc, yc, zc = self.rotate_vector_by_quaternion(dx, dy, dz, q_w, -q_x, -q_y, -q_z)
+            
+            # In iPhone camera local coordinates:
+            # xc is right, yc is up, zc is back.
+            # Depth in front of camera is d = -zc.
+            d = -zc
+            if d <= 0.01:
                 return None
+                
+            # Focal length: 24mm equivalent on a 36mm wide sensor (active 16:9 height is 20.25mm)
             focal_x = width * (24.0 / 36.0)
             focal_y = height * (24.0 / 36.0) * (16.0 / 9.0)
-            sx = cx + (x2 / cam_depth) * focal_x
-            sy = cy + (z3 / cam_depth) * focal_y
+            
+            sx = cx + (xc / d) * focal_x
+            sy = cy - (yc / d) * focal_y  # Positive Y is down on screen
             return sx, sy
             
         fov = 3.0
