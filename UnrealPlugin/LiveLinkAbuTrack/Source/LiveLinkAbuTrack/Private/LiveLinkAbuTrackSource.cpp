@@ -193,9 +193,25 @@ void FLiveLinkAbuTrackSource::ProcessPacket(const FString& PacketData)
 			
 			// Build Unreal Transform coordinate
 			CameraFrameData.Transform = FTransform(FRotator(Pitch, Yaw, Roll), FVector(X, Y, Z));
-			CameraFrameData.FocalLength = JsonObject->GetNumberField(TEXT("focalLength"));
+			
+			double FocalLength = 24.0;
+			JsonObject->TryGetNumberField(TEXT("focalLength"), FocalLength);
+			CameraFrameData.FocalLength = FocalLength;
+			
 			CameraFrameData.WorldTime = FLiveLinkWorldTime(FPlatformTime::Seconds());
 			CameraFrameData.MetaData.StringMetaData.Add(TEXT("Timestamp"), FString::SanitizeFloat(Timestamp));
+			
+			double K1 = 0.0;
+			if (JsonObject->TryGetNumberField(TEXT("k1"), K1))
+			{
+				CameraFrameData.MetaData.StringMetaData.Add(TEXT("K1"), FString::SanitizeFloat(K1));
+			}
+			
+			double K2 = 0.0;
+			if (JsonObject->TryGetNumberField(TEXT("k2"), K2))
+			{
+				CameraFrameData.MetaData.StringMetaData.Add(TEXT("K2"), FString::SanitizeFloat(K2));
+			}
 
 			LiveLinkClient->PushSubjectFrameData_AnyThread({ SourceGuid, SubjectName }, MoveTemp(FrameData));
 		}

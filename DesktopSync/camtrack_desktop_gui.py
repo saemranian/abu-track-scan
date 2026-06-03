@@ -285,6 +285,7 @@ class CamTrackDesktopApp:
         self.cam_k2 = 0.0
         
         # Thread-safe cached GUI variables (accessed by background playout thread)
+        self.cached_receiver_buffer_ms = 100.0
         self.cached_receiver_smoothing_sec = 1.0
         self.cached_ws_lever_x = 0.0
         self.cached_ws_lever_y = 0.0
@@ -3977,6 +3978,7 @@ class CamTrackDesktopApp:
             self.cached_live_view_mode = self.live_view_mode.get()
             self.cached_forward_enabled = self.forward_enabled.get()
             self.cached_receiver_auto_calibrate = self.receiver_auto_calibrate.get()
+            self.cached_receiver_buffer_ms = self.receiver_buffer_ms.get()
         except Exception:
             pass
 
