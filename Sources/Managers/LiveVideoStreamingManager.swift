@@ -357,10 +357,17 @@ class LiveVideoStreamingManager: NSObject {
         
         // 1. Check if it's a keyframe (I-Frame)
         var isKeyframe = false
-        if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [CFDictionary],
-           let attachment = attachments.first {
-            let notSync = CFDictionaryGetValue(attachment, Unmanaged.passUnretained(kCMSampleAttachmentKey_NotSync).toOpaque())
-            isKeyframe = (notSync == nil)
+        if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [Any],
+           let attachment = attachments.first as? [AnyHashable: Any] {
+            if let notSyncNum = attachment[kCMSampleAttachmentKey_NotSync] as? NSNumber {
+                isKeyframe = !notSyncNum.boolValue
+            } else if let notSyncBool = attachment[kCMSampleAttachmentKey_NotSync] as? Bool {
+                isKeyframe = !notSyncBool
+            } else {
+                isKeyframe = true
+            }
+        } else {
+            isKeyframe = true
         }
         
         // 2. Extract SPS / PPS Parameter Sets on Keyframes to initialize standard decoders mid-stream
