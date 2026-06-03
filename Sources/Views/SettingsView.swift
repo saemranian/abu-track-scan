@@ -905,6 +905,13 @@ struct SettingsView: View {
             .onChange(of: selectedLens) { newValue in
                 RigSettings.selectedLens = newValue
                 trackingManager.updateCameraConfiguration()
+                
+                // Automatically load model-specific defaults for lens distortion
+                let defaults = trackingManager.getDefaultDistortion(for: newValue)
+                RigSettings.lensDistortionK1 = defaults.0
+                RigSettings.lensDistortionK2 = defaults.1
+                self.lensDistortionK1 = defaults.0
+                self.lensDistortionK2 = defaults.1
             }
             .onChange(of: is4KEnabled) { newValue in
                 RigSettings.is4KEnabled = newValue

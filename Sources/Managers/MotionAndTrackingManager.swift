@@ -11,7 +11,7 @@ struct RawPoint3D: Identifiable, Hashable {
     let z: Float
 }
 
-class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
+class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, AVCaptureVideoDataOutputSampleBufferDelegate {
     private let motionManager = CMMotionManager()
     private let altimeter = CMAltimeter()
     
@@ -218,6 +218,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         stopCoreMotionUpdates()
         stopAltimeter()
         stopSessionTimer()
+        configureFrontCameraSession(forceStop: true)
         LiveVideoStreamingManager.shared.stopStreaming()
     }
     
@@ -385,6 +386,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             }
             
             self.arSession.run(configuration, options: [])
+            self.configureFrontCameraSession()
         }
     }
     
@@ -410,6 +412,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         }
         
         arSession.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+        configureFrontCameraSession()
         appState = "Foreground (ARKit VIO + LiDAR)"
     }
     
@@ -431,6 +434,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
     
     private func stopARKitSession() {
         arSession.pause()
+        configureFrontCameraSession(forceStop: true)
     }
     
     // MARK: - CoreMotion Management (Background Fallback)
@@ -544,6 +548,161 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         }
     }
     
+    // Parallel AVCaptureSession for Front Camera streaming
+    private var frontCameraSession: AVCaptureSession?
+    private var frontVideoOutput: AVCaptureVideoDataOutput?
+    private let frontSessionQueue = DispatchQueue(label: "com.camtrack.frontSessionQueue")
+    
+    private struct LensOffsets {
+        let ultraWide: simd_float3
+        let telephoto: simd_float3
+        let front: simd_float3
+    }
+    
+    private func getDeviceOffsets() -> LensOffsets {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        let machineMirror = Mirror(reflecting: systemInfo.machine)
+        let identifier = machineMirror.children.reduce("") { identifier, element in
+            guard let value = element.value as? Int8, value != 0 else { return identifier }
+            return identifier + String(UnicodeScalar(UInt8(value)))
+        }
+        
+        // Map to standard offsets in meters (Wide to other lenses)
+        if identifier.hasPrefix("iPhone16,") || identifier.hasPrefix("iPhone17,") {
+            // iPhone 15 Pro / 15 Pro Max & 16 Pro / 16 Pro Max
+            return LensOffsets(
+                ultraWide: simd_float3(0.0155, -0.0122, 0.0),
+                telephoto: simd_float3(0.0, -0.0245, 0.0),
+                front: simd_float3(-0.0162, 0.0125, -0.0082)
+            )
+        } else if identifier.hasPrefix("iPhone15,") || identifier.hasPrefix("iPhone14,") {
+            // iPhone 14 Pro / 14 Pro Max & 13 Pro / 13 Pro Max
+            return LensOffsets(
+                ultraWide: simd_float3(0.0145, -0.0118, 0.0),
+                telephoto: simd_float3(0.0, -0.0232, 0.0),
+                front: simd_float3(-0.0150, 0.0115, -0.0078)
+            )
+        } else {
+            // Default Fallback
+            return LensOffsets(
+                ultraWide: simd_float3(0.0150, -0.0120, 0.0),
+                telephoto: simd_float3(0.0, -0.0240, 0.0),
+                front: simd_float3(-0.0150, 0.0120, -0.0080)
+            )
+        }
+    }
+    
+    func getDefaultDistortion(for lens: String) -> (Double, Double) {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        let machineMirror = Mirror(reflecting: systemInfo.machine)
+        let identifier = machineMirror.children.reduce("") { identifier, element in
+            guard let value = element.value as? Int8, value != 0 else { return identifier }
+            return identifier + String(UnicodeScalar(Unicode.Scalar(UInt8(value))))
+        }
+        
+        if identifier.hasPrefix("iPhone16,") || identifier.hasPrefix("iPhone17,") {
+            // iPhone 15 Pro / 15 Pro Max & 16 Pro / 16 Pro Max
+            switch lens {
+            case "UltraWide": return (-0.075, 0.015)
+            case "Telephoto": return (0.001, 0.0)
+            case "Front":     return (-0.012, 0.003)
+            default:          return (0.005, -0.002) // Wide (Main)
+            }
+        } else if identifier.hasPrefix("iPhone15,") || identifier.hasPrefix("iPhone14,") {
+            // iPhone 14 Pro / 14 Pro Max & 13 Pro / 13 Pro Max
+            switch lens {
+            case "UltraWide": return (-0.080, 0.018)
+            case "Telephoto": return (0.001, 0.0)
+            case "Front":     return (-0.014, 0.004)
+            default:          return (0.006, -0.002) // Wide (Main)
+            }
+        } else {
+            // Default Fallback
+            switch lens {
+            case "UltraWide": return (-0.078, 0.016)
+            case "Telephoto": return (0.0, 0.0)
+            case "Front":     return (-0.013, 0.003)
+            default:          return (0.0, 0.0) // Wide (Main)
+            }
+        }
+    }
+    
+    private func configureFrontCameraSession(forceStop: Bool = false) {
+        frontSessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            let selectedLens = RigSettings.selectedLens
+            
+            if selectedLens == "Front" && !forceStop {
+                if self.frontCameraSession != nil { return } // Already running
+                
+                print("MotionAndTrackingManager: Initializing parallel Front Camera capture session")
+                let session = AVCaptureSession()
+                session.beginConfiguration()
+                
+                let deviceDiscovery = AVCaptureDevice.DiscoverySession(
+                    deviceTypes: [.builtInTrueDepthCamera, .builtInWideAngleCamera],
+                    mediaType: .video,
+                    position: .front
+                )
+                
+                guard let frontDevice = deviceDiscovery.devices.first else {
+                    print("MotionAndTrackingManager: No front camera device found.")
+                    session.commitConfiguration()
+                    return
+                }
+                
+                do {
+                    let input = try AVCaptureDeviceInput(device: frontDevice)
+                    if session.canAddInput(input) {
+                        session.addInput(input)
+                    }
+                    
+                    let videoOutput = AVCaptureVideoDataOutput()
+                    videoOutput.alwaysDiscardsLateVideoFrames = true
+                    videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange]
+                    
+                    if session.canAddOutput(videoOutput) {
+                        session.addOutput(videoOutput)
+                        videoOutput.setSampleBufferDelegate(self, queue: self.frontSessionQueue)
+                    }
+                    
+                    if RigSettings.is4KEnabled && session.canSetSessionPreset(.hd3840x2160) {
+                        session.sessionPreset = .hd3840x2160
+                    } else if session.canSetSessionPreset(.hd1920x1080) {
+                        session.sessionPreset = .hd1920x1080
+                    }
+                    
+                    session.commitConfiguration()
+                    session.startRunning()
+                    
+                    self.frontCameraSession = session
+                    self.frontVideoOutput = videoOutput
+                    print("MotionAndTrackingManager: Front camera capture session started.")
+                } catch {
+                    print("MotionAndTrackingManager: Failed to configure front camera input: \(error)")
+                    session.commitConfiguration()
+                }
+            } else {
+                if let session = self.frontCameraSession {
+                    print("MotionAndTrackingManager: Stopping parallel Front Camera capture session")
+                    session.stopRunning()
+                    self.frontCameraSession = nil
+                    self.frontVideoOutput = nil
+                }
+            }
+        }
+    }
+    
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard isTrackingActive && isLiveVideoStreamingEnabled else { return }
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
+        let ntpTime = Date().timeIntervalSince1970 + ntpSyncOffset
+        LiveVideoStreamingManager.shared.encodeAndStream(pixelBuffer: pixelBuffer, ntpTimestamp: ntpTime)
+    }
+
     // MARK: - ARSessionDelegate
     
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
@@ -552,12 +711,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         // Absolute precision: only process frame updates when visual-inertial tracking state is normal
         guard case .normal = frame.camera.trackingState else { return }
         
+        let selectedLens = RigSettings.selectedLens
         let equivalentFocalLength = Double(frame.camera.intrinsics[0][0]) * (36.0 / Double(frame.camera.imageResolution.width))
         DispatchQueue.main.async {
             self.currentFocalLength = equivalentFocalLength
         }
         
-        if isLiveVideoStreamingEnabled {
+        if isLiveVideoStreamingEnabled && selectedLens != "Front" {
             let pixelBuffer = frame.capturedImage
             let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
             let ntpTime = Date().timeIntervalSince1970 + ntpSyncOffset
@@ -579,19 +739,46 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
         let transform = frame.camera.transform
         let columns = transform.columns
         
-        // 1. Raw VIO translation vector (X, Y, Z in meters)
-        var px = Double(columns.3.x)
-        var py = Double(columns.3.y)
-        var pz = Double(columns.3.z)
+        // Resolve dynamic device-model-specific physical offsets from the Wide camera to the selected lens
+        let offsets = getDeviceOffsets()
+        var lensOffset = simd_float3(0, 0, 0)
+        if selectedLens == "UltraWide" {
+            lensOffset = offsets.ultraWide
+        } else if selectedLens == "Telephoto" {
+            lensOffset = offsets.telephoto
+        } else if selectedLens == "Front" {
+            lensOffset = offsets.front
+        }
+        
+        // Convert to Quaternions & Apply Yaw offsets
+        var quaternion = frame.camera.quaternion
+        
+        // Rotate local lens offset using VIO orientation (in camera coordinates)
+        var rotatedOffset = quaternion.act(lensOffset)
+        if selectedLens == "Front" {
+            // Apply 180-degree rotational offset to the translation offset calculation
+            let y180Quat = simd_quatf(angle: .pi, axis: simd_float3(0, 1, 0))
+            let frontRotation = quaternion * y180Quat
+            rotatedOffset = frontRotation.act(lensOffset)
+        }
+        
+        // Apply VIO translation modified by the physical lens offset
+        var px = Double(columns.3.x) + Double(rotatedOffset.x)
+        var py = Double(columns.3.y) + Double(rotatedOffset.y)
+        var pz = Double(columns.3.z) + Double(rotatedOffset.z)
         
         // Convert the 3x3 rotation matrix to Euler angles (degrees)
-        let attitude = frame.camera.eulerAngles
+        var attitude = frame.camera.eulerAngles
         
-        // Convert to Quaternions
-        var quaternion = frame.camera.quaternion
         if cachedYawOffsetRad != 0 {
-            let offsetQuat = simd_quatd(angle: cachedYawOffsetRad, axis: simd_double3(0, 1, 0))
+            let offsetQuat = simd_quatf(angle: Float(cachedYawOffsetRad), axis: simd_float3(0, 1, 0))
             quaternion = offsetQuat * quaternion
+        }
+        
+        // If front camera, apply a 180 degrees rotational offset around the vertical axis
+        if selectedLens == "Front" {
+            let y180Quat = simd_quatf(angle: .pi, axis: simd_float3(0, 1, 0))
+            quaternion = quaternion * y180Quat
         }
         
         // 2. Apply DSLR Lever Arm offset (local space to world space rotation)
@@ -638,18 +825,28 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             self.localY = ty
             self.localZ = tz
             
-            // eulerAngles represent pitch, yaw, roll in radians
-            self.pitch = Double(attitude.x) * (180.0 / .pi)
-            
-            var adjustedYaw = Double(attitude.y) * (180.0 / .pi) + self.cachedOriginOffsetYaw
-            if adjustedYaw > 180 {
-                adjustedYaw -= 360
-            } else if adjustedYaw < -180 {
-                adjustedYaw += 360
+            if selectedLens == "Front" {
+                // Invert pitch and roll, rotate yaw by 180 degrees for opposite facing selfie view
+                self.pitch = -Double(attitude.x) * (180.0 / .pi)
+                var adjustedYaw = Double(attitude.y) * (180.0 / .pi) + 180.0 + self.cachedOriginOffsetYaw
+                if adjustedYaw > 180 {
+                    adjustedYaw -= 360
+                } else if adjustedYaw < -180 {
+                    adjustedYaw += 360
+                }
+                self.yaw = adjustedYaw
+                self.roll = -Double(attitude.z) * (180.0 / .pi)
+            } else {
+                self.pitch = Double(attitude.x) * (180.0 / .pi)
+                var adjustedYaw = Double(attitude.y) * (180.0 / .pi) + self.cachedOriginOffsetYaw
+                if adjustedYaw > 180 {
+                    adjustedYaw -= 360
+                } else if adjustedYaw < -180 {
+                    adjustedYaw += 360
+                }
+                self.yaw = adjustedYaw
+                self.roll = Double(attitude.z) * (180.0 / .pi)
             }
-            self.yaw = adjustedYaw
-            
-            self.roll = Double(attitude.z) * (180.0 / .pi)
             
             self.q_w = quaternion.vector.w
             self.q_x = quaternion.vector.x

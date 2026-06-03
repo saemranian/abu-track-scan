@@ -9,6 +9,7 @@
 #include "HAL/RunnableThread.h"
 #include "Misc/ScopeLock.h"
 #include "ILiveLinkClient.h"
+#include "Async/Async.h"
 
 FLiveLinkAbuTrackSource::FLiveLinkAbuTrackSource(int32 InPort)
 	: LiveLinkClient(nullptr)
@@ -46,11 +47,17 @@ bool FLiveLinkAbuTrackSource::RequestSourceShutdown()
 
 void FLiveLinkAbuTrackSource::InitializeSettings(ULiveLinkSourceSettings* Settings)
 {
+	ULiveLinkAbuTrackSourceSettings* SourceSettings = Cast<ULiveLinkAbuTrackSourceSettings>(Settings);
+	if (SourceSettings)
+	{
+		SourceSettings->Port = UDPPort;
+		SavedSettings = SourceSettings;
+	}
 }
 
 TSubclassOf<ULiveLinkSourceSettings> FLiveLinkAbuTrackSource::GetSettingsClass() const
 {
-	return ULiveLinkSourceSettings::StaticClass();
+	return ULiveLinkAbuTrackSourceSettings::StaticClass();
 }
 
 FText FLiveLinkAbuTrackSource::GetSourceType() const
@@ -196,22 +203,39 @@ void FLiveLinkAbuTrackSource::ProcessPacket(const FString& PacketData)
 			
 			double FocalLength = 24.0;
 			JsonObject->TryGetNumberField(TEXT("focalLength"), FocalLength);
-			CameraFrameData.FocalLength = FocalLength;
+			
+			double K1 = 0.0;
+			JsonObject->TryGetNumberField(TEXT("k1"), K1);
+			
+			double K2 = 0.0;
+			JsonObject->TryGetNumberField(TEXT("k2"), K2);
+
+			double FinalFocalLength = FocalLength;
+			if (SavedSettings.IsValid())
+			{
+				ULiveLinkAbuTrackSourceSettings* SettingsToUpdate = SavedSettings.Get();
+				AsyncTask(ENamedThreads::GameThread, [SettingsToUpdate, FocalLength, K1, K2]()
+				{
+					if (SettingsToUpdate && SettingsToUpdate->IsValidLowLevel())
+					{
+						SettingsToUpdate->LiveFocalLength = FocalLength;
+						SettingsToUpdate->K1 = K1;
+						SettingsToUpdate->K2 = K2;
+					}
+				});
+
+				if (!SavedSettings->bUseLiveFocalLength)
+				{
+					FinalFocalLength = SavedSettings->FocalLengthOverride;
+				}
+			}
+
+			CameraFrameData.FocalLength = FinalFocalLength;
 			
 			CameraFrameData.WorldTime = FLiveLinkWorldTime(FPlatformTime::Seconds());
 			CameraFrameData.MetaData.StringMetaData.Add(TEXT("Timestamp"), FString::SanitizeFloat(Timestamp));
-			
-			double K1 = 0.0;
-			if (JsonObject->TryGetNumberField(TEXT("k1"), K1))
-			{
-				CameraFrameData.MetaData.StringMetaData.Add(TEXT("K1"), FString::SanitizeFloat(K1));
-			}
-			
-			double K2 = 0.0;
-			if (JsonObject->TryGetNumberField(TEXT("k2"), K2))
-			{
-				CameraFrameData.MetaData.StringMetaData.Add(TEXT("K2"), FString::SanitizeFloat(K2));
-			}
+			CameraFrameData.MetaData.StringMetaData.Add(TEXT("K1"), FString::SanitizeFloat(K1));
+			CameraFrameData.MetaData.StringMetaData.Add(TEXT("K2"), FString::SanitizeFloat(K2));
 
 			LiveLinkClient->PushSubjectFrameData_AnyThread({ SourceGuid, SubjectName }, MoveTemp(FrameData));
 		}
