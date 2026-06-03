@@ -390,19 +390,40 @@ class LiveVideoStreamingManager: NSObject {
             AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 4] Extracting format description")
             if let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {
                 var paramSetCount = 0
-                CMVideoFormatDescriptionGetH264ParameterSetAtIndex(formatDesc, parameterSetIndex: 0, parameterSetPointerOut: nil, parameterSetSizeOut: nil, parameterSetCountOut: &paramSetCount, nalUnitHeaderLengthOut: nil)
+                let countStatus = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+                    formatDesc,
+                    parameterSetIndex: 0,
+                    parameterSetPointerOut: nil,
+                    parameterSetSizeOut: nil,
+                    parameterSetCountOut: &paramSetCount,
+                    nalUnitHeaderLengthOut: nil
+                )
+                
+                guard countStatus == noErr else {
+                    AppLogger.error("LiveVideoStreamingManager processEncodedFrame: Failed to get parameter set count. Status: \(countStatus)")
+                    return
+                }
                 
                 AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 4.1] Found \(paramSetCount) H.264 Parameter Sets")
                 
                 for i in 0..<paramSetCount {
-                    var paramPtr: UnsafePointer<UInt8>?
+                    var paramPtr: UnsafePointer<UInt8>? = nil
                     var paramSize = 0
-                    CMVideoFormatDescriptionGetH264ParameterSetAtIndex(formatDesc, parameterSetIndex: i, parameterSetPointerOut: &paramPtr, parameterSetSizeOut: &paramSize, parameterSetCountOut: nil, nalUnitHeaderLengthOut: nil)
+                    let status = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+                        formatDesc,
+                        parameterSetIndex: i,
+                        parameterSetPointerOut: &paramPtr,
+                        parameterSetSizeOut: &paramSize,
+                        parameterSetCountOut: nil,
+                        nalUnitHeaderLengthOut: nil
+                    )
                     
-                    if let ptr = paramPtr {
+                    if status == noErr, let ptr = paramPtr, paramSize > 0 {
                         AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 4.2] Copying Parameter Set #\(i) (size: \(paramSize))")
                         let naluData = Data(bytes: ptr, count: paramSize)
                         sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, isLast: false)
+                    } else {
+                        AppLogger.error("LiveVideoStreamingManager processEncodedFrame: CMVideoFormatDescriptionGetH264ParameterSetAtIndex failed at index \(i) with status: \(status), ptr: \(String(describing: paramPtr)), size: \(paramSize)")
                     }
                 }
             }
