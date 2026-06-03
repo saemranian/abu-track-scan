@@ -487,15 +487,22 @@ class LiveVideoStreamingManager: NSObject {
             packet.append(0x80) // V=2, P=0, X=0, CC=0
             packet.append(UInt8(96 | (isLast ? 0x80 : 0x00))) // Payload Type = 96 (Dynamic H.264), Marker Bit set on final packet
             
-            var seqBig = rtpSequenceNumber.bigEndian
-            packet.append(contentsOf: withUnsafeBytes(of: &seqBig) { Array($0) })
+            // Sequence Number (UInt16)
+            packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
+            packet.append(UInt8(rtpSequenceNumber & 0xFF))
             rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
             
-            var tsBig = rtpTimestamp.bigEndian
-            packet.append(contentsOf: withUnsafeBytes(of: &tsBig) { Array($0) })
+            // Timestamp (UInt32)
+            packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
+            packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
+            packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
+            packet.append(UInt8(rtpTimestamp & 0xFF))
             
-            var ssrcBig = ssrc.bigEndian
-            packet.append(contentsOf: withUnsafeBytes(of: &ssrcBig) { Array($0) })
+            // SSRC (UInt32)
+            packet.append(UInt8((ssrc >> 24) & 0xFF))
+            packet.append(UInt8((ssrc >> 16) & 0xFF))
+            packet.append(UInt8((ssrc >> 8) & 0xFF))
+            packet.append(UInt8(ssrc & 0xFF))
             
             // 2. Payload (Full NALU)
             packet.append(nalu)
@@ -524,15 +531,22 @@ class LiveVideoStreamingManager: NSObject {
                 packet.append(0x80)
                 packet.append(UInt8(96 | ((isLast && isLastFragment) ? 0x80 : 0x00))) // Marker bit set on final fragment of final frame NALU
                 
-                var seqBig = rtpSequenceNumber.bigEndian
-                packet.append(contentsOf: withUnsafeBytes(of: &seqBig) { Array($0) })
+                // Sequence Number (UInt16)
+                packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
+                packet.append(UInt8(rtpSequenceNumber & 0xFF))
                 rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
                 
-                var tsBig = rtpTimestamp.bigEndian
-                packet.append(contentsOf: withUnsafeBytes(of: &tsBig) { Array($0) })
+                // Timestamp (UInt32)
+                packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
+                packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
+                packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
+                packet.append(UInt8(rtpTimestamp & 0xFF))
                 
-                var ssrcBig = ssrc.bigEndian
-                packet.append(contentsOf: withUnsafeBytes(of: &ssrcBig) { Array($0) })
+                // SSRC (UInt32)
+                packet.append(UInt8((ssrc >> 24) & 0xFF))
+                packet.append(UInt8((ssrc >> 16) & 0xFF))
+                packet.append(UInt8((ssrc >> 8) & 0xFF))
+                packet.append(UInt8(ssrc & 0xFF))
                 
                 // 2. FU-A Indicator Byte
                 packet.append(fuIndicator)
