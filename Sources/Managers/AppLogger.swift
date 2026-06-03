@@ -73,8 +73,8 @@ public final class AppLogger {
     }
     
     public func log(level: String, message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        logQueue.async { [weak self] in
-            guard let self = self, let url = self.logFileUrl else { return }
+        logQueue.sync {
+            guard let url = self.logFileUrl else { return }
             
             let timestamp = self.getFormattedTimestamp()
             let fileName = URL(fileURLWithPath: file).lastPathComponent
