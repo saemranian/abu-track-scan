@@ -81,6 +81,21 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             UserDefaults.standard.set(videoStreamQuality, forKey: "videoStreamQuality")
         }
     }
+    @Published var videoStreamDiagLevel: Int = UserDefaults.standard.integer(forKey: "videoStreamDiagLevel") == 0 ? 4 : UserDefaults.standard.integer(forKey: "videoStreamDiagLevel") {
+        didSet {
+            UserDefaults.standard.set(videoStreamDiagLevel, forKey: "videoStreamDiagLevel")
+        }
+    }
+    
+    func diagLevelDescription(for level: Int) -> String {
+        switch level {
+        case 1: return "Lvl 1: Socket Only (No GPU Copy, No H.264 Encoder, No Network Video Packets)"
+        case 2: return "Lvl 2: GPU Transfer Only (Allocates Pool Buffer + GPU Transfer, skips Encoder & Network)"
+        case 3: return "Lvl 3: Encoder Dry-Run (GPU Transfer + hardware compression, exits before UDP/Network)"
+        case 4: return "Lvl 4: Full H.264 RTP Stream (Complete pipeline, default)"
+        default: return "Lvl 4: Full H.264 RTP Stream (Complete pipeline, default)"
+        }
+    }
     private let videoEncodingQueue = DispatchQueue(label: "com.abutrack.videoencoding.dispatch", qos: .userInteractive)
     
     // New point cloud points queue for live network stream to desktop app
@@ -185,7 +200,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
                 bitrate = 8_000_000
             }
             
-            LiveVideoStreamingManager.shared.startStreaming(ip: firstIP, port: videoStreamPort, width: width, height: height, bitrate: bitrate)
+            LiveVideoStreamingManager.shared.startStreaming(ip: firstIP, port: videoStreamPort, width: width, height: height, bitrate: bitrate, diagLevel: videoStreamDiagLevel)
         }
         
         if UIApplication.shared.applicationState == .active {

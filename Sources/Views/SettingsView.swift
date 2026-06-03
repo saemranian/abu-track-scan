@@ -367,6 +367,28 @@ struct SettingsView: View {
                                             .font(.caption2)
                                             .foregroundColor(.gray)
                                     }
+                                    
+                                    Divider()
+                                        .background(Color.gray.opacity(0.3))
+                                    
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Diagnostic H.264 Mode")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.orange)
+                                        
+                                        Picker("Diag Level", selection: $trackingManager.videoStreamDiagLevel) {
+                                            Text("Lvl 1").tag(1)
+                                            Text("Lvl 2").tag(2)
+                                            Text("Lvl 3").tag(3)
+                                            Text("Lvl 4").tag(4)
+                                        }
+                                        .pickerStyle(.segmented)
+                                        
+                                        Text(trackingManager.diagLevelDescription(for: trackingManager.videoStreamDiagLevel))
+                                            .font(.caption2)
+                                            .foregroundColor(.orange)
+                                    }
                                 }
                                 
                                 if streamManager.isStreamingEnabled {

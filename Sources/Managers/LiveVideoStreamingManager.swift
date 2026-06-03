@@ -32,6 +32,7 @@ class LiveVideoStreamingManager: NSObject {
     private var targetWidth: Int32 = 1920
     private var currentBitrate: Int = 1_500_000
     private var currentFPS: Int = 30
+    private var currentDiagLevel: Int = 4
     
     // Continuous frame counter to act as a guaranteed strictly increasing presentation time clock source
     private var frameCount: Int64 = 0
@@ -40,7 +41,7 @@ class LiveVideoStreamingManager: NSObject {
         super.init()
     }
     
-    func startStreaming(ip: String, port: Int, width: Int32 = 1920, height: Int32 = 1080, bitrate: Int = 10_000_000, fps: Int = 30) {
+    func startStreaming(ip: String, port: Int, width: Int32 = 1920, height: Int32 = 1080, bitrate: Int = 10_000_000, fps: Int = 30, diagLevel: Int = 4) {
         encodingQueue.async {
             self.sessionLock.lock()
             guard !self.isStreamingActive else {
@@ -49,7 +50,7 @@ class LiveVideoStreamingManager: NSObject {
                 return
             }
             
-            AppLogger.info("LiveVideoStreamingManager: Initializing video stream targeting \(ip):\(port) with target width \(width) @ \(bitrate / 1_000) Kbps")
+            AppLogger.info("LiveVideoStreamingManager: Initializing video stream targeting \(ip):\(port) with target width \(width) @ \(bitrate / 1_000) Kbps (Diag Level: \(diagLevel))")
             
             self.currentIP = ip
             self.currentPort = port
@@ -57,6 +58,7 @@ class LiveVideoStreamingManager: NSObject {
             self.currentBitrate = bitrate
             self.currentFPS = fps
             self.frameCount = 0
+            self.currentDiagLevel = diagLevel
             self.isStreamingActive = true
             self.sessionLock.unlock()
             
@@ -96,6 +98,12 @@ class LiveVideoStreamingManager: NSObject {
     func encodeAndStream(pixelBuffer: CVPixelBuffer, ntpTimestamp: Double) {
         self.sessionLock.lock()
         guard self.isStreamingActive else {
+            self.sessionLock.unlock()
+            return
+        }
+        
+        // LEVEL 1: Socket Only -> Skip all buffer processing, GPU cloner, and encoding!
+        if self.currentDiagLevel == 1 {
             self.sessionLock.unlock()
             return
         }
@@ -147,6 +155,12 @@ class LiveVideoStreamingManager: NSObject {
         guard transferStatus == noErr else {
             self.sessionLock.unlock()
             AppLogger.error("LiveVideoStreamingManager: VTPixelTransferSessionTransferImage failed with status: \(transferStatus)")
+            return
+        }
+        
+        // LEVEL 2: GPU Copy/Scale Only -> Skip VideoToolbox encoding and network packetization!
+        if self.currentDiagLevel == 2 {
+            self.sessionLock.unlock()
             return
         }
         
@@ -213,6 +227,11 @@ class LiveVideoStreamingManager: NSObject {
                     return
                 }
                 let manager = Unmanaged<LiveVideoStreamingManager>.fromOpaque(refCon).takeUnretainedValue()
+                
+                // LEVEL 3: Encoding Dry-Run -> Skip NALU parsing, packetization, and UDP transmission!
+                if manager.currentDiagLevel == 3 {
+                    return
+                }
                 
                 guard status == noErr, let sampleBuffer = sampleBuffer else {
                     AppLogger.error("LiveVideoStreamingManager Callback: Encoder returned error status: \(status) or empty buffer.")
