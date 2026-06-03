@@ -3805,9 +3805,11 @@ class CamTrackDesktopApp:
                 self.ws_origin_yaw.set(self.ws_origin_yaw.get() + dx * 0.1)
                 self.ws_origin_pitch.set(self.ws_origin_pitch.get() - dy * 0.1)
         else:
-            if self.live_follow.get() and self.live_view_mode.get() == "Cockpit":
+            if self.cached_live_follow and self.cached_live_view_mode == "Cockpit":
+                self.live_follow.set(False)
                 self.live_view_mode.set("Orbit")
-            self.live_rot_y += dx * 0.005
+            # Reverse left-right orbit direction
+            self.live_rot_y -= dx * 0.005
             self.live_rot_x += dy * 0.005
             
         self.last_live_mouse_x = event.x
@@ -3827,12 +3829,16 @@ class CamTrackDesktopApp:
             self.ws_origin_x.set(self.ws_origin_x.get() - tx)
             self.ws_origin_z.set(self.ws_origin_z.get() - tz)
         else:
-            if self.live_follow.get():
+            if self.cached_live_follow:
                 self.live_follow.set(False)
             cos_y = math.cos(self.live_rot_y)
             sin_y = math.sin(self.live_rot_y)
-            self.live_pan_x -= (dx * cos_y + dy * sin_y) * 0.005 * (1.0 / self.live_zoom)
-            self.live_pan_z -= (-dx * sin_y + dy * cos_y) * 0.005 * (1.0 / self.live_zoom)
+            scale = 0.005 * (1.0 / self.live_zoom)
+            # Pan left/right moves along camera horizontal right vector
+            self.live_pan_x -= dx * cos_y * scale
+            self.live_pan_z += dx * sin_y * scale
+            # Pan up/down moves along world vertical Y axis
+            self.live_pan_y += dy * scale
             
         self.last_live_mouse_x = event.x
         self.last_live_mouse_y = event.y
