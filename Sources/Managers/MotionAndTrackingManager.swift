@@ -554,9 +554,9 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
     private let frontSessionQueue = DispatchQueue(label: "com.camtrack.frontSessionQueue")
     
     private struct LensOffsets {
-        let ultraWide: simd_float3
-        let telephoto: simd_float3
-        let front: simd_float3
+        let ultraWide: simd_double3
+        let telephoto: simd_double3
+        let front: simd_double3
     }
     
     private func getDeviceOffsets() -> LensOffsets {
@@ -572,23 +572,23 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
         if identifier.hasPrefix("iPhone16,") || identifier.hasPrefix("iPhone17,") {
             // iPhone 15 Pro / 15 Pro Max & 16 Pro / 16 Pro Max
             return LensOffsets(
-                ultraWide: simd_float3(0.0155, -0.0122, 0.0),
-                telephoto: simd_float3(0.0, -0.0245, 0.0),
-                front: simd_float3(-0.0162, 0.0125, -0.0082)
+                ultraWide: simd_double3(0.0155, -0.0122, 0.0),
+                telephoto: simd_double3(0.0, -0.0245, 0.0),
+                front: simd_double3(-0.0162, 0.0125, -0.0082)
             )
         } else if identifier.hasPrefix("iPhone15,") || identifier.hasPrefix("iPhone14,") {
             // iPhone 14 Pro / 14 Pro Max & 13 Pro / 13 Pro Max
             return LensOffsets(
-                ultraWide: simd_float3(0.0145, -0.0118, 0.0),
-                telephoto: simd_float3(0.0, -0.0232, 0.0),
-                front: simd_float3(-0.0150, 0.0115, -0.0078)
+                ultraWide: simd_double3(0.0145, -0.0118, 0.0),
+                telephoto: simd_double3(0.0, -0.0232, 0.0),
+                front: simd_double3(-0.0150, 0.0115, -0.0078)
             )
         } else {
             // Default Fallback
             return LensOffsets(
-                ultraWide: simd_float3(0.0150, -0.0120, 0.0),
-                telephoto: simd_float3(0.0, -0.0240, 0.0),
-                front: simd_float3(-0.0150, 0.0120, -0.0080)
+                ultraWide: simd_double3(0.0150, -0.0120, 0.0),
+                telephoto: simd_double3(0.0, -0.0240, 0.0),
+                front: simd_double3(-0.0150, 0.0120, -0.0080)
             )
         }
     }
@@ -668,8 +668,8 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
                         videoOutput.setSampleBufferDelegate(self, queue: self.frontSessionQueue)
                     }
                     
-                    if RigSettings.is4KEnabled && session.canSetSessionPreset(.hd3840x2160) {
-                        session.sessionPreset = .hd3840x2160
+                    if RigSettings.is4KEnabled && session.canSetSessionPreset(.hd4K3840x2160) {
+                        session.sessionPreset = .hd4K3840x2160
                     } else if session.canSetSessionPreset(.hd1920x1080) {
                         session.sessionPreset = .hd1920x1080
                     }
@@ -741,7 +741,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
         
         // Resolve dynamic device-model-specific physical offsets from the Wide camera to the selected lens
         let offsets = getDeviceOffsets()
-        var lensOffset = simd_float3(0, 0, 0)
+        var lensOffset = simd_double3(0, 0, 0)
         if selectedLens == "UltraWide" {
             lensOffset = offsets.ultraWide
         } else if selectedLens == "Telephoto" {
@@ -757,27 +757,27 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
         var rotatedOffset = quaternion.act(lensOffset)
         if selectedLens == "Front" {
             // Apply 180-degree rotational offset to the translation offset calculation
-            let y180Quat = simd_quatf(angle: .pi, axis: simd_float3(0, 1, 0))
+            let y180Quat = simd_quatd(angle: .pi, axis: simd_double3(0, 1, 0))
             let frontRotation = quaternion * y180Quat
             rotatedOffset = frontRotation.act(lensOffset)
         }
         
         // Apply VIO translation modified by the physical lens offset
-        var px = Double(columns.3.x) + Double(rotatedOffset.x)
-        var py = Double(columns.3.y) + Double(rotatedOffset.y)
-        var pz = Double(columns.3.z) + Double(rotatedOffset.z)
+        var px = Double(columns.3.x) + rotatedOffset.x
+        var py = Double(columns.3.y) + rotatedOffset.y
+        var pz = Double(columns.3.z) + rotatedOffset.z
         
         // Convert the 3x3 rotation matrix to Euler angles (degrees)
         var attitude = frame.camera.eulerAngles
         
         if cachedYawOffsetRad != 0 {
-            let offsetQuat = simd_quatf(angle: Float(cachedYawOffsetRad), axis: simd_float3(0, 1, 0))
+            let offsetQuat = simd_quatd(angle: cachedYawOffsetRad, axis: simd_double3(0, 1, 0))
             quaternion = offsetQuat * quaternion
         }
         
         // If front camera, apply a 180 degrees rotational offset around the vertical axis
         if selectedLens == "Front" {
-            let y180Quat = simd_quatf(angle: .pi, axis: simd_float3(0, 1, 0))
+            let y180Quat = simd_quatd(angle: .pi, axis: simd_double3(0, 1, 0))
             quaternion = quaternion * y180Quat
         }
         

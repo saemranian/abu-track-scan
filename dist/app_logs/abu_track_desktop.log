@@ -396637,3 +396637,60 @@ AttributeError: 'CamTrackDesktopApp' object has no attribute 'cached_receiver_bu
 Traceback (most recent call last):
   File "camtrack_desktop_gui.py", line 3520, in run_playout_loop
 AttributeError: 'CamTrackDesktopApp' object has no attribute 'cached_receiver_buffer_ms'. Did you mean: 'receiver_buffer_ms'?
+2026-06-03 22:37:04,410 [INFO] MainThread: ============================================================
+2026-06-03 22:37:04,410 [INFO] MainThread: Abu Track Desktop App Initializing (Local Time: 2026-06-03 22:37:04.410624)
+2026-06-03 22:37:04,410 [INFO] MainThread: Python: 3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]
+2026-06-03 22:37:04,410 [INFO] MainThread: Executable Mode: PyInstaller Bundle
+2026-06-03 22:37:04,410 [INFO] MainThread: Log directory configured at: C:\Users\USer\.gemini\antigravity\scratch\ios_app_cam_track_01\dist\app_logs
+2026-06-03 22:37:04,410 [INFO] MainThread: ============================================================
+2026-06-03 22:37:05,202 [INFO] MainThread: generated new fontManager
+2026-06-03 22:38:08,044 [INFO] MainThread: Receiver startup requested. Targeting port: 8081
+2026-06-03 22:38:08,045 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8081
+2026-06-03 22:38:08,045 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8080 [Live Link JSON]
+2026-06-03 22:38:08,045 [INFO] Thread-8 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-06-03 22:38:08,086 [INFO] Thread-8 (run_receiver_socket): First valid tracking packet successfully received! Format: Live Link (AbuTrack) from 192.168.70.40:63572 (2266 bytes)
+2026-06-03 22:38:08,112 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Initializing local PyAV listener on port 8082
+2026-06-03 22:38:08,113 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Initialized temporary SDP path at C:\Users\USer\AppData\Local\Temp\tmpo7avdbrh.sdp for port 8082
+2026-06-03 22:38:08,113 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: PyAV background listening thread active.
+2026-06-03 22:38:08,113 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Opening PyAV container for codec H.264 on port 8082
+2026-06-03 22:38:09,955 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Bound successfully to SDP (H.264) for port 8082
+2026-06-03 22:38:41,074 [INFO] Thread-8 (run_receiver_socket): Stream Health Stats: Received 300 frames. Format: Live Link (AbuTrack). Raw Network Hz: 10.0, iOS real lock Hz: 10.0 Hz (iOS Lock)
+2026-06-03 22:38:50,828 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'C:\\Users\\USer\\AppData\\Local\\Temp\\tmpo7avdbrh.sdp')
+2026-06-03 22:38:51,332 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Opening PyAV container for codec H.264 on port 8082
+2026-06-03 22:38:52,345 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Bound successfully to SDP (H.264) for port 8082
+2026-06-03 22:39:14,769 [INFO] Thread-8 (run_receiver_socket): Stream Health Stats: Received 600 frames. Format: Live Link (AbuTrack). Raw Network Hz: 10.1, iOS real lock Hz: 9.9 Hz (iOS Lock)
+2026-06-03 22:39:29,301 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'C:\\Users\\USer\\AppData\\Local\\Temp\\tmpo7avdbrh.sdp')
+2026-06-03 22:39:29,806 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Opening PyAV container for codec H.264 on port 8082
+2026-06-03 22:39:31,888 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Bound successfully to SDP (H.264) for port 8082
+2026-06-03 22:39:33,975 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'C:\\Users\\USer\\AppData\\Local\\Temp\\tmpo7avdbrh.sdp')
+2026-06-03 22:39:34,477 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Opening PyAV container for codec H.264 on port 8082
+2026-06-03 22:39:35,166 [INFO] Thread-8 (run_receiver_socket): Still waiting for UDP packets on port 8081... No data received for 10 seconds.
+2026-06-03 22:39:36,550 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Bound successfully to SDP (H.264) for port 8082
+2026-06-03 22:39:38,616 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'C:\\Users\\USer\\AppData\\Local\\Temp\\tmpo7avdbrh.sdp')
+2026-06-03 22:39:39,117 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Opening PyAV container for codec H.264 on port 8082
+2026-06-03 22:39:41,189 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Bound successfully to SDP (H.264) for port 8082
+2026-06-03 22:39:43,267 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'C:\\Users\\USer\\AppData\\Local\\Temp\\tmpo7avdbrh.sdp')
+2026-06-03 22:39:43,768 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Opening PyAV container for codec H.264 on port 8082
+2026-06-03 22:39:45,242 [INFO] Thread-8 (run_receiver_socket): Still waiting for UDP packets on port 8081... No data received for 20 seconds.
+2026-06-03 22:39:45,849 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Bound successfully to SDP (H.264) for port 8082
+2026-06-03 22:39:47,925 [WARNING] Thread-10 (run_video_decoder_loop): Video Decoder: Stream connection lost or timed out. Retrying... ([Errno 1414092869] Immediate exit requested: 'C:\\Users\\USer\\AppData\\Local\\Temp\\tmpo7avdbrh.sdp')
+2026-06-03 22:39:48,427 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Opening PyAV container for codec H.264 on port 8082
+2026-06-03 22:39:50,509 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Bound successfully to SDP (H.264) for port 8082
+2026-06-03 22:40:08,874 [INFO] MainThread: Receiver stop requested. Terminating socket and threads.
+2026-06-03 22:40:08,874 [ERROR] Thread-8 (run_receiver_socket): UDP recvfrom encountered an exception: [WinError 10038] An operation was attempted on something that is not a socket
+Traceback (most recent call last):
+  File "camtrack_desktop_gui.py", line 3420, in run_receiver_socket
+OSError: [WinError 10038] An operation was attempted on something that is not a socket
+2026-06-03 22:40:08,874 [INFO] MainThread: UDP socket closed successfully.
+2026-06-03 22:40:08,874 [INFO] Thread-8 (run_receiver_socket): UDP socket receiving thread stopped. Total packets processed: 880
+2026-06-03 22:40:08,875 [INFO] MainThread: Forwarder socket closed successfully.
+2026-06-03 22:40:08,911 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Cleaned up temporary SDP file at C:\Users\USer\AppData\Local\Temp\tmpo7avdbrh.sdp
+2026-06-03 22:40:08,911 [INFO] Thread-10 (run_video_decoder_loop): Video Decoder: Listening thread cleanly terminated.
+2026-06-03 22:40:24,049 [INFO] MainThread: Receiver startup requested. Targeting port: 8081
+2026-06-03 22:40:24,050 [INFO] MainThread: UDP receiver bound successfully to 0.0.0.0:8081
+2026-06-03 22:40:24,050 [INFO] MainThread: Forwarder socket initialized targeting: 127.0.0.1:8080 [Live Link JSON]
+2026-06-03 22:40:24,051 [INFO] Thread-11 (run_receiver_socket): UDP socket receiving thread active and starting loop.
+2026-06-03 22:40:24,065 [INFO] Thread-11 (run_receiver_socket): First valid tracking packet successfully received! Format: Live Link (AbuTrack) from 192.168.70.40:63572 (319 bytes)
+2026-06-03 22:41:00,608 [INFO] Thread-11 (run_receiver_socket): Stream Health Stats: Received 300 frames. Format: Live Link (AbuTrack). Raw Network Hz: 8.1, iOS real lock Hz: 9.9 Hz (iOS Lock)
+2026-06-03 22:41:30,614 [INFO] Thread-11 (run_receiver_socket): Stream Health Stats: Received 600 frames. Format: Live Link (AbuTrack). Raw Network Hz: 8.4, iOS real lock Hz: 10.0 Hz (iOS Lock)
+2026-06-03 22:42:00,681 [INFO] Thread-11 (run_receiver_socket): Stream Health Stats: Received 900 frames. Format: Live Link (AbuTrack). Raw Network Hz: 10.8, iOS real lock Hz: 10.0 Hz (iOS Lock)
