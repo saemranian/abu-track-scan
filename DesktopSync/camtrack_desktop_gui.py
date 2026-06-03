@@ -3824,12 +3824,14 @@ class CamTrackDesktopApp:
         if self.live_view_mode.get() == "Cockpit":
             # True perspective projection matching iPhone camera wide lens
             # 24mm equivalent on a 36mm wide sensor (active 16:9 height is 20.25mm)
-            if depth2 <= 0.01:
+            # Correct for negative depth sign along camera viewing direction
+            cam_depth = -depth2
+            if cam_depth <= 0.01:
                 return None
             focal_x = width * (24.0 / 36.0)
             focal_y = height * (24.0 / 36.0) * (16.0 / 9.0)
-            sx = cx + (x2 / depth2) * focal_x
-            sy = cy + (z3 / depth2) * focal_y
+            sx = cx + (x2 / cam_depth) * focal_x
+            sy = cy + (z3 / cam_depth) * focal_y
             return sx, sy
             
         fov = 3.0
@@ -3912,6 +3914,10 @@ class CamTrackDesktopApp:
                         # Convert to PIL Image in background thread (RGB format, ultra-fast)
                         pil_img = frame.to_image()
                         self.latest_decoded_pil_image = pil_img
+                        
+                        # Auto-switch live view mode to Cockpit on first video frame decoded
+                        if self.live_view_mode.get() != "Cockpit":
+                            self.root.after(0, lambda: self.live_view_mode.set("Cockpit"))
                         
                         # Store BGR numpy array and send to Spout if enabled
                         frame_bgr = frame.to_ndarray(format="bgr24")
