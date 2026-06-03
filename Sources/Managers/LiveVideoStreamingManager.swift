@@ -222,27 +222,35 @@ class LiveVideoStreamingManager: NSObject {
             imageBufferAttributes: attributes as CFDictionary,
             compressedDataAllocator: nil,
             outputCallback: { (outputCallbackRefCon, sourceFrameRefCon, status, infoFlags, sampleBuffer) in
+                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 1] Callback entered")
                 guard let refCon = outputCallbackRefCon else {
                     AppLogger.error("LiveVideoStreamingManager Callback: outputCallbackRefCon is nil!")
                     return
                 }
                 let manager = Unmanaged<LiveVideoStreamingManager>.fromOpaque(refCon).takeUnretainedValue()
+                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 2] Manager resolved")
                 
                 // LEVEL 3: Encoding Dry-Run -> Skip NALU parsing, packetization, and UDP transmission!
                 if manager.currentDiagLevel == 3 {
+                    AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 3] Level 3 return hit")
                     return
                 }
+                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 4] Diag level check passed (\(manager.currentDiagLevel))")
                 
                 guard status == noErr, let sampleBuffer = sampleBuffer else {
                     AppLogger.error("LiveVideoStreamingManager Callback: Encoder returned error status: \(status) or empty buffer.")
                     return
                 }
+                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 5] SampleBuffer verified")
                 
                 // Decode the NTP timestamp from the source reference pointer
+                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 6] Decoding timestamp pointer")
                 let timestampUs = Int(bitPattern: sourceFrameRefCon)
                 let originalNtpTime = Double(timestampUs) / 1_000_000.0
+                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 7] Timestamp decoded: \(originalNtpTime)")
                 
                 // Process and packetize the sample buffer synchronously while it's guaranteed valid
+                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 8] Invoking processEncodedFrame")
                 manager.processEncodedFrame(sampleBuffer: sampleBuffer, ntpTimestamp: originalNtpTime)
             },
             refcon: selfPtr,
