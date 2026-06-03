@@ -334,7 +334,7 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate {
             filtered = typeFiltered
         }
         
-        var format: ARVideoFormat? = nil
+        var format: ARConfiguration.VideoFormat? = nil
         if is4K {
             format = filtered.first { f in
                 let w = f.imageResolution.width
