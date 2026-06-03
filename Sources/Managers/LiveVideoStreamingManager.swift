@@ -489,7 +489,7 @@ class LiveVideoStreamingManager: NSObject {
         guard !nalu.isEmpty else { return }
         
         // Scaled NTP Shutter timestamp in 90kHz ticks for accurate UE Composure frame alignment
-        let rtpTimestamp = UInt32(ntpTimestamp.truncatingRemainder(dividingBy: 4294967296.0) * 90000.0)
+        let rtpTimestamp = UInt32((ntpTimestamp * 90000.0).truncatingRemainder(dividingBy: 4294967296.0))
         let maxPayloadSize = 1400 // Safe Ethernet MTU Size to prevent packet fragmentation
         
         let naluHeader = nalu[0]
