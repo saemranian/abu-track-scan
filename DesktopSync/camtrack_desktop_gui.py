@@ -78,6 +78,102 @@ ACCENT_RED = "#FF3366"
 ACCENT_GREEN = "#10B981"
 
 
+class UEMonitorThread:
+    def __init__(self, url, canvas, app):
+        self.url = url
+        self.canvas = canvas
+        self.app = app
+        self.running = True
+        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread.start()
+        
+    def run(self):
+        import time
+        try:
+            import cv2
+        except ImportError:
+            logger.error("UE Monitor: OpenCV ('opencv-python') package not installed. Local stream decoder disabled.")
+            self.app.rx_log("UE MONITOR // ERROR: 'opencv-python' package not found!")
+            self.app.root.after(0, lambda: self.canvas.delete("all"))
+            self.app.root.after(0, lambda: self.canvas.create_text(
+                400, 225, 
+                text="LOCAL DECODER FAILED // 'opencv-python' NOT INSTALLED\nRUN: pip install opencv-python", 
+                fill=ACCENT_RED, font=("Consolas", 12, "bold"), justify="center"
+            ))
+            self.app.root.after(0, self.app.stop_ue_monitor)
+            return
+
+        cap = cv2.VideoCapture(self.url)
+        # Check connection initially
+        if not cap.isOpened():
+            logger.error(f"UE Monitor: Failed to open capture source {self.url}")
+            self.app.root.after(0, lambda: self.canvas.delete("all"))
+            self.app.root.after(0, lambda: self.canvas.create_text(
+                400, 225, 
+                text=f"CONNECTION FAILED // CANNOT OPEN SOURCE:\n{self.url}", 
+                fill=ACCENT_RED, font=("Consolas", 12, "bold"), justify="center"
+            ))
+            self.app.root.after(0, self.app.stop_ue_monitor)
+            return
+
+        while self.running:
+            ret, frame = cap.read()
+            if not ret:
+                time.sleep(0.05)
+                # Retry connection if closed
+                cap.release()
+                cap = cv2.VideoCapture(self.url)
+                continue
+                
+            # Convert BGR frame from OpenCV to RGB for PIL/Tkinter
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            h, w, _ = frame_rgb.shape
+            
+            # Determine target size on canvas
+            canvas_w = self.canvas.winfo_width()
+            canvas_h = self.canvas.winfo_height()
+            if canvas_w < 100 or canvas_h < 100:
+                canvas_w = 800
+                canvas_h = 450
+                
+            # Keep aspect ratio
+            aspect = w / h
+            target_w = canvas_w
+            target_h = int(canvas_w / aspect)
+            if target_h > canvas_h:
+                target_h = canvas_h
+                target_w = int(canvas_h * aspect)
+                
+            frame_resized = cv2.resize(frame_rgb, (target_w, target_h))
+            
+            # Create PhotoImage
+            img = Image.fromarray(frame_resized)
+            img_tk = ImageTk.PhotoImage(image=img)
+            
+            # Draw on canvas on the main GUI thread
+            if self.running:
+                self.app.root.after(0, lambda image=img_tk, tw=target_w, th=target_h: self.draw_frame(image, tw, th))
+                
+            # Cap at ~30 FPS
+            time.sleep(0.033)
+            
+        cap.release()
+        
+    def draw_frame(self, img_tk, tw, th):
+        if not self.running:
+            return
+        self.canvas.delete("all")
+        # Center the frame
+        cx = self.canvas.winfo_width() / 2
+        cy = self.canvas.winfo_height() / 2
+        # Keep a reference to prevent garbage collection
+        self.canvas.image = img_tk
+        self.canvas.create_image(cx, cy, image=img_tk, anchor="center")
+        
+    def stop(self):
+        self.running = False
+
+
 class CamTrackDesktopApp:
     def __init__(self, root):
         self.root = root
@@ -183,6 +279,10 @@ class CamTrackDesktopApp:
         self.cam_raw_roll = 0.0
         self.cam_raw_pitch = 0.0
         self.cam_raw_yaw = 0.0
+        self.cam_video_codec = "H.264"
+        self.cam_focal_length = 24.0
+        self.cam_k1 = 0.0
+        self.cam_k2 = 0.0
         
         # Thread-safe cached GUI variables (accessed by background playout thread)
         self.cached_receiver_smoothing_sec = 1.0
@@ -253,6 +353,8 @@ class CamTrackDesktopApp:
         self.live_edit_origin = tk.BooleanVar(value=False)
         self.forward_delivery_hz_var = tk.StringVar(value="0.0 Hz")
         self.forward_timecode_var = tk.StringVar(value="00:00:00:00")
+        self.ue_monitor_url_var = tk.StringVar(value="http://127.0.0.1:80")
+        self.ue_monitor_thread = None
         
         # Workstation Live 3D Projected Canvas State
         self.live_points = []          # List of (x, y, z) tuples for point cloud
@@ -335,7 +437,14 @@ class CamTrackDesktopApp:
         title_frame = ttk.Frame(left_panel)
         title_frame.grid(row=0, column=0, sticky="w", pady=(0, 15))
         ttk.Label(title_frame, text="ABU TRACK // DESKTOP CORE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        ttk.Label(title_frame, text="Version 0.1.0 // Build 19 // 3DGS & Metashape Workstation Ready", font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        
+        try:
+            from version_info import VERSION, BUILD
+            version_text = f"Version {VERSION} // Build {BUILD} // 3DGS & Metashape Workstation Ready"
+        except ImportError:
+            version_text = "Version 1.0.1 // Build 90 // 3DGS & Metashape Workstation Ready"
+            
+        ttk.Label(title_frame, text=version_text, font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
@@ -1049,6 +1158,87 @@ class CamTrackDesktopApp:
         
         self.write_documentation_manual()
         
+        # ----------------- TAB 6: UE MONITOR FEED -----------------
+        self.tab_ue_monitor = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(self.tab_ue_monitor, text="06 // UE MONITOR FEED")
+        
+        self.tab_ue_monitor.columnconfigure(0, weight=1)
+        self.tab_ue_monitor.rowconfigure(1, weight=1)
+        
+        # Header and Control Panel Card
+        ctrl_card = ttk.Frame(self.tab_ue_monitor, style="Card.TFrame", padding=12)
+        ctrl_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        ctrl_card.columnconfigure(1, weight=1)
+        
+        ttk.Label(ctrl_card, text="06 // UNREAL ENGINE MONITOR FEED CONFIGURATION", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
+        
+        ttk.Label(ctrl_card, text="Stream URL:").grid(row=1, column=0, sticky="w", pady=4)
+        url_entry = ttk.Entry(ctrl_card, textvariable=self.ue_monitor_url_var)
+        url_entry.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        
+        # Action Buttons
+        btn_frame = ttk.Frame(ctrl_card)
+        btn_frame.grid(row=1, column=2, sticky="e", pady=4)
+        
+        self.start_ue_dec_btn = ttk.Button(btn_frame, text="START LOCAL DECODER (SRT/RTSP)", command=self.start_ue_monitor)
+        self.start_ue_dec_btn.pack(side="left", padx=4)
+        
+        self.stop_ue_dec_btn = ttk.Button(btn_frame, text="STOP LOCAL DECODER", command=self.stop_ue_monitor, state="disabled")
+        self.stop_ue_dec_btn.pack(side="left", padx=4)
+        
+        self.launch_browser_btn = ttk.Button(btn_frame, text="LAUNCH BROWSER (WEBRTC)", command=self.launch_ue_browser)
+        self.launch_browser_btn.pack(side="left", padx=4)
+        
+        # Video Display Canvas Card
+        disp_card = ttk.Frame(self.tab_ue_monitor, style="Card.TFrame", padding=12)
+        disp_card.grid(row=1, column=0, sticky="nsew")
+        disp_card.columnconfigure(0, weight=1)
+        disp_card.rowconfigure(0, weight=1)
+        
+        self.ue_canvas = tk.Canvas(disp_card, bg="black", bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        self.ue_canvas.grid(row=0, column=0, sticky="nsew")
+        
+        # Center message
+        self.ue_canvas.create_text(400, 225, text="UE MONITOR DECODER IDLE\nENTER RTSP/SRT/HTTP STREAM URL AND CLICK START DECODER\nOR LAUNCH SYSTEM BROWSER FOR PIXEL STREAMING", fill=TEXT_MUTED, font=("Consolas", 12, "bold"), justify="center")
+
+    def start_ue_monitor(self):
+        if self.ue_monitor_thread and self.ue_monitor_thread.running:
+            return
+            
+        url = self.ue_monitor_url_var.get().strip()
+        if not url:
+            messagebox.showwarning("Warning", "Please enter a valid Stream URL.")
+            return
+            
+        logger.info(f"UE Monitor: Starting local decoder thread for {url}")
+        self.ue_canvas.delete("all")
+        self.ue_canvas.create_text(400, 225, text="CONNECTING TO STREAM...", fill=ACCENT_CYAN, font=("Consolas", 12, "bold"), justify="center")
+        
+        self.ue_monitor_thread = UEMonitorThread(url, self.ue_canvas, self)
+        self.start_ue_dec_btn.configure(state="disabled")
+        self.stop_ue_dec_btn.configure(state="normal")
+        
+    def stop_ue_monitor(self):
+        if self.ue_monitor_thread:
+            logger.info("UE Monitor: Stopping local decoder thread...")
+            self.ue_monitor_thread.stop()
+            self.ue_monitor_thread = None
+            
+        self.ue_canvas.delete("all")
+        self.ue_canvas.create_text(400, 225, text="UE MONITOR DECODER IDLE\nENTER RTSP/SRT/HTTP STREAM URL AND CLICK START DECODER\nOR LAUNCH SYSTEM BROWSER FOR PIXEL STREAMING", fill=TEXT_MUTED, font=("Consolas", 12, "bold"), justify="center")
+        
+        self.start_ue_dec_btn.configure(state="normal")
+        self.stop_ue_dec_btn.configure(state="disabled")
+        
+    def launch_ue_browser(self):
+        import webbrowser
+        url = self.ue_monitor_url_var.get().strip()
+        if not url:
+            messagebox.showwarning("Warning", "Please enter a valid Stream URL.")
+            return
+        logger.info(f"UE Monitor: Launching system browser for {url}")
+        webbrowser.open(url)
+        
     def write_documentation_manual(self):
         self.docs_text.configure(state="normal")
         self.docs_text.delete("1.0", tk.END)
@@ -1117,6 +1307,11 @@ class CamTrackDesktopApp:
         add_bullet("⚠", "Check Port Locks: ", "Make sure other software (e.g. Unreal Engine Live Link plugin) is not already listening on the same port. Only one program can bind to a UDP port at a time.")
         add_bullet("⚠", "Firewall Rules: ", "Add an Inbound Rule in Windows Defender Firewall to allow UDP traffic on port 8080.")
         add_bullet("⚠", "IP Mismatch: ", "Ensure the Target IP entered on the phone exactly matches the PC IP. Do not use broadcast mode unless the local router supports packet replication.")
+        
+        add_h2("7. UNREAL ENGINE MONITOR VIEWPORT SETUP (LOW-LATENCY 4K)")
+        add_p("To stream the Unreal Engine viewport back into the mobile app and workstation GUI:")
+        add_bullet("■", "Pixel Streaming (WebRTC): ", "Install the 'Pixel Streaming' plugin in Unreal Engine. Start Pixel Streaming using standard signaling script. Access the stream via http://<UE-IP-Address>:80 in browser or UE Monitor tab. This enables low-latency WebRTC streams up to 4K resolution.")
+        add_bullet("■", "Local Codec Optimization: ", "For local RTSP/SRT/HTTP video decoders, use low-latency compression profiles. On iOS, toggling H.265 compression reduces bandwidth requirements by up to 50% for cinematic video feeds.")
         
         add_p("\nManual version: 1.2.0 | System Architecture: Cyberpunk Industrial Real-Time")
         self.docs_text.configure(state="disabled")
@@ -3362,6 +3557,10 @@ class CamTrackDesktopApp:
                     self.cam_raw_roll = roll_raw
                     self.cam_raw_pitch = pitch_raw
                     self.cam_raw_yaw = yaw_raw
+                    self.cam_video_codec = parsed.get("videoCodec", "H.264")
+                    self.cam_focal_length = parsed.get("focalLength", 24.0)
+                    self.cam_k1 = parsed.get("k1", 0.0)
+                    self.cam_k2 = parsed.get("k2", 0.0)
                     
                     # 1. Apply workstation Coordinate System Alignment Preset / Custom translation remapping
                     px_aligned, py_aligned, pz_aligned, roll_aligned, pitch_aligned, yaw_aligned = self.apply_pc_coordinate_alignment(
@@ -3580,6 +3779,13 @@ class CamTrackDesktopApp:
                     t_array = payload.get("transforms", [])
                     new_points = payload.get("new_points", [])
                     is_mapping_active = payload.get("isMappingActive", True)
+                    video_codec = payload.get("videoCodec", "H.264")
+                    
+                    lens_payload = payload.get("lens", {})
+                    focal_length = lens_payload.get("focalLength", 24.0)
+                    k1 = lens_payload.get("k1", 0.0)
+                    k2 = lens_payload.get("k2", 0.0)
+                    
                     if t_array:
                         trans = t_array[0].get("translation", {"x": 0.0, "y": 0.0, "z": 0.0})
                         rot = t_array[0].get("rotation", {"yaw": 0.0, "pitch": 0.0, "roll": 0.0})
@@ -3595,7 +3801,11 @@ class CamTrackDesktopApp:
                             "timestamp": timestamp,
                             "new_points": new_points,
                             "is_mapping_active": is_mapping_active,
-                            "thermal_state": payload.get("thermalState", "NOMINAL")
+                            "thermal_state": payload.get("thermalState", "NOMINAL"),
+                            "videoCodec": video_codec,
+                            "focalLength": focal_length,
+                            "k1": k1,
+                            "k2": k2
                         }
             except Exception as e:
                 print(f"OpenTrackIO parse failed: {e}")
@@ -3612,6 +3822,10 @@ class CamTrackDesktopApp:
                 timestamp = payload.get("timestamp", None)
                 new_points = payload.get("new_points", [])
                 is_mapping_active = payload.get("isMappingActive", True)
+                video_codec = payload.get("videoCodec", "H.264")
+                focal_length = payload.get("focalLength", 24.0)
+                k1 = payload.get("k1", 0.0)
+                k2 = payload.get("k2", 0.0)
                 return {
                     "type": f"Live Link ({device_name})",
                     "x": tx, "y": ty, "z": tz,
@@ -3619,7 +3833,11 @@ class CamTrackDesktopApp:
                     "timestamp": timestamp,
                     "new_points": new_points,
                     "is_mapping_active": is_mapping_active,
-                    "thermal_state": payload.get("thermalState", "NOMINAL")
+                    "thermal_state": payload.get("thermalState", "NOMINAL"),
+                    "videoCodec": video_codec,
+                    "focalLength": focal_length,
+                    "k1": k1,
+                    "k2": k2
                 }
         except Exception:
             pass
@@ -3915,12 +4133,19 @@ class CamTrackDesktopApp:
             if d <= 0.01:
                 return None
                 
-            # Focal length: 24mm equivalent on a 36mm wide sensor (active 16:9 height is 20.25mm)
-            focal_x = width * (24.0 / 36.0)
-            focal_y = height * (24.0 / 36.0) * (16.0 / 9.0)
+            # Focal length: dynamic mm equivalent on a 36mm wide sensor (active 16:9 height is 20.25mm)
+            focal_x = width * (self.cam_focal_length / 36.0)
+            focal_y = height * (self.cam_focal_length / 36.0) * (16.0 / 9.0)
             
-            sx = cx + (xc / d) * focal_x
-            sy = cy - (yc / d) * focal_y  # Positive Y is down on screen
+            xn = xc / d
+            yn = yc / d
+            r2 = xn*xn + yn*yn
+            radial = 1.0 + self.cam_k1 * r2 + self.cam_k2 * r2 * r2
+            xd = xn * radial
+            yd = yn * radial
+            
+            sx = cx + xd * focal_x
+            sy = cy - yd * focal_y  # Positive Y is down on screen
             return sx, sy
             
         fov = 3.0
@@ -3955,25 +4180,15 @@ class CamTrackDesktopApp:
         if self.is_spout_enabled.get():
             self.init_spout_sender()
             
-        # Create a temporary SDP file to specify H.264 codec payload parameters for PyAV/FFmpeg
+        # Create a temporary SDP file placeholder to specify codec payload parameters for PyAV/FFmpeg
         sdp_path = None
         try:
-            sdp_content = (
-                "v=0\n"
-                "o=- 0 0 IN IP4 127.0.0.1\n"
-                "s=No Name\n"
-                "c=IN IP4 0.0.0.0\n"
-                "t=0 0\n"
-                f"m=video {port} RTP/AVP 96\n"
-                "a=rtpmap:96 H264/90000\n"
-            )
             fd, sdp_path = tempfile.mkstemp(suffix=".sdp")
-            with os.fdopen(fd, 'w') as f:
-                f.write(sdp_content)
-            logger.info(f"Video Decoder: Created temporary SDP file at {sdp_path} for port {port}")
+            os.close(fd)
+            logger.info(f"Video Decoder: Initialized temporary SDP path at {sdp_path} for port {port}")
         except Exception as e:
-            logger.error(f"Video Decoder: Failed to write temp SDP file: {e}")
-            self.rx_log("VIDEO DECODER // ERROR: Failed to write temporary SDP file!")
+            logger.error(f"Video Decoder: Failed to initialize temp SDP path: {e}")
+            self.rx_log("VIDEO DECODER // ERROR: Failed to create temporary SDP path!")
             return
             
         logger.info("Video Decoder: PyAV background listening thread active.")
@@ -3982,6 +4197,25 @@ class CamTrackDesktopApp:
             while self.video_decoder_running:
                 container = None
                 try:
+                    active_codec = self.cam_video_codec
+                    sdp_content = (
+                        "v=0\n"
+                        "o=- 0 0 IN IP4 127.0.0.1\n"
+                        "s=No Name\n"
+                        "c=IN IP4 0.0.0.0\n"
+                        "t=0 0\n"
+                        f"m=video {port} RTP/AVP 96\n"
+                    )
+                    if active_codec == "H.265":
+                        sdp_content += "a=rtpmap:96 H265/90000\n"
+                    else:
+                        sdp_content += "a=rtpmap:96 H264/90000\n"
+                    
+                    with open(sdp_path, 'w') as f:
+                        f.write(sdp_content)
+                        
+                    logger.info(f"Video Decoder: Opening PyAV container for codec {active_codec} on port {port}")
+                    
                     # Open connection via SDP file. We pass timeout options to prevent hanging.
                     container = av.open(
                         sdp_path, 
@@ -3993,11 +4227,16 @@ class CamTrackDesktopApp:
                         },
                         timeout=(2.0, 2.0)
                     )
-                    logger.info(f"Video Decoder: Bound successfully to SDP for port {port}")
+                    logger.info(f"Video Decoder: Bound successfully to SDP ({active_codec}) for port {port}")
                     
-                    # Parse packets and decode H.264 streams
+                    # Parse packets and decode streams
                     for frame in container.decode(video=0):
                         if not self.video_decoder_running:
+                            break
+                            
+                        # If codec changes mid-stream, break decoding loop to reopen container
+                        if self.cam_video_codec != active_codec:
+                            logger.info(f"Video Decoder: Codec change detected ({active_codec} -> {self.cam_video_codec}). Recreating container.")
                             break
                         
                         # Convert to PIL Image in background thread (RGB format, ultra-fast)

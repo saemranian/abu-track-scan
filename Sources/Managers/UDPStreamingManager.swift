@@ -257,7 +257,7 @@ class UDPStreamingManager: ObservableObject {
         startConnection()
     }
     
-    func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) {
+    func stream(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, focalLength: Double = 24.0, k1: Double = 0.0, k2: Double = 0.0, videoCodec: String = "H.264", newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) {
         guard isStreamingEnabled else { return }
         
         var tx = x
@@ -303,11 +303,11 @@ class UDPStreamingManager: ObservableObject {
         
         switch format {
         case .liveLink:
-            data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, newPoints: newPoints, isMappingActive: isMappingActive)
+            data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, focalLength: focalLength, k1: k1, k2: k2, videoCodec: videoCodec, newPoints: newPoints, isMappingActive: isMappingActive)
         case .freeD:
             data = formatFreeD(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
         case .openTrackIO:
-            data = formatOpenTrackIO(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, newPoints: newPoints, isMappingActive: isMappingActive)
+            data = formatOpenTrackIO(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, focalLength: focalLength, k1: k1, k2: k2, videoCodec: videoCodec, newPoints: newPoints, isMappingActive: isMappingActive)
         }
         
         // Broadcast the formatted tracking payload to all active connections
@@ -329,13 +329,16 @@ class UDPStreamingManager: ObservableObject {
         }
     }
     
-    private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
+    private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, focalLength: Double = 24.0, k1: Double = 0.0, k2: Double = 0.0, videoCodec: String = "H.264", newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
         let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
         var json: [String: Any] = [
             "deviceName": "AbuTrack",
             "translation": [x, y, z],
             "rotation": [pitch, yaw, roll],
-            "focalLength": 24.0,
+            "focalLength": focalLength,
+            "k1": k1,
+            "k2": k2,
+            "videoCodec": videoCodec,
             "timestamp": Date().timeIntervalSince1970 + ntpSyncOffset,
             "isMappingActive": isMappingActive,
             "thermalState": getThermalStateString()
@@ -414,7 +417,7 @@ class UDPStreamingManager: ObservableObject {
     
     private var openTrackSequence: UInt32 = 0
     
-    private func formatOpenTrackIO(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
+    private func formatOpenTrackIO(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, focalLength: Double = 24.0, k1: Double = 0.0, k2: Double = 0.0, videoCodec: String = "H.264", newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
         let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
         let timestamp = Date().timeIntervalSince1970 + ntpSyncOffset
         
@@ -431,9 +434,12 @@ class UDPStreamingManager: ObservableObject {
                 ]
             ],
             "lens": [
-                "focalLength": 24.0,
-                "focusDistance": 1.5
-            ]
+                "focalLength": focalLength,
+                "focusDistance": 1.5,
+                "k1": k1,
+                "k2": k2
+            ],
+            "videoCodec": videoCodec
         ]
         if let pts = newPoints, !pts.isEmpty {
             json["new_points"] = pts.map { [$0.x, $0.y, $0.z] }

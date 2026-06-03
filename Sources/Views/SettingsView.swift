@@ -23,6 +23,12 @@ struct SettingsView: View {
     @State private var lidarYSource: String = "Y"
     @State private var lidarZSource: String = "Z"
     
+    @State private var selectedLens: String = "Wide"
+    @State private var is4KEnabled: Bool = false
+    @State private var videoCodec: String = "H.264"
+    @State private var lensDistortionK1: Double = 0.0
+    @State private var lensDistortionK2: Double = 0.0
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -216,6 +222,101 @@ struct SettingsView: View {
                                         .lineSpacing(4)
                                 }
                                 .padding(.top, 5)
+                            }
+                            .padding()
+                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
+                            .cornerRadius(14)
+                            .padding(.horizontal)
+                        }
+                        
+                        // Camera Lens & Distortion Calibration Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Camera Lens & Distortion Calibration")
+                                .font(.caption)
+                                .fontWeight(.black)
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal)
+                            
+                            VStack(alignment: .leading, spacing: 15) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Active Camera Lens Selection")
+                                        .font(.footnote)
+                                        .fontWeight(.bold)
+                                    Picker("Lens", selection: $selectedLens) {
+                                        Text("Wide (Main)").tag("Wide")
+                                        Text("Ultra Wide").tag("UltraWide")
+                                        Text("Telephoto").tag("Telephoto")
+                                        Text("Front").tag("Front")
+                                    }
+                                    .pickerStyle(SegmentedPickerStyle())
+                                    Text("Wide Angle is default. Front camera uses TrueDepth sensor where available.")
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                Divider().background(Color.gray.opacity(0.3))
+                                
+                                Toggle(isOn: $is4KEnabled) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Enable 4K Recording/Streaming")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                        Text("Captures native 3840x2160 video (iOS 16+ on Wide lens)")
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                                .tint(.cyan)
+                                
+                                Divider().background(Color.gray.opacity(0.3))
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Video Encoder Stream Codec")
+                                        .font(.footnote)
+                                        .fontWeight(.bold)
+                                    Picker("Codec", selection: $videoCodec) {
+                                        Text("H.264 (Compatible)").tag("H.264")
+                                        Text("H.265 / HEVC (Light Size)").tag("H.265")
+                                    }
+                                    .pickerStyle(SegmentedPickerStyle())
+                                    Text("H.265 HEVC compresses up to 50% more efficiently, saving network bandwidth.")
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                Divider().background(Color.gray.opacity(0.3))
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Radial Distortion K1")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                        Spacer()
+                                        Text(String(format: "%.3f", lensDistortionK1))
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.cyan)
+                                    }
+                                    Slider(value: $lensDistortionK1, in: -0.5...0.5, step: 0.001)
+                                        .tint(.cyan)
+                                    
+                                    HStack {
+                                        Text("Radial Distortion K2")
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                        Spacer()
+                                        Text(String(format: "%.3f", lensDistortionK2))
+                                            .font(.footnote)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.cyan)
+                                    }
+                                    Slider(value: $lensDistortionK2, in: -0.5...0.5, step: 0.001)
+                                        .tint(.cyan)
+                                        
+                                    Text("Adjust coefficients to align point cloud overlays on barrel/pincushion lenses (e.g. Ultra Wide).")
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                }
                             }
                             .padding()
                             .background(Color(red: 0.05, green: 0.08, blue: 0.16))
@@ -801,6 +902,23 @@ struct SettingsView: View {
             .onChange(of: lidarXSource) { _ in updateLidarXSource() }
             .onChange(of: lidarYSource) { _ in updateLidarYSource() }
             .onChange(of: lidarZSource) { _ in updateLidarZSource() }
+            .onChange(of: selectedLens) { newValue in
+                RigSettings.selectedLens = newValue
+                trackingManager.updateCameraConfiguration()
+            }
+            .onChange(of: is4KEnabled) { newValue in
+                RigSettings.is4KEnabled = newValue
+                trackingManager.updateCameraConfiguration()
+            }
+            .onChange(of: videoCodec) { newValue in
+                RigSettings.videoCodec = newValue
+            }
+            .onChange(of: lensDistortionK1) { newValue in
+                RigSettings.lensDistortionK1 = newValue
+            }
+            .onChange(of: lensDistortionK2) { newValue in
+                RigSettings.lensDistortionK2 = newValue
+            }
         }
     }
     
@@ -832,6 +950,12 @@ struct SettingsView: View {
         self.lidarXSource = RigSettings.lidarXSource
         self.lidarYSource = RigSettings.lidarYSource
         self.lidarZSource = RigSettings.lidarZSource
+        
+        self.selectedLens = RigSettings.selectedLens
+        self.is4KEnabled = RigSettings.is4KEnabled
+        self.videoCodec = RigSettings.videoCodec
+        self.lensDistortionK1 = RigSettings.lensDistortionK1
+        self.lensDistortionK2 = RigSettings.lensDistortionK2
     }
     
     private func saveOffsets() {

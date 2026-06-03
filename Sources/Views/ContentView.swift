@@ -48,12 +48,19 @@ struct ContentView: View {
                 }
                 .tag(2)
             
+            UEMonitorView()
+                .tabItem {
+                    Image(systemName: "tv.and.mediabox.fill")
+                    Text("UE Monitor")
+                }
+                .tag(3)
+            
             AcademyView()
                 .tabItem {
                     Image(systemName: "graduationcap.fill")
                     Text("Academy")
                 }
-                .tag(3)
+                .tag(4)
         }
         .preferredColorScheme(.dark)
         .onAppear {
@@ -143,5 +150,29 @@ struct RigSettings {
     static var lidarZSource: String {
         get { UserDefaults.standard.string(forKey: "lidarZSource") ?? "Z" }
         set { UserDefaults.standard.set(newValue, forKey: "lidarZSource") }
+    }
+    static var selectedLens: String {
+        get { UserDefaults.standard.string(forKey: "selectedLens") ?? "Wide" }
+        set { UserDefaults.standard.set(newValue, forKey: "selectedLens") }
+    }
+    static var is4KEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "is4KEnabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "is4KEnabled") }
+    }
+    static var videoCodec: String {
+        get { UserDefaults.standard.string(forKey: "videoCodec") ?? "H.264" }
+        set { UserDefaults.standard.set(newValue, forKey: "videoCodec") }
+    }
+    static var lensDistortionK1: Double {
+        get { UserDefaults.standard.double(forKey: "lensDistortionK1") }
+        set { UserDefaults.standard.set(newValue, forKey: "lensDistortionK1") }
+    }
+    static var lensDistortionK2: Double {
+        get { UserDefaults.standard.double(forKey: "lensDistortionK2") }
+        set { UserDefaults.standard.set(newValue, forKey: "lensDistortionK2") }
+    }
+    static var ueMonitorURL: String {
+        get { UserDefaults.standard.string(forKey: "ueMonitorURL") ?? "http://192.168.1.100:80" }
+        set { UserDefaults.standard.set(newValue, forKey: "ueMonitorURL") }
     }
 }

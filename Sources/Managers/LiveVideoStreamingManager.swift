@@ -33,6 +33,7 @@ class LiveVideoStreamingManager: NSObject {
     private var currentBitrate: Int = 1_500_000
     private var currentFPS: Int = 30
     private var currentDiagLevel: Int = 4
+    private var currentCodec: String = "H.264"
     
     // Continuous frame counter to act as a guaranteed strictly increasing presentation time clock source
     private var frameCount: Int64 = 0
@@ -41,7 +42,7 @@ class LiveVideoStreamingManager: NSObject {
         super.init()
     }
     
-    func startStreaming(ip: String, port: Int, width: Int32 = 1920, height: Int32 = 1080, bitrate: Int = 10_000_000, fps: Int = 30, diagLevel: Int = 4) {
+    func startStreaming(ip: String, port: Int, width: Int32 = 1920, height: Int32 = 1080, bitrate: Int = 10_000_000, fps: Int = 30, codec: String = "H.264", diagLevel: Int = 4) {
         encodingQueue.async {
             self.sessionLock.lock()
             guard !self.isStreamingActive else {
@@ -50,7 +51,7 @@ class LiveVideoStreamingManager: NSObject {
                 return
             }
             
-            AppLogger.info("LiveVideoStreamingManager: Initializing video stream targeting \(ip):\(port) with target width \(width) @ \(bitrate / 1_000) Kbps (Diag Level: \(diagLevel))")
+            AppLogger.info("LiveVideoStreamingManager: Initializing video stream targeting \(ip):\(port) with target width \(width) @ \(bitrate / 1_000) Kbps (Codec: \(codec), Diag Level: \(diagLevel))")
             
             self.currentIP = ip
             self.currentPort = port
@@ -58,6 +59,7 @@ class LiveVideoStreamingManager: NSObject {
             self.currentBitrate = bitrate
             self.currentFPS = fps
             self.frameCount = 0
+            self.currentCodec = codec
             self.currentDiagLevel = diagLevel
             self.isStreamingActive = true
             self.sessionLock.unlock()
@@ -120,7 +122,7 @@ class LiveVideoStreamingManager: NSObject {
             AppLogger.info("LiveVideoStreamingManager: Lazily initializing VTCompressionSession with size \(targetW)x\(targetH) (Source: \(inputWidth)x\(inputHeight))")
             
             self.sessionLock.unlock()
-            self.setupCompressionSession(width: targetW, height: targetH, inputWidth: inputWidth, inputHeight: inputHeight, bitrate: self.currentBitrate, fps: self.currentFPS)
+            self.setupCompressionSession(width: targetW, height: targetH, inputWidth: inputWidth, inputHeight: inputHeight, bitrate: self.currentBitrate, fps: self.currentFPS, codec: self.currentCodec)
             self.sessionLock.lock()
             
             guard self.compressionSession != nil else {
@@ -199,8 +201,8 @@ class LiveVideoStreamingManager: NSObject {
     
     // MARK: - Private Setup Methods
     
-    private func setupCompressionSession(width: Int32, height: Int32, inputWidth: Int32, inputHeight: Int32, bitrate: Int, fps: Int) {
-        AppLogger.info("LiveVideoStreamingManager: Creating VTCompressionSession (\(width)x\(height), input: \(inputWidth)x\(inputHeight), \(bitrate) bps, \(fps) fps)...")
+    private func setupCompressionSession(width: Int32, height: Int32, inputWidth: Int32, inputHeight: Int32, bitrate: Int, fps: Int, codec: String) {
+        AppLogger.info("LiveVideoStreamingManager: Creating VTCompressionSession (\(width)x\(height), input: \(inputWidth)x\(inputHeight), \(bitrate) bps, \(fps) fps, codec: \(codec))...")
         var session: VTCompressionSession?
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         
@@ -213,11 +215,13 @@ class LiveVideoStreamingManager: NSObject {
             kCVPixelBufferIOSurfacePropertiesKey: [:] as [CFString: Any]
         ]
         
+        let codecType = (codec == "H.265") ? kCMVideoCodecType_HEVC : kCMVideoCodecType_H264
+        
         let status = VTCompressionSessionCreate(
             allocator: kCFAllocatorDefault,
             width: width,
             height: height,
-            codecType: kCMVideoCodecType_H264,
+            codecType: codecType,
             encoderSpecification: nil,
             imageBufferAttributes: attributes as CFDictionary,
             compressedDataAllocator: nil,
@@ -257,9 +261,12 @@ class LiveVideoStreamingManager: NSObject {
         AppLogger.info("LiveVideoStreamingManager: Session created successfully. Setting properties...")
         
         // Configure Hardware encoding options for ultra low latency virtual production
-        // Main profile is universally supported across all iOS hardware models and resolutions
         VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_RealTime, value: kCFBooleanTrue)
-        VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_Main_AutoLevel)
+        if codec == "H.265" {
+            VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_HEVC_Main_AutoLevel)
+        } else {
+            VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_Main_AutoLevel)
+        }
         VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_AverageBitRate, value: NSNumber(value: bitrate))
         VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_ExpectedFrameRate, value: NSNumber(value: fps))
         VTSessionSetProperty(createdSession, key: kVTCompressionPropertyKey_MaxKeyFrameInterval, value: NSNumber(value: fps)) // I-frame every 1s
@@ -343,7 +350,7 @@ class LiveVideoStreamingManager: NSObject {
         }
     }
     
-    // MARK: - Frame Processing & Packetization (RFC 6184 H.264 RTP)
+    // MARK: - Frame Processing & Packetization (RFC 6184 / RFC 7798 RTP)
     
     private func processEncodedFrame(sampleBuffer: CMSampleBuffer, ntpTimestamp: Double) {
         self.sessionLock.lock()
@@ -372,18 +379,32 @@ class LiveVideoStreamingManager: NSObject {
             isKeyframe = true
         }
         
-        // 2. Extract SPS / PPS Parameter Sets on Keyframes to initialize standard decoders mid-stream
+        // 2. Extract SPS / PPS / VPS Parameter Sets on Keyframes to initialize standard decoders mid-stream
         if isKeyframe {
             if let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {
                 var paramSetCount = 0
-                let countStatus = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
-                    formatDesc,
-                    parameterSetIndex: 0,
-                    parameterSetPointerOut: nil,
-                    parameterSetSizeOut: nil,
-                    parameterSetCountOut: &paramSetCount,
-                    nalUnitHeaderLengthOut: nil
-                )
+                let isHEVC = (self.currentCodec == "H.265")
+                let countStatus: OSStatus
+                
+                if isHEVC {
+                    countStatus = CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(
+                        formatDesc,
+                        parameterSetIndex: 0,
+                        parameterSetPointerOut: nil,
+                        parameterSetSizeOut: nil,
+                        parameterSetCountOut: &paramSetCount,
+                        nalUnitHeaderLengthOut: nil
+                    )
+                } else {
+                    countStatus = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+                        formatDesc,
+                        parameterSetIndex: 0,
+                        parameterSetPointerOut: nil,
+                        parameterSetSizeOut: nil,
+                        parameterSetCountOut: &paramSetCount,
+                        nalUnitHeaderLengthOut: nil
+                    )
+                }
                 
                 guard countStatus == noErr else {
                     AppLogger.error("LiveVideoStreamingManager processEncodedFrame: Failed to get parameter set count. Status: \(countStatus)")
@@ -393,20 +414,33 @@ class LiveVideoStreamingManager: NSObject {
                 for i in 0..<paramSetCount {
                     var paramPtr: UnsafePointer<UInt8>? = nil
                     var paramSize = 0
-                    let status = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
-                        formatDesc,
-                        parameterSetIndex: i,
-                        parameterSetPointerOut: &paramPtr,
-                        parameterSetSizeOut: &paramSize,
-                        parameterSetCountOut: nil,
-                        nalUnitHeaderLengthOut: nil
-                    )
+                    let status: OSStatus
+                    
+                    if isHEVC {
+                        status = CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(
+                            formatDesc,
+                            parameterSetIndex: i,
+                            parameterSetPointerOut: &paramPtr,
+                            parameterSetSizeOut: &paramSize,
+                            parameterSetCountOut: nil,
+                            nalUnitHeaderLengthOut: nil
+                        )
+                    } else {
+                        status = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+                            formatDesc,
+                            parameterSetIndex: i,
+                            parameterSetPointerOut: &paramPtr,
+                            parameterSetSizeOut: &paramSize,
+                            parameterSetCountOut: nil,
+                            nalUnitHeaderLengthOut: nil
+                        )
+                    }
                     
                     if status == noErr, let ptr = paramPtr, paramSize > 0 {
                         let naluData = Data(bytes: ptr, count: paramSize)
                         sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, isLast: false)
                     } else {
-                        AppLogger.error("LiveVideoStreamingManager processEncodedFrame: CMVideoFormatDescriptionGetH264ParameterSetAtIndex failed at index \(i) with status: \(status), ptr: \(String(describing: paramPtr)), size: \(paramSize)")
+                        AppLogger.error("LiveVideoStreamingManager processEncodedFrame: parameter set failed at index \(i) with status: \(status)")
                     }
                 }
             }
@@ -436,7 +470,6 @@ class LiveVideoStreamingManager: NSObject {
         buffer.withUnsafeBytes { (bytesPtr: UnsafeRawBufferPointer) in
             guard let basePointer = bytesPtr.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
             var offset = 0
-            var naluCount = 0
             while offset + 4 <= totalLength {
                 // AVCC format: NALU is prefixed by 4-byte big-endian length field
                 var naluLength: UInt32 = 0
@@ -451,7 +484,6 @@ class LiveVideoStreamingManager: NSObject {
                     let naluData = buffer.subdata(in: offset..<(offset + Int(naluLength)))
                     let isLastNalu = (offset + Int(naluLength) >= totalLength)
                     sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, isLast: isLastNalu)
-                    naluCount += 1
                 } else {
                     break // Out of bounds NALU length!
                 }
@@ -467,65 +499,120 @@ class LiveVideoStreamingManager: NSObject {
         let rtpTimestamp = UInt32((ntpTimestamp * 90000.0).truncatingRemainder(dividingBy: 4294967296.0))
         let maxPayloadSize = 1400 // Safe Ethernet MTU Size to prevent packet fragmentation
         
-        let naluHeader = nalu[0]
-        let naluType = naluHeader & 0x1F
+        let isHEVC = (self.currentCodec == "H.265")
         
-        // Periodic check to log key frame headers
-        if naluType == 7 || naluType == 8 {
-            AppLogger.info("LiveVideoStreamingManager: Transmitting parameter set type \(naluType), size \(nalu.count) bytes.")
-        }
-        
-        if nalu.count <= maxPayloadSize {
-            // Send as a single RTP packet (RFC 6184)
-            var packet = Data()
+        if isHEVC {
+            // H.265 HEVC RTP Packetization (RFC 7798)
+            let naluHeader1 = nalu[0]
+            let naluHeader2 = nalu[1]
+            let naluType = (naluHeader1 >> 1) & 0x3F
             
-            // 1. RTP Header (12 bytes)
-            packet.append(0x80) // V=2, P=0, X=0, CC=0
-            packet.append(UInt8(96 | (isLast ? 0x80 : 0x00))) // Payload Type = 96 (Dynamic H.264), Marker Bit set on final packet
-            
-            // Sequence Number (UInt16)
-            packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
-            packet.append(UInt8(rtpSequenceNumber & 0xFF))
-            rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
-            
-            // Timestamp (UInt32)
-            packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
-            packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
-            packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
-            packet.append(UInt8(rtpTimestamp & 0xFF))
-            
-            // SSRC (UInt32)
-            packet.append(UInt8((ssrc >> 24) & 0xFF))
-            packet.append(UInt8((ssrc >> 16) & 0xFF))
-            packet.append(UInt8((ssrc >> 8) & 0xFF))
-            packet.append(UInt8(ssrc & 0xFF))
-            
-            // 2. Payload (Full NALU)
-            packet.append(nalu)
-            
-            let rtpPacket = packet
-            encodingQueue.async { [weak self] in
-                self?.sendPacket(rtpPacket)
+            // Periodic check to log key frame headers (VPS=32, SPS=33, PPS=34)
+            if naluType == 32 || naluType == 33 || naluType == 34 {
+                AppLogger.info("LiveVideoStreamingManager: Transmitting H.265 parameter set type \(naluType), size \(nalu.count) bytes.")
             }
-        } else {
-            // Fragment large NALU using FU-A Packets (Type 28)
-            let nri = naluHeader & 0x60
-            let fuIndicator = nri | 28
             
-            let payloadData = nalu.subdata(in: 1..<nalu.count)
-            let totalPayloadSize = payloadData.count
-            var bytesSent = 0
-            
-            while bytesSent < totalPayloadSize {
-                let isFirstFragment = (bytesSent == 0)
-                let isLastFragment = (bytesSent + maxPayloadSize >= totalPayloadSize)
-                let chunkSize = min(maxPayloadSize, totalPayloadSize - bytesSent)
-                
+            if nalu.count <= maxPayloadSize {
                 var packet = Data()
                 
                 // 1. RTP Header (12 bytes)
-                packet.append(0x80)
-                packet.append(UInt8(96 | ((isLast && isLastFragment) ? 0x80 : 0x00))) // Marker bit set on final fragment of final frame NALU
+                packet.append(0x80) // V=2, P=0, X=0, CC=0
+                packet.append(UInt8(96 | (isLast ? 0x80 : 0x00))) // Payload Type = 96 (Dynamic), Marker Bit set on final packet
+                
+                packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
+                packet.append(UInt8(rtpSequenceNumber & 0xFF))
+                rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
+                
+                packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
+                packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
+                packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
+                packet.append(UInt8(rtpTimestamp & 0xFF))
+                
+                packet.append(UInt8((ssrc >> 24) & 0xFF))
+                packet.append(UInt8((ssrc >> 16) & 0xFF))
+                packet.append(UInt8((ssrc >> 8) & 0xFF))
+                packet.append(UInt8(ssrc & 0xFF))
+                
+                // 2. Payload (Full H.265 NALU)
+                packet.append(nalu)
+                
+                let rtpPacket = packet
+                encodingQueue.async { [weak self] in
+                    self?.sendPacket(rtpPacket)
+                }
+            } else {
+                // Fragment large H.265 NALU using FU Packets (Type 49)
+                let fuIndicator1 = (naluHeader1 & 0x81) | (49 << 1)
+                let fuIndicator2 = naluHeader2
+                
+                let payloadData = nalu.subdata(in: 2..<nalu.count)
+                let totalPayloadSize = payloadData.count
+                var bytesSent = 0
+                
+                while bytesSent < totalPayloadSize {
+                    let isFirstFragment = (bytesSent == 0)
+                    let isLastFragment = (bytesSent + maxPayloadSize >= totalPayloadSize)
+                    let chunkSize = min(maxPayloadSize, totalPayloadSize - bytesSent)
+                    
+                    var packet = Data()
+                    
+                    // 1. RTP Header (12 bytes)
+                    packet.append(0x80)
+                    packet.append(UInt8(96 | ((isLast && isLastFragment) ? 0x80 : 0x00))) // Marker bit set on final fragment of final frame NALU
+                    
+                    packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
+                    packet.append(UInt8(rtpSequenceNumber & 0xFF))
+                    rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
+                    
+                    packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
+                    packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
+                    packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
+                    packet.append(UInt8(rtpTimestamp & 0xFF))
+                    
+                    packet.append(UInt8((ssrc >> 24) & 0xFF))
+                    packet.append(UInt8((ssrc >> 16) & 0xFF))
+                    packet.append(UInt8((ssrc >> 8) & 0xFF))
+                    packet.append(UInt8(ssrc & 0xFF))
+                    
+                    // 2. FU Indicator (2 bytes)
+                    packet.append(fuIndicator1)
+                    packet.append(fuIndicator2)
+                    
+                    // 3. FU Header Byte (S | E | Type)
+                    let sBit: UInt8 = isFirstFragment ? 0x80 : 0x00
+                    let eBit: UInt8 = isLastFragment ? 0x40 : 0x00
+                    let fuHeader = sBit | eBit | naluType
+                    packet.append(fuHeader)
+                    
+                    // 4. Fragment Payload chunk
+                    let chunk = payloadData.subdata(in: bytesSent..<(bytesSent + chunkSize))
+                    packet.append(chunk)
+                    
+                    let rtpPacket = packet
+                    encodingQueue.async { [weak self] in
+                        self?.sendPacket(rtpPacket)
+                    }
+                    
+                    bytesSent += chunkSize
+                }
+            }
+        } else {
+            // H.264 RTP Packetization (RFC 6184)
+            let naluHeader = nalu[0]
+            let naluType = naluHeader & 0x1F
+            
+            // Periodic check to log key frame headers
+            if naluType == 7 || naluType == 8 {
+                AppLogger.info("LiveVideoStreamingManager: Transmitting H.264 parameter set type \(naluType), size \(nalu.count) bytes.")
+            }
+            
+            if nalu.count <= maxPayloadSize {
+                // Send as a single RTP packet (RFC 6184)
+                var packet = Data()
+                
+                // 1. RTP Header (12 bytes)
+                packet.append(0x80) // V=2, P=0, X=0, CC=0
+                packet.append(UInt8(96 | (isLast ? 0x80 : 0x00))) // Payload Type = 96 (Dynamic H.264), Marker Bit set on final packet
                 
                 // Sequence Number (UInt16)
                 packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
@@ -544,25 +631,70 @@ class LiveVideoStreamingManager: NSObject {
                 packet.append(UInt8((ssrc >> 8) & 0xFF))
                 packet.append(UInt8(ssrc & 0xFF))
                 
-                // 2. FU-A Indicator Byte
-                packet.append(fuIndicator)
-                
-                // 3. FU-A Header Byte (S | E | R | Type)
-                let sBit: UInt8 = isFirstFragment ? 0x80 : 0x00
-                let eBit: UInt8 = isLastFragment ? 0x40 : 0x00
-                let fuHeader = sBit | eBit | naluType
-                packet.append(fuHeader)
-                
-                // 4. Fragment Payload chunk
-                let chunk = payloadData.subdata(in: bytesSent..<(bytesSent + chunkSize))
-                packet.append(chunk)
+                // 2. Payload (Full NALU)
+                packet.append(nalu)
                 
                 let rtpPacket = packet
                 encodingQueue.async { [weak self] in
                     self?.sendPacket(rtpPacket)
                 }
+            } else {
+                // Fragment large NALU using FU-A Packets (Type 28)
+                let nri = naluHeader & 0x60
+                let fuIndicator = nri | 28
                 
-                bytesSent += chunkSize
+                let payloadData = nalu.subdata(in: 1..<nalu.count)
+                let totalPayloadSize = payloadData.count
+                var bytesSent = 0
+                
+                while bytesSent < totalPayloadSize {
+                    let isFirstFragment = (bytesSent == 0)
+                    let isLastFragment = (bytesSent + maxPayloadSize >= totalPayloadSize)
+                    let chunkSize = min(maxPayloadSize, totalPayloadSize - bytesSent)
+                    
+                    var packet = Data()
+                    
+                    // 1. RTP Header (12 bytes)
+                    packet.append(0x80)
+                    packet.append(UInt8(96 | ((isLast && isLastFragment) ? 0x80 : 0x00))) // Marker bit set on final fragment of final frame NALU
+                    
+                    // Sequence Number (UInt16)
+                    packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
+                    packet.append(UInt8(rtpSequenceNumber & 0xFF))
+                    rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
+                    
+                    // Timestamp (UInt32)
+                    packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
+                    packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
+                    packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
+                    packet.append(UInt8(rtpTimestamp & 0xFF))
+                    
+                    // SSRC (UInt32)
+                    packet.append(UInt8((ssrc >> 24) & 0xFF))
+                    packet.append(UInt8((ssrc >> 16) & 0xFF))
+                    packet.append(UInt8((ssrc >> 8) & 0xFF))
+                    packet.append(UInt8(ssrc & 0xFF))
+                    
+                    // 2. FU-A Indicator Byte
+                    packet.append(fuIndicator)
+                    
+                    // 3. FU-A Header Byte (S | E | R | Type)
+                    let sBit: UInt8 = isFirstFragment ? 0x80 : 0x00
+                    let eBit: UInt8 = isLastFragment ? 0x40 : 0x00
+                    let fuHeader = sBit | eBit | naluType
+                    packet.append(fuHeader)
+                    
+                    // 4. Fragment Payload chunk
+                    let chunk = payloadData.subdata(in: bytesSent..<(bytesSent + chunkSize))
+                    packet.append(chunk)
+                    
+                    let rtpPacket = packet
+                    encodingQueue.async { [weak self] in
+                        self?.sendPacket(rtpPacket)
+                    }
+                    
+                    bytesSent += chunkSize
+                }
             }
         }
     }
