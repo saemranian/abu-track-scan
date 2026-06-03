@@ -1,6 +1,6 @@
 // Generated automatically by build_version_tracker.py. Do not edit.
 public struct VersionInfo {
     public static let version = "0.0.7"
-    public static let build = "84"
-    public static let buildTime = "2026-06-03 13:05:39"
+    public static let build = "85"
+    public static let buildTime = "2026-06-03 14:28:00"
 }

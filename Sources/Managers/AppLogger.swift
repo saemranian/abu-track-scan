@@ -73,7 +73,9 @@ public final class AppLogger {
     }
     
     public func log(level: String, message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        logQueue.sync {
+        // NOTE: Reverted to async to prevent main-thread block or lock contention.
+        // If debugging early crashes/startup where logs get cut off, you can temporarily change this to .sync.
+        logQueue.async {
             guard let url = self.logFileUrl else { return }
             
             let timestamp = self.getFormattedTimestamp()

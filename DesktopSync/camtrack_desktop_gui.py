@@ -3821,6 +3821,17 @@ class CamTrackDesktopApp:
         x2 = x1 * cos_z - z2 * sin_z
         z3 = x1 * sin_z + z2 * cos_z
         
+        if self.live_view_mode.get() == "Cockpit":
+            # True perspective projection matching iPhone camera wide lens
+            # 24mm equivalent on a 36mm wide sensor (active 16:9 height is 20.25mm)
+            if depth2 <= 0.01:
+                return None
+            focal_x = width * (24.0 / 36.0)
+            focal_y = height * (24.0 / 36.0) * (16.0 / 9.0)
+            sx = cx + (x2 / depth2) * focal_x
+            sy = cy + (z3 / depth2) * focal_y
+            return sx, sy
+            
         fov = 3.0
         distance = 4.0
         zoom_amount = 140.0 * self.live_zoom
@@ -3836,6 +3847,8 @@ class CamTrackDesktopApp:
     def run_video_decoder_loop(self):
         import time
         import threading
+        import tempfile
+        import os
         
         try:
             import av
@@ -3851,54 +3864,81 @@ class CamTrackDesktopApp:
         if self.is_spout_enabled.get():
             self.init_spout_sender()
             
+        # Create a temporary SDP file to specify H.264 codec payload parameters for PyAV/FFmpeg
+        sdp_path = None
+        try:
+            sdp_content = (
+                "v=0\n"
+                "o=- 0 0 IN IP4 127.0.0.1\n"
+                "s=No Name\n"
+                "c=IN IP4 0.0.0.0\n"
+                "t=0 0\n"
+                f"m=video {port} RTP/AVP 96\n"
+                "a=rtpmap:96 H264/90000\n"
+            )
+            fd, sdp_path = tempfile.mkstemp(suffix=".sdp")
+            with os.fdopen(fd, 'w') as f:
+                f.write(sdp_content)
+            logger.info(f"Video Decoder: Created temporary SDP file at {sdp_path} for port {port}")
+        except Exception as e:
+            logger.error(f"Video Decoder: Failed to write temp SDP file: {e}")
+            self.rx_log("VIDEO DECODER // ERROR: Failed to write temporary SDP file!")
+            return
+            
         logger.info("Video Decoder: PyAV background listening thread active.")
         
-        while self.video_decoder_running:
-            container = None
-            try:
-                # Open RTP connection. We pass timeout options to prevent hanging.
-                # timeout is in microseconds: 1,000,000 = 1 sec
-                # standard 'timeout' parameter in av.open is (open_timeout, read_timeout)
-                container = av.open(
-                    f"rtp://0.0.0.0:{port}", 
-                    "r", 
-                    options={
-                        "protocol_whitelist": "file,rtp,udp",
-                        "timeout": "1000000",
-                        "buffer_size": "2097152" # 2MB buffer for lower packet loss
-                    },
-                    timeout=(2.0, 2.0)
-                )
-                logger.info(f"Video Decoder: Bound successfully to rtp://0.0.0.0:{port}")
-                
-                # Parse packets and decode H.264 streams
-                for frame in container.decode(video=0):
+        try:
+            while self.video_decoder_running:
+                container = None
+                try:
+                    # Open connection via SDP file. We pass timeout options to prevent hanging.
+                    container = av.open(
+                        sdp_path, 
+                        "r", 
+                        options={
+                            "protocol_whitelist": "file,rtp,udp",
+                            "timeout": "1000000",
+                            "buffer_size": "2097152" # 2MB buffer for lower packet loss
+                        },
+                        timeout=(2.0, 2.0)
+                    )
+                    logger.info(f"Video Decoder: Bound successfully to SDP for port {port}")
+                    
+                    # Parse packets and decode H.264 streams
+                    for frame in container.decode(video=0):
+                        if not self.video_decoder_running:
+                            break
+                        
+                        # Convert to PIL Image in background thread (RGB format, ultra-fast)
+                        pil_img = frame.to_image()
+                        self.latest_decoded_pil_image = pil_img
+                        
+                        # Store BGR numpy array and send to Spout if enabled
+                        frame_bgr = frame.to_ndarray(format="bgr24")
+                        self.latest_decoded_frame = frame_bgr
+                        
+                        if self.spout_sender and self.is_spout_enabled.get():
+                            self.send_frame_to_spout(frame_bgr)
+                            
+                except Exception as e:
                     if not self.video_decoder_running:
                         break
+                    logger.warning(f"Video Decoder: Stream connection lost or timed out. Retrying... ({str(e)})")
+                    time.sleep(0.5)
+                finally:
+                    if container:
+                        try:
+                            container.close()
+                        except Exception:
+                            pass
+        finally:
+            if sdp_path and os.path.exists(sdp_path):
+                try:
+                    os.remove(sdp_path)
+                    logger.info(f"Video Decoder: Cleaned up temporary SDP file at {sdp_path}")
+                except Exception as e:
+                    logger.warning(f"Video Decoder: Failed to remove temporary SDP file: {e}")
                     
-                    # Convert to PIL Image in background thread (RGB format, ultra-fast)
-                    pil_img = frame.to_image()
-                    self.latest_decoded_pil_image = pil_img
-                    
-                    # Store BGR numpy array and send to Spout if enabled
-                    frame_bgr = frame.to_ndarray(format="bgr24")
-                    self.latest_decoded_frame = frame_bgr
-                    
-                    if self.spout_sender and self.is_spout_enabled.get():
-                        self.send_frame_to_spout(frame_bgr)
-                        
-            except Exception as e:
-                if not self.video_decoder_running:
-                    break
-                logger.warning(f"Video Decoder: Stream connection lost or timed out. Retrying... ({str(e)})")
-                time.sleep(0.5)
-            finally:
-                if container:
-                    try:
-                        container.close()
-                    except Exception:
-                        pass
-                
         if self.spout_sender:
             try:
                 self.spout_sender.ReleaseSender()

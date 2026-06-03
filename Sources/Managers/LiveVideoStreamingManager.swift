@@ -222,35 +222,27 @@ class LiveVideoStreamingManager: NSObject {
             imageBufferAttributes: attributes as CFDictionary,
             compressedDataAllocator: nil,
             outputCallback: { (outputCallbackRefCon, sourceFrameRefCon, status, infoFlags, sampleBuffer) in
-                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 1] Callback entered")
                 guard let refCon = outputCallbackRefCon else {
                     AppLogger.error("LiveVideoStreamingManager Callback: outputCallbackRefCon is nil!")
                     return
                 }
                 let manager = Unmanaged<LiveVideoStreamingManager>.fromOpaque(refCon).takeUnretainedValue()
-                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 2] Manager resolved")
                 
                 // LEVEL 3: Encoding Dry-Run -> Skip NALU parsing, packetization, and UDP transmission!
                 if manager.currentDiagLevel == 3 {
-                    AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 3] Level 3 return hit")
                     return
                 }
-                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 4] Diag level check passed (\(manager.currentDiagLevel))")
                 
                 guard status == noErr, let sampleBuffer = sampleBuffer else {
                     AppLogger.error("LiveVideoStreamingManager Callback: Encoder returned error status: \(status) or empty buffer.")
                     return
                 }
-                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 5] SampleBuffer verified")
                 
                 // Decode the NTP timestamp from the source reference pointer
-                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 6] Decoding timestamp pointer")
                 let timestampUs = Int(bitPattern: sourceFrameRefCon)
                 let originalNtpTime = Double(timestampUs) / 1_000_000.0
-                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 7] Timestamp decoded: \(originalNtpTime)")
                 
                 // Process and packetize the sample buffer synchronously while it's guaranteed valid
-                AppLogger.info("LiveVideoStreamingManager Callback: [CbTrace 8] Invoking processEncodedFrame")
                 manager.processEncodedFrame(sampleBuffer: sampleBuffer, ntpTimestamp: originalNtpTime)
             },
             refcon: selfPtr,
@@ -354,22 +346,18 @@ class LiveVideoStreamingManager: NSObject {
     // MARK: - Frame Processing & Packetization (RFC 6184 H.264 RTP)
     
     private func processEncodedFrame(sampleBuffer: CMSampleBuffer, ntpTimestamp: Double) {
-        AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 1] Lock check")
         self.sessionLock.lock()
         let socketReady = self.isSocketConfigured && self.socketFD >= 0
         self.sessionLock.unlock()
         
         guard socketReady else {
-            AppLogger.warning("LiveVideoStreamingManager processEncodedFrame: [Trace 1.1] Socket not ready.")
             return
         }
         
-        AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 2] Keyframe check start")
         // 1. Check if it's a keyframe (I-Frame) in 100% native CoreFoundation to prevent Swift array bridging crashes
         var isKeyframe = false
         if let attachmentsCF = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false),
            CFArrayGetCount(attachmentsCF) > 0 {
-            AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 2.1] Extracting sample attachments dictionary")
             if let attachmentRef = CFArrayGetValueAtIndex(attachmentsCF, 0) {
                 let attachment = unsafeBitCast(attachmentRef, to: CFDictionary.self)
                 let key = Unmanaged.passUnretained(kCMSampleAttachmentKey_NotSync).toOpaque()
@@ -383,11 +371,9 @@ class LiveVideoStreamingManager: NSObject {
         } else {
             isKeyframe = true
         }
-        AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 3] Keyframe check completed: isKeyframe = \(isKeyframe)")
         
         // 2. Extract SPS / PPS Parameter Sets on Keyframes to initialize standard decoders mid-stream
         if isKeyframe {
-            AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 4] Extracting format description")
             if let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {
                 var paramSetCount = 0
                 let countStatus = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
@@ -404,8 +390,6 @@ class LiveVideoStreamingManager: NSObject {
                     return
                 }
                 
-                AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 4.1] Found \(paramSetCount) H.264 Parameter Sets")
-                
                 for i in 0..<paramSetCount {
                     var paramPtr: UnsafePointer<UInt8>? = nil
                     var paramSize = 0
@@ -419,7 +403,6 @@ class LiveVideoStreamingManager: NSObject {
                     )
                     
                     if status == noErr, let ptr = paramPtr, paramSize > 0 {
-                        AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 4.2] Copying Parameter Set #\(i) (size: \(paramSize))")
                         let naluData = Data(bytes: ptr, count: paramSize)
                         sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, isLast: false)
                     } else {
@@ -429,19 +412,15 @@ class LiveVideoStreamingManager: NSObject {
             }
         }
         
-        AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 5] Accessing Block Buffer")
         // 3. Process NAL Units from AVCC Block Buffer
         guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else {
-            AppLogger.warning("LiveVideoStreamingManager processEncodedFrame: [Trace 5.1] Block buffer is nil")
             return
         }
         let totalLength = CMBlockBufferGetDataLength(blockBuffer)
         guard totalLength > 0 else {
-            AppLogger.warning("LiveVideoStreamingManager processEncodedFrame: [Trace 5.2] Block buffer length is zero")
             return
         }
         
-        AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 6] Copying Block Buffer data bytes (size: \(totalLength))")
         // Safely copy data bytes to a contiguous buffer to prevent memory access issues on non-contiguous memory blocks
         var buffer = Data(count: totalLength)
         let status = buffer.withUnsafeMutableBytes { (bufferPtr: UnsafeMutableRawBufferPointer) -> OSStatus in
@@ -450,11 +429,10 @@ class LiveVideoStreamingManager: NSObject {
         }
         
         guard status == noErr else {
-            AppLogger.error("LiveVideoStreamingManager processEncodedFrame: [Trace 6.1] CMBlockBufferCopyDataBytes failed with status: \(status)")
+            AppLogger.error("LiveVideoStreamingManager processEncodedFrame: CMBlockBufferCopyDataBytes failed with status: \(status)")
             return
         }
         
-        AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 7] Parsing NAL units from contiguous buffer")
         buffer.withUnsafeBytes { (bytesPtr: UnsafeRawBufferPointer) in
             guard let basePointer = bytesPtr.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
             var offset = 0
@@ -470,18 +448,15 @@ class LiveVideoStreamingManager: NSObject {
                 guard naluLength > 0 else { continue }
                 
                 if offset + Int(naluLength) <= totalLength {
-                    AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 7.1] Extracted NALU #\(naluCount) of length \(naluLength) at offset \(offset)")
                     let naluData = buffer.subdata(in: offset..<(offset + Int(naluLength)))
                     let isLastNalu = (offset + Int(naluLength) >= totalLength)
                     sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, isLast: isLastNalu)
                     naluCount += 1
                 } else {
-                    AppLogger.warning("LiveVideoStreamingManager processEncodedFrame: [Trace 7.2] Aborting AVCC loop. Out of bounds slice size detected.")
                     break // Out of bounds NALU length!
                 }
                 offset += Int(naluLength)
             }
-            AppLogger.info("LiveVideoStreamingManager processEncodedFrame: [Trace 8] NAL unit parsing completed (processed \(naluCount) NALUs)")
         }
     }
     
