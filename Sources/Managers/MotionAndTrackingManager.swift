@@ -239,9 +239,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
         timer.setEventHandler { [weak self] in
             guard let self = self, self.isTrackingActive else { return }
             
+            // Synthesize Abu Clock Kalman-PLL disciplined TAI & SMPTE ST 12-1 stamp
+            let stamp = AbuClockKitBridge.shared.stampMonotonicNanoseconds(AbuClockKitBridge.currentMachNanoseconds())
+            let disciplinedUtcMs = max((Double(stamp.disciplinedTaiNanoseconds) * 1.0e-9) - AbuClockKitBridge.taiMinusUtcSeconds, Date().timeIntervalSince1970) * 1000.0
+            
             // Log Telemetry Record
             let entry = TelemetryEntry(
-                timestamp: Date().timeIntervalSince1970 * 1000.0,
+                timestamp: disciplinedUtcMs,
                 localX: self.localX,
                 localY: self.localY,
                 localZ: self.localZ,
@@ -259,7 +263,12 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
                 longitude: 0.0,
                 gpsAltitude: 0.0,
                 horizontalAccuracy: 0.0,
-                verticalAccuracy: 0.0
+                verticalAccuracy: 0.0,
+                taiNs: stamp.disciplinedTaiNanoseconds,
+                smpteTimecode: stamp.smpteWithSubframe,
+                bcdTimecode: stamp.bcdTimecode,
+                subframePhase: stamp.subframePhase,
+                clockLockState: stamp.clockLockState
             )
             
             TelemetryLogger.shared.log(entry)

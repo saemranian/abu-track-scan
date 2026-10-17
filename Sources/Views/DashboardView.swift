@@ -574,6 +574,16 @@ struct DashboardView: View {
                     fileHandle.closeFile()
                 }
             }
+            
+            // Record synchronized Photo + LiDAR Depth Snapshot into .abuscan.json and COLMAP images.txt
+            let stamp = cameraManager.lastOpticalStamp ?? AbuClockKitBridge.shared.stampMonotonicNanoseconds(AbuClockKitBridge.currentMachNanoseconds())
+            TelemetryLogger.shared.recordSynchronizedCapture(
+                stamp: stamp,
+                photoFilename: filename,
+                lidarSnapshotPoints: trackingManager.sparsePointCloud,
+                qw: qw, qx: qx, qy: qy, qz: qz,
+                tx: correctedX, ty: correctedY, tz: correctedZ
+            )
         }
         
         // Set tactile shutter HUD confirmation and increment session record count
