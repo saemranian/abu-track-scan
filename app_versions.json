@@ -1,9 +1,9 @@
 {
   "desktop": {
-    "version": "0.1.0.7",
-    "build": 100,
-    "last_build_time": "2026-10-18 02:54:16",
-    "last_task": "Phase 2 Step 2.3: Rebuild standalone dist/abu_track_desktop.exe binary with v0.1.0.7 minimalist UI/UX redesign"
+    "version": "0.1.0.8",
+    "build": 101,
+    "last_build_time": "2026-10-18 03:01:24",
+    "last_task": "Phase 4 Verification Fix: Unify CollapsibleCard keyword arguments (expanded, badge_text, tooltip_title/body, .body, .set_badge) and verify headless CamTrackDesktopApp instantiation"
   },
   "ios": {
     "version": "0.0.7.9",
@@ -197,6 +197,15 @@
       "version": "0.0.0.3",
       "build": 3,
       "task": "Phase 3 Step 3.1: Add rich UPROPERTY tooltips and custom Slate IDetailCustomization with 1-Click UE5 TimecodeProvider & Genlock auto-configuration"
+    },
+    {
+      "timestamp": "2026-10-18 03:01:24",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.7",
+      "version": "0.1.0.8",
+      "build": 101,
+      "task": "Phase 4 Verification Fix: Unify CollapsibleCard keyword arguments (expanded, badge_text, tooltip_title/body, .body, .set_badge) and verify headless CamTrackDesktopApp instantiation"
     }
   ]
 }

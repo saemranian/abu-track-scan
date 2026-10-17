@@ -278,14 +278,19 @@ class CollapsibleCard(ttk.Frame):
         self,
         parent,
         title: str,
+        badge_text: str = "",
+        expanded: bool = None,
         default_open: bool = True,
         badge_var: tk.StringVar = None,
+        tooltip_title: str = "",
+        tooltip_body: str = "",
         help_title: str = "",
         help_body: str = "",
         help_rec: str = "",
     ):
         super().__init__(parent, style="Card.TFrame", padding=10)
-        self.is_open = default_open
+        is_expanded = default_open if expanded is None else expanded
+        self.is_open = is_expanded
         self.title_text = title
         self.columnconfigure(0, weight=1)
 
@@ -295,7 +300,7 @@ class CollapsibleCard(ttk.Frame):
 
         self.arrow_lbl = tk.Label(
             self.header_frame,
-            text="▾" if default_open else "▸",
+            text="▾" if is_expanded else "▸",
             bg=CARD_BG,
             fg=ACCENT_CYAN,
             font=("Segoe UI", 10, "bold"),
@@ -312,20 +317,22 @@ class CollapsibleCard(ttk.Frame):
         )
         self.title_lbl.grid(row=0, column=1, sticky="w")
 
-        if badge_var is not None:
-            self.badge_lbl = tk.Label(
-                self.header_frame,
-                textvariable=badge_var,
-                bg=FIELD_BG,
-                fg=ACCENT_GREEN,
-                font=("Consolas", 8, "bold"),
-                padx=6,
-                pady=1,
-            )
-            self.badge_lbl.grid(row=0, column=2, padx=(6, 6))
-            self.badge_lbl.bind("<Button-1>", self.toggle)
+        self.badge_var = badge_var if badge_var is not None else tk.StringVar(value=badge_text)
+        self.badge_lbl = tk.Label(
+            self.header_frame,
+            textvariable=self.badge_var,
+            bg=FIELD_BG if (badge_text or badge_var is not None) else CARD_BG,
+            fg=ACCENT_GREEN,
+            font=("Consolas", 8, "bold"),
+            padx=6 if (badge_text or badge_var is not None) else 0,
+            pady=1,
+        )
+        self.badge_lbl.grid(row=0, column=2, padx=(6, 6))
+        self.badge_lbl.bind("<Button-1>", self.toggle)
 
-        if help_body:
+        eff_title = tooltip_title or help_title or title
+        eff_body = tooltip_body or help_body
+        if eff_body:
             self.info_badge = tk.Label(
                 self.header_frame,
                 text=" ⓘ ",
@@ -335,14 +342,19 @@ class CollapsibleCard(ttk.Frame):
                 cursor="question_arrow",
             )
             self.info_badge.grid(row=0, column=3, padx=(4, 0))
-            HoverTooltip(self.info_badge, help_title or title, help_body, help_rec)
+            HoverTooltip(self.info_badge, eff_title, eff_body, help_rec)
 
         for w in (self.header_frame, self.arrow_lbl, self.title_lbl):
             w.bind("<Button-1>", self.toggle)
 
         self.content = ttk.Frame(self, style="Card.TFrame")
-        if default_open:
+        self.body = self.content
+        if is_expanded:
             self.content.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+
+    def set_badge(self, text: str):
+        self.badge_var.set(text)
+        self.badge_lbl.configure(bg=FIELD_BG if text else CARD_BG, padx=6 if text else 0)
 
     def toggle(self, _event=None):
         self.is_open = not self.is_open
