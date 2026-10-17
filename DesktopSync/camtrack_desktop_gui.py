@@ -174,6 +174,228 @@ class UEMonitorThread:
         self.running = False
 
 
+class HoverTooltip:
+    """Modern dark studio floating tooltip with title, description, and pro recommendation."""
+
+    def __init__(self, widget, title: str, body: str, recommendation: str = ""):
+        self.widget = widget
+        self.title = title
+        self.body = body
+        self.recommendation = recommendation
+        self.tip_window = None
+        self._after_id = None
+        widget.bind("<Enter>", self._schedule_show, add="+")
+        widget.bind("<Leave>", self._hide, add="+")
+        widget.bind("<ButtonPress>", self._hide, add="+")
+
+    def _schedule_show(self, _event=None):
+        self._cancel()
+        self._after_id = self.widget.after(280, self._show)
+
+    def _cancel(self):
+        if self._after_id is not None:
+            try:
+                self.widget.after_cancel(self._after_id)
+            except Exception:
+                pass
+            self._after_id = None
+
+    def _show(self):
+        if self.tip_window is not None:
+            return
+        try:
+            x = self.widget.winfo_rootx() + 16
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
+        except Exception:
+            return
+
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_attributes("-topmost", True)
+        tw.configure(bg=ACCENT_CYAN, padx=1, pady=1)
+
+        inner = tk.Frame(tw, bg="#0D1322", padx=12, pady=10)
+        inner.pack(fill="both", expand=True)
+
+        tk.Label(
+            inner,
+            text=f"ⓘ  {self.title}",
+            bg="#0D1322",
+            fg=ACCENT_CYAN,
+            font=("Segoe UI", 9, "bold"),
+            anchor="w",
+            justify="left",
+        ).pack(fill="x", pady=(0, 4))
+
+        tk.Label(
+            inner,
+            text=self.body,
+            bg="#0D1322",
+            fg=TEXT_PRIMARY,
+            font=("Segoe UI", 8),
+            wraplength=310,
+            anchor="w",
+            justify="left",
+        ).pack(fill="x")
+
+        if self.recommendation:
+            tk.Label(
+                inner,
+                text=f"✓ {self.recommendation}",
+                bg="#0D1322",
+                fg=ACCENT_GREEN,
+                font=("Segoe UI", 8, "bold"),
+                wraplength=310,
+                anchor="w",
+                justify="left",
+            ).pack(fill="x", pady=(6, 0))
+
+        tw.update_idletasks()
+        screen_w = tw.winfo_screenwidth()
+        screen_h = tw.winfo_screenheight()
+        w = tw.winfo_reqwidth()
+        h = tw.winfo_reqheight()
+        if x + w > screen_w - 16:
+            x = max(12, screen_w - w - 16)
+        if y + h > screen_h - 40:
+            y = max(12, self.widget.winfo_rooty() - h - 8)
+        tw.wm_geometry(f"+{x}+{y}")
+
+    def _hide(self, _event=None):
+        self._cancel()
+        if self.tip_window is not None:
+            try:
+                self.tip_window.destroy()
+            except Exception:
+                pass
+            self.tip_window = None
+
+
+class CollapsibleCard(ttk.Frame):
+    """Minimalist studio card with clickable ▾/▸ disclosure header, optional live badge, and ⓘ tooltip."""
+
+    def __init__(
+        self,
+        parent,
+        title: str,
+        default_open: bool = True,
+        badge_var: tk.StringVar = None,
+        help_title: str = "",
+        help_body: str = "",
+        help_rec: str = "",
+    ):
+        super().__init__(parent, style="Card.TFrame", padding=10)
+        self.is_open = default_open
+        self.title_text = title
+        self.columnconfigure(0, weight=1)
+
+        self.header_frame = tk.Frame(self, bg=CARD_BG, cursor="hand2")
+        self.header_frame.grid(row=0, column=0, sticky="ew")
+        self.header_frame.columnconfigure(1, weight=1)
+
+        self.arrow_lbl = tk.Label(
+            self.header_frame,
+            text="▾" if default_open else "▸",
+            bg=CARD_BG,
+            fg=ACCENT_CYAN,
+            font=("Segoe UI", 10, "bold"),
+        )
+        self.arrow_lbl.grid(row=0, column=0, padx=(0, 6))
+
+        self.title_lbl = tk.Label(
+            self.header_frame,
+            text=title,
+            bg=CARD_BG,
+            fg=ACCENT_CYAN,
+            font=("Segoe UI", 9, "bold"),
+            anchor="w",
+        )
+        self.title_lbl.grid(row=0, column=1, sticky="w")
+
+        if badge_var is not None:
+            self.badge_lbl = tk.Label(
+                self.header_frame,
+                textvariable=badge_var,
+                bg=FIELD_BG,
+                fg=ACCENT_GREEN,
+                font=("Consolas", 8, "bold"),
+                padx=6,
+                pady=1,
+            )
+            self.badge_lbl.grid(row=0, column=2, padx=(6, 6))
+            self.badge_lbl.bind("<Button-1>", self.toggle)
+
+        if help_body:
+            self.info_badge = tk.Label(
+                self.header_frame,
+                text=" ⓘ ",
+                bg=FIELD_BG,
+                fg=ACCENT_CYAN,
+                font=("Segoe UI", 8, "bold"),
+                cursor="question_arrow",
+            )
+            self.info_badge.grid(row=0, column=3, padx=(4, 0))
+            HoverTooltip(self.info_badge, help_title or title, help_body, help_rec)
+
+        for w in (self.header_frame, self.arrow_lbl, self.title_lbl):
+            w.bind("<Button-1>", self.toggle)
+
+        self.content = ttk.Frame(self, style="Card.TFrame")
+        if default_open:
+            self.content.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+
+    def toggle(self, _event=None):
+        self.is_open = not self.is_open
+        if self.is_open:
+            self.arrow_lbl.configure(text="▾")
+            self.content.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+        else:
+            self.arrow_lbl.configure(text="▸")
+            self.content.grid_remove()
+
+
+class ScrollableSidebarFrame(ttk.Frame):
+    """Mouse-wheel scrollable sidebar container so left inspector panels never clip on 1080p screens."""
+
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        self.canvas = tk.Canvas(self, bg=BG_COLOR, highlightthickness=0, bd=0)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.inner = ttk.Frame(self.canvas)
+
+        self.inner_id = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.scrollbar.grid(row=0, column=1, sticky="ns")
+
+        self.inner.bind("<Configure>", self._on_inner_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        self.canvas.bind("<Enter>", self._bind_mousewheel)
+        self.canvas.bind("<Leave>", self._unbind_mousewheel)
+
+    def _on_inner_configure(self, _event=None):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event):
+        self.canvas.itemconfig(self.inner_id, width=event.width)
+
+    def _bind_mousewheel(self, _event=None):
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _unbind_mousewheel(self, _event=None):
+        self.canvas.unbind_all("<MouseWheel>")
+
+    def _on_mousewheel(self, event):
+        try:
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        except Exception:
+            pass
+
+
 class CamTrackDesktopApp:
     def __init__(self, root):
         self.root = root
@@ -396,31 +618,156 @@ class CamTrackDesktopApp:
         style.configure("TFrame", background=BG_COLOR)
         style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
         
-        # Tab Notebook Style
+        # Tab Notebook Style (Segoe UI for clean human readability)
         style.configure("TNotebook", background=BG_COLOR, borderwidth=0)
-        style.configure("TNotebook.Tab", background=CARD_BG, foreground=TEXT_MUTED, borderwidth=1, bordercolor=BORDER_COLOR, font=("Consolas", 9, "bold"), padding=10)
-        style.map("TNotebook.Tab", 
-                  background=[("selected", FIELD_BG), ("active", ACCENT_CYAN)], 
-                  foreground=[("selected", ACCENT_CYAN), ("active", BG_COLOR)])
+        style.configure(
+            "TNotebook.Tab",
+            background=CARD_BG,
+            foreground=TEXT_MUTED,
+            borderwidth=1,
+            bordercolor=BORDER_COLOR,
+            font=("Segoe UI", 9, "bold"),
+            padding=(14, 8),
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", FIELD_BG), ("active", ACCENT_CYAN)],
+            foreground=[("selected", ACCENT_CYAN), ("active", BG_COLOR)],
+        )
         
-        # Core Labels
-        style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Consolas", 9))
-        style.configure("Header.TLabel", background=CARD_BG, foreground=ACCENT_CYAN, font=("Consolas", 11, "bold"))
-        style.configure("Muted.TLabel", background=CARD_BG, foreground=TEXT_MUTED, font=("Consolas", 8))
+        # Core Labels (Segoe UI for UI copy, Consolas reserved for live telemetry/logs)
+        style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 9))
+        style.configure("Header.TLabel", background=CARD_BG, foreground=ACCENT_CYAN, font=("Segoe UI", 10, "bold"))
+        style.configure("Muted.TLabel", background=CARD_BG, foreground=TEXT_MUTED, font=("Segoe UI", 8))
+        style.configure("Mono.TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Consolas", 9))
+        
+        # Checkbuttons
+        style.configure("TCheckbutton", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 9))
+        style.map("TCheckbutton", background=[("active", CARD_BG)], foreground=[("active", ACCENT_CYAN)])
         
         # Sleek Minimal Buttons
-        style.configure("TButton", background=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Consolas", 9, "bold"))
-        style.map("TButton", 
-                  background=[("active", ACCENT_CYAN), ("pressed", BORDER_COLOR)], 
-                  foreground=[("active", BG_COLOR)])
+        style.configure("TButton", background=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Segoe UI", 9, "bold"))
+        style.map(
+            "TButton",
+            background=[("active", ACCENT_CYAN), ("pressed", BORDER_COLOR)],
+            foreground=[("active", BG_COLOR)],
+        )
         
-        style.configure("Action.TButton", background=ACCENT_CYAN, foreground=BG_COLOR, font=("Consolas", 10, "bold"), borderwidth=0, relief="flat")
-        style.map("Action.TButton", 
-                  background=[("active", ACCENT_AMBER)], 
-                  foreground=[("active", BG_COLOR)])
+        style.configure("Action.TButton", background=ACCENT_CYAN, foreground=BG_COLOR, font=("Segoe UI", 10, "bold"), borderwidth=0, relief="flat")
+        style.map(
+            "Action.TButton",
+            background=[("active", ACCENT_AMBER)],
+            foreground=[("active", BG_COLOR)],
+        )
         
         style.configure("TEntry", fieldbackground=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Consolas", 10))
         style.configure("Horizontal.TProgressbar", thickness=8, troughcolor=BG_COLOR, background=ACCENT_CYAN, borderwidth=0)
+
+    def create_workflow_banner(self, parent, steps_text: str, guide_title: str, guide_body: str):
+        """Creates a slim 1-2-3 visual workflow banner at the top of a workspace tab."""
+        banner = tk.Frame(parent, bg="#0B1324", highlightthickness=1, highlightbackground="#1B2A4A", padx=12, pady=6)
+        banner.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        
+        badge = tk.Label(
+            banner,
+            text="WORKFLOW",
+            bg="#13223D",
+            fg=ACCENT_CYAN,
+            font=("Segoe UI", 8, "bold"),
+            padx=6,
+            pady=1,
+        )
+        badge.pack(side="left", padx=(0, 10))
+        
+        lbl = tk.Label(
+            banner,
+            text=steps_text,
+            bg="#0B1324",
+            fg=TEXT_PRIMARY,
+            font=("Segoe UI", 9),
+            anchor="w",
+        )
+        lbl.pack(side="left", fill="x", expand=True)
+        
+        help_btn = tk.Button(
+            banner,
+            text="ⓘ Quick Help",
+            bg="#13223D",
+            fg=ACCENT_CYAN,
+            activebackground=ACCENT_CYAN,
+            activeforeground=BG_COLOR,
+            font=("Segoe UI", 8, "bold"),
+            bd=0,
+            padx=8,
+            pady=2,
+            cursor="hand2",
+            command=lambda: self.show_quick_guide_modal(guide_title, guide_body),
+        )
+        help_btn.pack(side="right", padx=(8, 0))
+        HoverTooltip(help_btn, guide_title, guide_body)
+        return banner
+
+    def show_quick_guide_modal(self, title: str = "Abu Track & Scan — Studio Quick Start Guide", highlight_body: str = ""):
+        """Displays a clean, minimalist dark-mode Quick Guide modal with interactive workflow cards and rig diagram."""
+        win = tk.Toplevel(self.root)
+        win.title(title)
+        win.geometry("760x620")
+        win.configure(bg=BG_COLOR)
+        win.transient(self.root)
+        
+        hdr = tk.Frame(win, bg="#080C14", highlightthickness=1, highlightbackground="#1B2A4A", padx=16, pady=12)
+        hdr.pack(fill="x")
+        tk.Label(hdr, text=f"📘 {title}", bg="#080C14", fg=ACCENT_CYAN, font=("Segoe UI", 12, "bold")).pack(side="left")
+        ttk.Button(hdr, text="Close", command=win.destroy).pack(side="right", ipadx=8, ipady=2)
+        
+        body = tk.Frame(win, bg=BG_COLOR, padx=16, pady=12)
+        body.pack(fill="both", expand=True)
+        
+        if highlight_body:
+            ctx_card = tk.Frame(body, bg="#0F1B33", highlightthickness=1, highlightbackground=ACCENT_CYAN, padx=14, pady=10)
+            ctx_card.pack(fill="x", pady=(0, 12))
+            tk.Label(ctx_card, text="ACTIVE WORKSPACE GUIDE", bg="#0F1B33", fg=ACCENT_CYAN, font=("Segoe UI", 9, "bold")).pack(anchor="w")
+            tk.Label(ctx_card, text=highlight_body, bg="#0F1B33", fg=TEXT_PRIMARY, font=("Segoe UI", 9), justify="left", wraplength=700).pack(anchor="w", pady=(4, 0))
+        
+        # Rig Lever-Arm Visual Diagram Card
+        diag_card = tk.Frame(body, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=14, pady=10)
+        diag_card.pack(fill="x", pady=(0, 12))
+        tk.Label(diag_card, text="🎥 RIG LEVER-ARM COORDINATE CONVENTION (iPhone Tracker → Cinema/DSLR Sensor)", bg=CARD_BG, fg=ACCENT_AMBER, font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(0, 6))
+        diagram_ascii = (
+            "          [ +Y : Up (Height) ]                  • dx (Lateral cm): +Right / -Left from iPhone lens to DSLR sensor\n"
+            "                  ▲                             • dy (Vertical cm): +Up / -Down from iPhone lens to DSLR sensor\n"
+            "                  │    ↗ [ +Z : Forward/Depth ] • dz (Depth cm): +Forward / -Behind from iPhone lens to DSLR nodal point\n"
+            "      [iPhone]────┼───► [ +X : Right ]          • Boresight (rx, ry, rz °): Mechanical tilt difference between rigs\n"
+            "         │        ▼                             • Front Selfie Tracking: Uses Rear Main VIO + automatic 180° Yaw flip"
+        )
+        tk.Label(diag_card, text=diagram_ascii, bg="#080C14", fg=TEXT_PRIMARY, font=("Consolas", 8), justify="left", padx=10, pady=8).pack(fill="x")
+        
+        # 3 Workflow Cards
+        workflows = [
+            (
+                "📸 1. Scan & Photo Sync (3DGS / Metashape / RealityScan)",
+                "① Select your DSLR Image Folder and iOS CSV Telemetry Log in '📸 Scan & Photo Sync'.\n"
+                "② Enter your Rig Lever-Arm (dx, dy, dz) or click 'Auto-Solve Frame-00 Slate Flash Offset' to align shutter timestamps.\n"
+                "③ Click 'Inject EXIF & Export' and inspect your reconstructed trajectory & LiDAR cloud in '🕸 3D Spatial Map'.",
+            ),
+            (
+                "📡 2. Live Virtual Production Tracking (Unreal Engine 5 / FreeD / OpenTrackIO)",
+                "① Open '📡 Live Track & Stream', check your PC Local IP, and enter it in the iOS app's Setup → Stream & Clock tab.\n"
+                "② Click 'Start Listening' (UDP 8080). Optionally enable UDP Forwarding to Unreal Engine (Live Link JSON, 41B FreeD-TC 0xD2, or OpenTrackIO).\n"
+                "③ In UE5 Live Link, add 'Abu Track Source' and click '⚡ Configure UE5 TimecodeProvider & Genlock' for 1-click sync.",
+            ),
+            (
+                "⏱ 3. Abu Clock ST 2059-2 Master Timecode & Multi-Rig Barrier Trigger",
+                "• The persistent top bar broadcasts Abu Clock PTP/CSPTP sync across iOS, Windows, and UE5.\n"
+                "• Click '⚡ Trigger Multi-Rig (+50ms)' to schedule a deterministic future-time capture across all connected sensors.\n"
+                "• Click '🎬 Clapper Slate' to open the Frame-00 optical flash & 1kHz audio beep slate for external cameras.",
+            ),
+        ]
+        for wf_title, wf_desc in workflows:
+            c = tk.Frame(body, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=12, pady=8)
+            c.pack(fill="x", pady=4)
+            tk.Label(c, text=wf_title, bg=CARD_BG, fg=ACCENT_CYAN, font=("Segoe UI", 9, "bold")).pack(anchor="w")
+            tk.Label(c, text=wf_desc, bg=CARD_BG, fg=TEXT_MUTED, font=("Segoe UI", 8), justify="left", wraplength=700).pack(anchor="w", pady=(2, 0))
         
     def build_ui(self):
         # Persistent Top Abu Clock Master Timecode & Ecosystem Status Bar
@@ -432,13 +779,24 @@ class CamTrackDesktopApp:
         self.clock_led_canvas.pack(side="left", padx=(0, 6))
         self.clock_led_dot = self.clock_led_canvas.create_oval(2, 2, 10, 10, fill=ACCENT_GREEN, outline="")
         
-        tk.Label(self.clock_bar, text="ABU CLOCK ST 2059:", bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 9, "bold")).pack(side="left", padx=(0, 4))
+        clock_title_lbl = tk.Label(self.clock_bar, text="⏱ ABU CLOCK ST 2059:", bg="#080C14", fg=TEXT_MUTED, font=("Segoe UI", 9, "bold"))
+        clock_title_lbl.pack(side="left", padx=(0, 4))
         self.clock_lock_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_lock_var, bg="#080C14", fg=ACCENT_GREEN, font=("Consolas", 9, "bold"))
         self.clock_lock_lbl.pack(side="left", padx=(0, 14))
+        HoverTooltip(
+            self.clock_lock_lbl,
+            "Abu Clock PTP / CSPTP Lock State",
+            "Shows whether this workstation is acting as the ST 2059-2 Master Clock or locked to an external PTP/CSPTP reference.",
+        )
         
         # Center-Left: Live SMPTE Timecode Readout + Sub-frame Phase Bar
         self.clock_tc_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tc_var, bg="#0D1524", fg=ACCENT_CYAN, font=("Consolas", 13, "bold"), padx=10, pady=2)
         self.clock_tc_lbl.pack(side="left", padx=(0, 8))
+        HoverTooltip(
+            self.clock_tc_lbl,
+            "Live SMPTE ST 12-1 / ST 2059-2 Timecode",
+            "Deterministic frame-accurate timecode synthesized from the Abu Clock TAI epoch. Shared across iOS, Windows, and UE5.",
+        )
         
         phase_col = tk.Frame(self.clock_bar, bg="#080C14")
         phase_col.pack(side="left", padx=(0, 12))
@@ -447,37 +805,76 @@ class CamTrackDesktopApp:
         self.clock_phase_canvas = tk.Canvas(phase_col, width=110, height=6, bg="#131B2E", highlightthickness=0)
         self.clock_phase_canvas.pack(anchor="w", pady=(2, 0))
         self.clock_phase_rect = self.clock_phase_canvas.create_rectangle(0, 0, 0, 6, fill=ACCENT_CYAN, outline="")
+        HoverTooltip(
+            phase_col,
+            "32-bit BCD Timecode & Sub-Frame Phase",
+            "Displays the hex SMPTE BCD word and live sub-frame phase progress (0.0 to 1.0) within the current frame window.",
+        )
         
         self.clock_tai_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tai_var, bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 8))
         self.clock_tai_lbl.pack(side="left", padx=(0, 12))
         
-        self.clock_nodes_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_nodes_var, bg="#080C14", fg=ACCENT_GREEN, font=("Consolas", 8, "bold"))
+        self.clock_nodes_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_nodes_var, bg="#080C14", fg=ACCENT_GREEN, font=("Segoe UI", 8, "bold"))
         self.clock_nodes_lbl.pack(side="left", padx=(0, 10))
+        HoverTooltip(
+            self.clock_nodes_lbl,
+            "Discovered Abu Ecosystem Nodes",
+            "Count of active iOS Track & Scan devices and Unreal Engine 5 nodes discovered on the local subnet via UDP port 53530.",
+        )
         
-        # Right: FPS Selector + Barrier Trigger & Digital Clapper Slate Buttons
-        self.slate_top_btn = ttk.Button(self.clock_bar, text="CLAPPER SLATE", command=self.open_clapper_slate_window)
+        # Right: Quick Guide + Clapper Slate + Barrier Trigger + FPS Selector
+        self.guide_top_btn = ttk.Button(self.clock_bar, text="❓ Quick Guide", command=self.show_quick_guide_modal)
+        self.guide_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
+        HoverTooltip(
+            self.guide_top_btn,
+            "Studio Quick Start Guide",
+            "Open the visual Quick Start Guide with rig lever-arm diagrams and step-by-step Scan, Live Track, and Timecode workflows.",
+        )
+
+        self.slate_top_btn = ttk.Button(self.clock_bar, text="🎬 Clapper Slate", command=self.open_clapper_slate_window)
         self.slate_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
+        HoverTooltip(
+            self.slate_top_btn,
+            "Digital Clapper Slate (Frame-00 Flash + 1kHz Beep)",
+            "Opens a high-contrast SMPTE timecode slate window that fires a 1-frame white optical flash and 1kHz tone on Frame :00 to sync non-genlocked DSLRs and cinema cameras.",
+        )
         
-        self.barrier_top_btn = ttk.Button(self.clock_bar, text="TRIGGER BARRIER (+50ms)", style="Action.TButton", command=self.trigger_global_capture_barrier)
+        self.barrier_top_btn = ttk.Button(self.clock_bar, text="⚡ Trigger Multi-Rig (+50ms)", style="Action.TButton", command=self.trigger_global_capture_barrier)
         self.barrier_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
+        HoverTooltip(
+            self.barrier_top_btn,
+            "Future-Time Multi-Sensor Capture Barrier",
+            "Broadcasts SCHEDULE_CAPTURE_AT (now + 50ms) so all connected iOS rigs and cameras fire their shutters at the exact same microsecond.",
+        )
         
         fps_options = ["23.976", "24", "25", "29.97 DF", "29.97 NDF", "30", "50", "59.94 DF", "60"]
         self.clock_fps_combo = ttk.Combobox(self.clock_bar, textvariable=self.abu_clock_fps_var, values=fps_options, state="readonly", width=10)
         self.clock_fps_combo.pack(side="right", padx=(4, 6))
         self.clock_fps_combo.bind("<<ComboboxSelected>>", lambda _e: self.abu_clock.set_frame_rate(self.abu_clock_fps_var.get()))
-        tk.Label(self.clock_bar, text="FPS:", bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 8, "bold")).pack(side="right")
+        HoverTooltip(
+            self.clock_fps_combo,
+            "Master SMPTE Frame Rate",
+            "Sets the master timecode frame rate for the entire Abu Track & Scan studio session (supports NDF and Drop-Frame standards).",
+        )
+        tk.Label(self.clock_bar, text="FPS:", bg="#080C14", fg=TEXT_MUTED, font=("Segoe UI", 8, "bold")).pack(side="right")
 
-        # Notebook Tabbed System
+        # Notebook Tabbed System — Ordered by logical production workflow
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
         
-        # Tab 1: Sync and Console Logs
-        self.tab_sync = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.tab_sync, text="01 // CONSOLE LOGS & EXIF SYNC")
+        self.tab_sync = ttk.Frame(self.notebook, padding=10)
+        self.tab_visualizer = ttk.Frame(self.notebook, padding=10)
+        self.tab_receiver = ttk.Frame(self.notebook, padding=10)
+        self.tab_ue_monitor = ttk.Frame(self.notebook, padding=10)
+        self.tab_calibrator = ttk.Frame(self.notebook, padding=10)
+        self.tab_docs = ttk.Frame(self.notebook, padding=10)
         
-        # Tab 2: 3D Spatial Visualizer Tab
-        self.tab_visualizer = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.tab_visualizer, text="02 // 3D SPATIAL MAP (POSTSHOT SUITE)")
+        self.notebook.add(self.tab_sync, text="📸 Scan & Photo Sync")
+        self.notebook.add(self.tab_visualizer, text="🕸 3D Spatial Map")
+        self.notebook.add(self.tab_receiver, text="📡 Live Track & Stream")
+        self.notebook.add(self.tab_ue_monitor, text="🖥 UE & AR Monitor")
+        self.notebook.add(self.tab_calibrator, text="🎯 Lens Lab")
+        self.notebook.add(self.tab_docs, text="📘 Interactive Guide")
         
         # ----------------- TAB 1: SYNCHRONIZATION INTERFACE -----------------
         self.tab_sync.columnconfigure(0, weight=4) # Left Panel
@@ -597,16 +994,23 @@ class CamTrackDesktopApp:
         # ----------------- TAB 2: 3D SPATIAL WORKSTATION -----------------
         self.tab_visualizer.columnconfigure(0, weight=5) # 3D Plot Canvas
         self.tab_visualizer.columnconfigure(1, weight=3) # Side photography controller
-        self.tab_visualizer.rowconfigure(0, weight=1)
+        self.tab_visualizer.rowconfigure(1, weight=1)
+        
+        self.create_workflow_banner(
+            self.tab_visualizer,
+            "① Inspect synced camera frustums & LiDAR point cloud   →   ② Clean outliers (SOR)   →   ③ Select Lens Profile & Export to Postshot / Metashape / RealityScan",
+            "3D Spatial Map & Multi-Target Export Guide",
+            "After running EXIF Sync in Tab 1, your camera trajectory and LiDAR point cloud appear here. Click any photo in the Photography Controller list to highlight its 3D frustum, run Statistical Outlier Removal (SOR), and export ready-to-train scenes for Jawset Postshot (3DGS), Agisoft Metashape (Z-Up), or Epic RealityScan.",
+        )
         
         # Left: Matplotlib 3D Viewport
         self.view_frame = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=10)
-        self.view_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self.view_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
 
         self.view_frame.columnconfigure(0, weight=1)
         self.view_frame.rowconfigure(1, weight=1)
         
-        ttk.Label(self.view_frame, text="04 // INTERACTIVE 3D SPATIAL MAP", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 10))
+        ttk.Label(self.view_frame, text="🕸 INTERACTIVE 3D SPATIAL MAP", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 10))
         
         # Create empty Matplotlib figure inside Tkinter
         self.fig = plt.figure(facecolor=BG_COLOR)
@@ -621,11 +1025,11 @@ class CamTrackDesktopApp:
         
         # Right Control Panel
         side_panel = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=15)
-        side_panel.grid(row=0, column=1, sticky="nsew")
+        side_panel.grid(row=1, column=1, sticky="nsew")
         side_panel.columnconfigure(0, weight=1)
         side_panel.rowconfigure(1, weight=1)
         
-        ttk.Label(side_panel, text="05 // PHOTOGRAPHY CONTROLLER", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 10))
+        ttk.Label(side_panel, text="📸 PHOTOGRAPHY CONTROLLER", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 10))
         
         # Listbox containing photography frames
         self.photo_listbox = tk.Listbox(side_panel, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 9), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
@@ -641,8 +1045,13 @@ class CamTrackDesktopApp:
         btn_frame.grid(row=2, column=0, columnspan=2, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         
-        self.clean_btn = ttk.Button(btn_frame, text="CLEAN POINT CLOUD (SOR)", command=self.clean_point_cloud_sor)
+        self.clean_btn = ttk.Button(btn_frame, text="🧹 Clean Point Cloud (SOR Filter)", command=self.clean_point_cloud_sor)
         self.clean_btn.grid(row=0, column=0, sticky="ew", ipady=8)
+        HoverTooltip(
+            self.clean_btn,
+            "Statistical Outlier Removal (SOR)",
+            "Removes floating noise and stray depth points from the merged LiDAR point cloud using k-nearest neighbor distance filtering.",
+        )
         
         # 06 // CALIBRATION & MULTI-TARGET EXPORTS
         export_frame = ttk.Frame(side_panel)
@@ -651,7 +1060,7 @@ class CamTrackDesktopApp:
         export_frame.columnconfigure(1, weight=1)
         export_frame.columnconfigure(2, weight=1)
         
-        ttk.Label(export_frame, text="06 // CALIBRATION & MULTI-TARGET EXPORTS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        ttk.Label(export_frame, text="📦 LENS PROFILE & 1-CLICK EXPORTS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
         
         # Profile Dropdown
         profiles = [
@@ -679,37 +1088,49 @@ class CamTrackDesktopApp:
         ]
         self.profile_combo = ttk.Combobox(export_frame, textvariable=self.lens_profile, values=profiles, state="readonly")
         self.profile_combo.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 10))
+        HoverTooltip(
+            self.profile_combo,
+            "Optical Intrinsic Preset",
+            "Select a factory lens preset or load a custom .atlp profile solved in the 🎯 Lens Lab tab.",
+        )
         
         # Three target export buttons
-        self.postshot_btn = ttk.Button(export_frame, text="POSTSHOT (3DGS)", command=self.export_for_postshot)
+        self.postshot_btn = ttk.Button(export_frame, text="✨ Postshot (3DGS)", command=self.export_for_postshot)
         self.postshot_btn.grid(row=2, column=0, sticky="ew", padx=(0, 4), ipady=6)
+        HoverTooltip(self.postshot_btn, "Export for Jawset Postshot (3DGS)", "Exports COLMAP/transforms.json camera poses and cleaned PLY point cloud ready for 3D Gaussian Splatting.")
         
-        self.metashape_btn = ttk.Button(export_frame, text="METASHAPE (Z-UP)", command=self.export_for_metashape)
+        self.metashape_btn = ttk.Button(export_frame, text="🗺 Metashape (Z-Up)", command=self.export_for_metashape)
         self.metashape_btn.grid(row=2, column=1, sticky="ew", padx=2, ipady=6)
+        HoverTooltip(self.metashape_btn, "Export for Agisoft Metashape", "Exports Z-Up georeferenced camera reference CSV and lens calibration XML for Agisoft Metashape.")
         
-        self.realityscan_btn = ttk.Button(export_frame, text="REALITYSCAN", command=self.export_for_realityscan)
+        self.realityscan_btn = ttk.Button(export_frame, text="🏛 RealityScan", command=self.export_for_realityscan)
         self.realityscan_btn.grid(row=2, column=2, sticky="ew", padx=(4, 0), ipady=6)
+        HoverTooltip(self.realityscan_btn, "Export for Epic RealityScan / RealityCapture", "Exports flight log and XMP camera priors compatible with RealityScan / RealityCapture.")
         
         # ----------------- TAB 3: OPTICAL LENS CALIBRATION & SOLVER -----------------
-        self.tab_calibrator = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.tab_calibrator, text="03 // OPTICAL CALIBRATION & LENS SOLVER")
-        
         self.tab_calibrator.columnconfigure(0, weight=4) # Left controls panel
         self.tab_calibrator.columnconfigure(1, weight=5) # Right preview panel
-        self.tab_calibrator.rowconfigure(0, weight=1)
+        self.tab_calibrator.rowconfigure(1, weight=1)
+        
+        self.create_workflow_banner(
+            self.tab_calibrator,
+            "① Enter Checkerboard Inner Corners & Square Size (mm)   →   ② Load Board Photos & Run Optical Solver   →   ③ Apply to Project or Export (.ATLP / XML / JSON)",
+            "Optical Lens Calibration & Distortion Solver",
+            "Solves sub-pixel Brown-Conrady focal length (fx, fy), principal point (cx, cy), radial (k1, k2, k3), and tangential (p1, p2) distortion coefficients from 10–25 checkerboard photos.",
+        )
         
         # Left Panel: Controls Card
-        calib_left = ttk.Frame(self.tab_calibrator, padding=10)
-        calib_left.grid(row=0, column=0, sticky="nsew")
+        calib_left = ttk.Frame(self.tab_calibrator, padding=6)
+        calib_left.grid(row=1, column=0, sticky="nsew")
         calib_left.columnconfigure(0, weight=1)
-        calib_left.rowconfigure(2, weight=1) # Let listbox expand
+        calib_left.rowconfigure(1, weight=1) # Let listbox expand
         
         # Card 1: Grid settings
         calib_io_card = ttk.Frame(calib_left, style="Card.TFrame", padding=12)
         calib_io_card.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         calib_io_card.columnconfigure(1, weight=1)
         
-        ttk.Label(calib_io_card, text="01 // OPTICAL BOARD PARAMETERS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        ttk.Label(calib_io_card, text="🎯 CHECKERBOARD PARAMETERS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
         
         # Grid Size (Width x Height)
         ttk.Label(calib_io_card, text="Grid Size (W x H corners):").grid(row=1, column=0, sticky="w", pady=4)
@@ -721,7 +1142,8 @@ class CamTrackDesktopApp:
         ttk.Label(grid_dim_frame, text="x").pack(side="left", padx=2)
         self.height_entry = ttk.Entry(grid_dim_frame, textvariable=self.calib_board_height, width=5, justify="center")
         self.height_entry.pack(side="left", padx=2)
-        ttk.Label(grid_dim_frame, text=" corners").pack(side="left", padx=2)
+        ttk.Label(grid_dim_frame, text=" inner corners").pack(side="left", padx=2)
+        HoverTooltip(grid_dim_frame, "Checkerboard Inner Corners (W × H)", "Count the interior intersections where black and white squares meet (do not count the outer border edges).")
         
         # Square physical size
         ttk.Label(calib_io_card, text="Square Dimension (mm):").grid(row=2, column=0, sticky="w", pady=4)
@@ -735,7 +1157,7 @@ class CamTrackDesktopApp:
         ttk.Label(calib_io_card, text="Chessboard Folder:").grid(row=3, column=0, sticky="w", pady=4)
         calib_entry = ttk.Entry(calib_io_card, textvariable=self.calib_photo_dir)
         calib_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
-        ttk.Button(calib_io_card, text="Browse", command=self.browse_calib_photos).grid(row=3, column=2, pady=4, ipady=2, ipadx=6)
+        ttk.Button(calib_io_card, text="📂 Browse", command=self.browse_calib_photos).grid(row=3, column=2, pady=4, ipady=2, ipadx=6)
         
         # Card 2: Calib Images Listbox
         calib_list_card = ttk.Frame(calib_left, style="Card.TFrame", padding=12)
@@ -743,7 +1165,7 @@ class CamTrackDesktopApp:
         calib_list_card.columnconfigure(0, weight=1)
         calib_list_card.rowconfigure(1, weight=1)
         
-        ttk.Label(calib_list_card, text="02 // BOARD CAPTURE SERIES", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(calib_list_card, text="🖼 BOARD CAPTURE SERIES", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
         
         self.calib_listbox = tk.Listbox(calib_list_card, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 9), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
         self.calib_listbox.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
@@ -760,26 +1182,26 @@ class CamTrackDesktopApp:
         calib_actions.columnconfigure(1, weight=1)
         calib_actions.columnconfigure(2, weight=1)
         
-        ttk.Label(calib_actions, text="03 // CALIBRATION WORKSTATION CONTROLS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        ttk.Label(calib_actions, text="⚙ SOLVER & PROFILE EXPORT", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
         
-        self.solve_calib_btn = ttk.Button(calib_actions, text="RUN OPTICAL SOLVER", command=self.solve_lens_calibration)
+        self.solve_calib_btn = ttk.Button(calib_actions, text="▶ RUN OPTICAL SOLVER", style="Action.TButton", command=self.solve_lens_calibration)
         self.solve_calib_btn.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 8), ipady=6)
         
-        self.apply_calib_btn = ttk.Button(calib_actions, text="APPLY TO ACTIVE PROJECT", command=self.apply_calibration_to_project)
+        self.apply_calib_btn = ttk.Button(calib_actions, text="✓ Apply to Active Project", command=self.apply_calibration_to_project)
         self.apply_calib_btn.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(0, 12), ipady=4)
         
-        self.export_atlp_btn = ttk.Button(calib_actions, text="EXPORT ATLP", command=self.export_atlp_profile)
+        self.export_atlp_btn = ttk.Button(calib_actions, text="💾 .ATLP Profile", command=self.export_atlp_profile)
         self.export_atlp_btn.grid(row=3, column=0, sticky="ew", padx=(0, 2), ipady=4)
         
-        self.export_meta_xml_btn = ttk.Button(calib_actions, text="METASHAPE XML", command=self.export_metashape_calibration_xml)
+        self.export_meta_xml_btn = ttk.Button(calib_actions, text="💾 Metashape XML", command=self.export_metashape_calibration_xml)
         self.export_meta_xml_btn.grid(row=3, column=1, sticky="ew", padx=2, ipady=4)
         
-        self.export_post_json_btn = ttk.Button(calib_actions, text="POSTSHOT JSON", command=self.export_postshot_calibration_json)
+        self.export_post_json_btn = ttk.Button(calib_actions, text="💾 Postshot JSON", command=self.export_postshot_calibration_json)
         self.export_post_json_btn.grid(row=3, column=2, sticky="ew", padx=(2, 0), ipady=4)
         
         # Right Panel: Visualizer & Real-time Logs
-        right_panel = ttk.Frame(self.tab_calibrator, padding=10)
-        right_panel.grid(row=0, column=1, sticky="nsew")
+        right_panel = ttk.Frame(self.tab_calibrator, padding=6)
+        right_panel.grid(row=1, column=1, sticky="nsew")
         right_panel.columnconfigure(0, weight=1)
         right_panel.rowconfigure(0, weight=6) # 3D/Photo canvas
         right_panel.rowconfigure(1, weight=4) # Logs
@@ -799,7 +1221,7 @@ class CamTrackDesktopApp:
         calib_log_card.columnconfigure(0, weight=1)
         calib_log_card.rowconfigure(1, weight=1)
         
-        ttk.Label(calib_log_card, text="04 // OPTICAL PIPELINE OUTPUT CONSOLE", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
+        ttk.Label(calib_log_card, text="🖥 OPTICAL SOLVER CONSOLE", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
         
         self.calib_console = tk.Text(calib_log_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 8), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
         self.calib_console.grid(row=1, column=0, sticky="nsew")
@@ -809,9 +1231,6 @@ class CamTrackDesktopApp:
         self.calib_console.configure(yscrollcommand=scroll_console.set)
         
         # ----------------- TAB 4: LIVE TELEMETRY CHECKER -----------------
-        self.tab_receiver = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.tab_receiver, text="04 // LIVE TELEMETRY CHECKER")
-        
         self.tab_receiver.columnconfigure(0, weight=4) # Left Controls Panel
         self.tab_receiver.columnconfigure(1, weight=6) # Right Panel
         # Left Panel
@@ -1186,71 +1605,80 @@ class CamTrackDesktopApp:
         self.rx_console.configure(yscrollcommand=scroll_rx_console.set)
         
         # ----------------- TAB 5: SYSTEM MANUAL & DOCUMENTATION -----------------
-        self.tab_docs = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.tab_docs, text="05 // SYSTEM MANUAL & DOCUMENTATION")
-        
         self.tab_docs.columnconfigure(0, weight=1)
-        self.tab_docs.rowconfigure(0, weight=1)
+        self.tab_docs.rowconfigure(1, weight=1)
+        
+        self.create_workflow_banner(
+            self.tab_docs,
+            "① Review Rig Coordinate Conventions   →   ② Follow Scan & 3DGS or Live UE5 Track Workflow   →   ③ Verify Abu Clock ST 2059-2 Timecode Lock",
+            "Interactive Studio Operations Manual",
+            "Complete reference guide for Abu Track & Scan hardware mounting, lever-arm calibration, Abu Clock PTP/CSPTP synchronization, and Unreal Engine 5 / Postshot / Metashape pipelines.",
+        )
         
         docs_card = ttk.Frame(self.tab_docs, style="Card.TFrame", padding=16)
-        docs_card.grid(row=0, column=0, sticky="nsew")
+        docs_card.grid(row=1, column=0, sticky="nsew")
         docs_card.columnconfigure(0, weight=1)
         docs_card.rowconfigure(1, weight=1)
         
-        ttk.Label(docs_card, text="05 // INDUSTRIAL SYNC ENGINE USER MANUAL & ACADEMY", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 12))
+        ttk.Label(docs_card, text="📘 ABU TRACK & SCAN — INTERACTIVE STUDIO GUIDE & ACADEMY", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 12))
         
-        self.docs_text = tk.Text(docs_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 10), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR, wrap="word", padx=12, pady=12)
+        self.docs_text = tk.Text(docs_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Segoe UI", 10), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR, wrap="word", padx=16, pady=14)
         self.docs_text.grid(row=1, column=0, sticky="nsew")
         
         scroll_docs = ttk.Scrollbar(docs_card, orient="vertical", command=self.docs_text.yview)
         scroll_docs.grid(row=1, column=1, sticky="ns")
         self.docs_text.configure(yscrollcommand=scroll_docs.set)
         
-        # Configure tags for beautiful styled text rendering
-        self.docs_text.tag_config("h1", font=("Consolas", 12, "bold"), foreground=ACCENT_CYAN, spacing1=12, spacing3=6)
-        self.docs_text.tag_config("h2", font=("Consolas", 10, "bold"), foreground=ACCENT_CYAN, spacing1=8, spacing3=4)
-        self.docs_text.tag_config("bold", font=("Consolas", 9, "bold"), foreground=TEXT_PRIMARY)
-        self.docs_text.tag_config("bullet", font=("Consolas", 9, "bold"), foreground=ACCENT_GREEN)
-        self.docs_text.tag_config("code", font=("Consolas", 8, "bold"), foreground=ACCENT_AMBER, background=BG_COLOR)
-        self.docs_text.tag_config("warning", font=("Consolas", 9, "bold"), foreground=ACCENT_RED)
-        self.docs_text.tag_config("normal", font=("Consolas", 9), foreground=TEXT_MUTED, spacing2=4)
+        # Configure tags for clean human-readable Segoe UI rendering
+        self.docs_text.tag_config("h1", font=("Segoe UI", 13, "bold"), foreground=ACCENT_CYAN, spacing1=12, spacing3=6)
+        self.docs_text.tag_config("h2", font=("Segoe UI", 11, "bold"), foreground=ACCENT_CYAN, spacing1=10, spacing3=4)
+        self.docs_text.tag_config("bold", font=("Segoe UI", 9, "bold"), foreground=TEXT_PRIMARY)
+        self.docs_text.tag_config("bullet", font=("Segoe UI", 9, "bold"), foreground=ACCENT_GREEN)
+        self.docs_text.tag_config("code", font=("Consolas", 9, "bold"), foreground=ACCENT_AMBER, background=BG_COLOR)
+        self.docs_text.tag_config("warning", font=("Segoe UI", 9, "bold"), foreground=ACCENT_RED)
+        self.docs_text.tag_config("normal", font=("Segoe UI", 9), foreground=TEXT_MUTED, spacing2=4)
         
         self.write_documentation_manual()
         
         # ----------------- TAB 6: UE MONITOR FEED -----------------
-        self.tab_ue_monitor = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.tab_ue_monitor, text="06 // UE MONITOR FEED")
-        
         self.tab_ue_monitor.columnconfigure(0, weight=1)
-        self.tab_ue_monitor.rowconfigure(1, weight=1)
+        self.tab_ue_monitor.rowconfigure(2, weight=1)
+        
+        self.create_workflow_banner(
+            self.tab_ue_monitor,
+            "① Enable Pixel Streaming or RTSP/SRT Output in UE5   →   ② Enter Stream URL below   →   ③ Start Local Decoder or Launch WebRTC Browser",
+            "Unreal Engine 5 & AR Return Monitor",
+            "Monitor the live Unreal Engine 5 virtual production composite directly inside the workstation via low-latency RTSP/SRT/HTTP decoding or WebRTC Pixel Streaming.",
+        )
         
         # Header and Control Panel Card
         ctrl_card = ttk.Frame(self.tab_ue_monitor, style="Card.TFrame", padding=12)
-        ctrl_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        ctrl_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         ctrl_card.columnconfigure(1, weight=1)
         
-        ttk.Label(ctrl_card, text="06 // UNREAL ENGINE MONITOR FEED CONFIGURATION", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
+        ttk.Label(ctrl_card, text="🖥 UNREAL ENGINE RETURN FEED CONFIGURATION", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
         
         ttk.Label(ctrl_card, text="Stream URL:").grid(row=1, column=0, sticky="w", pady=4)
         url_entry = ttk.Entry(ctrl_card, textvariable=self.ue_monitor_url_var)
         url_entry.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        HoverTooltip(url_entry, "Return Video Stream Endpoint", "Enter an rtsp://, srt://, or http:// stream URL from Unreal Engine or OBS.")
         
         # Action Buttons
         btn_frame = ttk.Frame(ctrl_card)
         btn_frame.grid(row=1, column=2, sticky="e", pady=4)
         
-        self.start_ue_dec_btn = ttk.Button(btn_frame, text="START LOCAL DECODER (SRT/RTSP)", command=self.start_ue_monitor)
-        self.start_ue_dec_btn.pack(side="left", padx=4)
+        self.start_ue_dec_btn = ttk.Button(btn_frame, text="▶ Start Local Decoder (SRT/RTSP)", style="Action.TButton", command=self.start_ue_monitor)
+        self.start_ue_dec_btn.pack(side="left", padx=4, ipadx=6, ipady=2)
         
-        self.stop_ue_dec_btn = ttk.Button(btn_frame, text="STOP LOCAL DECODER", command=self.stop_ue_monitor, state="disabled")
-        self.stop_ue_dec_btn.pack(side="left", padx=4)
+        self.stop_ue_dec_btn = ttk.Button(btn_frame, text="■ Stop Decoder", command=self.stop_ue_monitor, state="disabled")
+        self.stop_ue_dec_btn.pack(side="left", padx=4, ipadx=6, ipady=2)
         
-        self.launch_browser_btn = ttk.Button(btn_frame, text="LAUNCH BROWSER (WEBRTC)", command=self.launch_ue_browser)
-        self.launch_browser_btn.pack(side="left", padx=4)
+        self.launch_browser_btn = ttk.Button(btn_frame, text="🌐 Launch Browser (WebRTC)", command=self.launch_ue_browser)
+        self.launch_browser_btn.pack(side="left", padx=4, ipadx=6, ipady=2)
         
         # Video Display Canvas Card
         disp_card = ttk.Frame(self.tab_ue_monitor, style="Card.TFrame", padding=12)
-        disp_card.grid(row=1, column=0, sticky="nsew")
+        disp_card.grid(row=2, column=0, sticky="nsew")
         disp_card.columnconfigure(0, weight=1)
         disp_card.rowconfigure(0, weight=1)
         
@@ -1258,7 +1686,7 @@ class CamTrackDesktopApp:
         self.ue_canvas.grid(row=0, column=0, sticky="nsew")
         
         # Center message
-        self.ue_canvas.create_text(400, 225, text="UE MONITOR DECODER IDLE\nENTER RTSP/SRT/HTTP STREAM URL AND CLICK START DECODER\nOR LAUNCH SYSTEM BROWSER FOR PIXEL STREAMING", fill=TEXT_MUTED, font=("Consolas", 12, "bold"), justify="center")
+        self.ue_canvas.create_text(400, 225, text="UE5 RETURN MONITOR IDLE\nEnter RTSP / SRT / HTTP Stream URL above and click 'Start Local Decoder'\nor click 'Launch Browser (WebRTC)' for Unreal Pixel Streaming", fill=TEXT_MUTED, font=("Segoe UI", 11, "bold"), justify="center")
 
     def start_ue_monitor(self):
         if self.ue_monitor_thread and self.ue_monitor_thread.running:
@@ -1430,14 +1858,18 @@ class CamTrackDesktopApp:
             pass
         self._updating_offset = False
         
-    def add_offset_input(self, parent, label, variable, col, row=1):
+    def add_offset_input(self, parent, label, variable, col, row=1, tooltip_title: str = "", tooltip_body: str = ""):
         frame = ttk.Frame(parent)
         frame.grid(row=row, column=col, sticky="ew", padx=8, pady=5)
         frame.columnconfigure(0, weight=1)
         
-        ttk.Label(frame, text=label, style="Muted.TLabel").grid(row=0, column=0, pady=(0, 4))
+        lbl = ttk.Label(frame, text=label, style="Muted.TLabel")
+        lbl.grid(row=0, column=0, pady=(0, 4))
         entry = ttk.Entry(frame, textvariable=variable, font=("Consolas", 10), justify="center", width=8)
         entry.grid(row=1, column=0, pady=2, ipady=3)
+        if tooltip_title and tooltip_body:
+            HoverTooltip(lbl, tooltip_title, tooltip_body)
+            HoverTooltip(entry, tooltip_title, tooltip_body)
         
     def log(self, msg):
         self.log_box.insert(tk.END, f"{msg}\n")
