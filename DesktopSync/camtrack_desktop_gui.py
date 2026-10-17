@@ -867,7 +867,7 @@ class CamTrackDesktopApp:
         tgt_port_entry.grid(row=3, column=1, sticky="w", pady=4)
         
         ttk.Label(rx_forward_card, text="Protocol Format:").grid(row=4, column=0, sticky="w", pady=4)
-        proto_combo = ttk.Combobox(rx_forward_card, textvariable=self.forward_protocol, values=["Live Link JSON", "FreeD Binary", "OpenTrackIO JSON"], state="readonly", width=18)
+        proto_combo = ttk.Combobox(rx_forward_card, textvariable=self.forward_protocol, values=["Live Link JSON", "SMPTE FreeD-TC (0xD2 - 41B)", "FreeD Binary", "OpenTrackIO JSON"], state="readonly", width=24)
         proto_combo.grid(row=4, column=1, sticky="w", pady=4)
         
         # Card 1.7: Workstation Calibration & Offsets
@@ -3680,6 +3680,8 @@ class CamTrackDesktopApp:
             self.rx_log(f"FORWARD STATE // Active Forwarder -> {self.forward_host.get()}:{self.forward_port.get()} [{self.forward_protocol.get()}]")
         
         self.playout_buffer = []
+        self.pose_history_ring = []
+        self.video_synced_pose = None
         self.playout_lock = threading.Lock()
         self.playout_running = True
         self.last_source_timestamp = None
@@ -3892,6 +3894,31 @@ class CamTrackDesktopApp:
                     self.cam_focal_length = parsed.get("focalLength", 24.0)
                     self.cam_k1 = parsed.get("k1", 0.0)
                     self.cam_k2 = parsed.get("k2", 0.0)
+                    self.latest_stream_smpte = parsed.get("smpteTimecode", "")
+                    
+                    # Record into Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer
+                    pkt_ts = parsed.get("timestamp") or arrival_time
+                    pkt_tai = parsed.get("taiNs", 0)
+                    with self.playout_lock:
+                        if not hasattr(self, "pose_history_ring"):
+                            self.pose_history_ring = []
+                        self.pose_history_ring.append({
+                            "arrival_time": arrival_time,
+                            "timestamp": pkt_ts,
+                            "taiNs": pkt_tai,
+                            "smpteTimecode": self.latest_stream_smpte,
+                            "x": px_raw,
+                            "y": py_raw,
+                            "z": pz_raw,
+                            "roll": roll_raw,
+                            "pitch": pitch_raw,
+                            "yaw": yaw_raw,
+                            "focalLength": self.cam_focal_length,
+                            "k1": self.cam_k1,
+                            "k2": self.cam_k2,
+                        })
+                        if len(self.pose_history_ring) > 240:
+                            self.pose_history_ring.pop(0)
                     
                     # 1. Apply workstation Coordinate System Alignment Preset / Custom translation remapping
                     px_aligned, py_aligned, pz_aligned, roll_aligned, pitch_aligned, yaw_aligned = self.apply_pc_coordinate_alignment(
@@ -4035,8 +4062,10 @@ class CamTrackDesktopApp:
                         self.forward_packet_to_unreal(parsed)
                     
                     # Console logs
+                    tc_tag = parsed.get("smpteTimecode")
+                    tc_suffix = f" TC:{tc_tag}" if tc_tag else ""
                     if timestamp is not None:
-                        log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Shift: {shift_ms:+.1f}ms"
+                        log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) Shift: {shift_ms:+.1f}ms{tc_suffix}"
                     else:
                         log_msg = f"[{time.strftime('%H:%M:%S')}] From {addr_str} // Pos: ({px:.3f}, {py:.3f}, {pz:.3f}) [FreeD]"
                     self.root.after(0, lambda m=log_msg: self.rx_log(m))
@@ -4048,48 +4077,26 @@ class CamTrackDesktopApp:
                 time.sleep(0.010)
 
     def parse_incoming_packet(self, data):
-        # 1. Standard (29 bytes) and Extended (37 bytes) FreeD Binary formats
-        if (len(data) == 29 or len(data) == 37) and data[0] in (0xD1, 0xD2):
+        # 1. Standard (29B 0xD1), Extended (37B 0xD1), and SMPTE FreeD-TC (41B 0xD2) Binary formats
+        if len(data) in (29, 37, 41) and data[0] in (0xD1, 0xD2):
             try:
-                def unpack24(b1, b2, b3):
-                    val = (b1 << 16) | (b2 << 8) | b3
-                    if val & 0x800000:
-                        val -= 0x1000000
-                    return val
-                
-                pitch_val = unpack24(data[2], data[3], data[4])
-                yaw_val = unpack24(data[5], data[6], data[7])
-                roll_val = unpack24(data[8], data[9], data[10])
-                
-                # Correct indices to read Z, X, Y in order:
-                z_val = unpack24(data[11], data[12], data[13])
-                x_val = unpack24(data[14], data[15], data[16])
-                y_val = unpack24(data[17], data[18], data[19])
-                
-                pitch = pitch_val / 32768.0
-                yaw = yaw_val / 32768.0
-                roll = roll_val / 32768.0
-                
-                x = x_val / (64.0 * 1000.0)
-                y = y_val / (64.0 * 1000.0)
-                z = z_val / (64.0 * 1000.0)
-                
-                timestamp = None
-                p_type = "FreeD Binary (Type D1)"
-                
-                if len(data) == 37:
-                    # Extract 8-byte trailing timestamp for Extended FreeD
-                    import struct
-                    timestamp_ms = struct.unpack(">q", data[29:37])[0]
-                    timestamp = float(timestamp_ms) / 1000.0
-                    p_type = "Extended FreeD Binary (Type D1)"
-                
-                return {
-                    "type": p_type,
-                    "x": x, "y": y, "z": z,
-                    "pitch": pitch, "yaw": yaw, "roll": roll,
-                    "timestamp": timestamp
-                }
+                unpacked = self.abu_clock.unpack_freed_packet(data)
+                if unpacked:
+                    is_29b = (len(data) == 29)
+                    return {
+                        "type": unpacked["protocol"],
+                        "x": unpacked["x"],
+                        "y": unpacked["y"],
+                        "z": unpacked["z"],
+                        "pitch": unpacked["pitch"],
+                        "yaw": unpacked["yaw"],
+                        "roll": unpacked["roll"],
+                        "focalLength": unpacked.get("focalLength", 24.0),
+                        "timestamp": None if is_29b else unpacked.get("timestamp"),
+                        "taiNs": unpacked.get("taiNs"),
+                        "bcdTimecode": unpacked.get("bcdTimecode"),
+                        "smpteTimecode": unpacked.get("smpteTimecode"),
+                    }
             except Exception:
                 pass
                 
@@ -4117,6 +4124,13 @@ class CamTrackDesktopApp:
                     k1 = lens_payload.get("k1", 0.0)
                     k2 = lens_payload.get("k2", 0.0)
                     
+                    timing_block = payload.get("timing", {})
+                    tai_ns = timing_block.get("taiNs", payload.get("taiNs"))
+                    bcd_tc = timing_block.get("bcdTimecode", payload.get("bcdTimecode"))
+                    smpte_tc = timing_block.get("smpteTimecode", payload.get("smpteTimecode"))
+                    subframe_phase = timing_block.get("subframePhase", payload.get("subframePhase", 0.0))
+                    clock_lock = timing_block.get("clockLockState", payload.get("clockLockState"))
+                    
                     if t_array:
                         trans = t_array[0].get("translation", {"x": 0.0, "y": 0.0, "z": 0.0})
                         rot = t_array[0].get("rotation", {"yaw": 0.0, "pitch": 0.0, "roll": 0.0})
@@ -4130,6 +4144,11 @@ class CamTrackDesktopApp:
                             "yaw": rot.get("yaw", 0.0),
                             "roll": rot.get("roll", 0.0),
                             "timestamp": timestamp,
+                            "taiNs": tai_ns,
+                            "bcdTimecode": bcd_tc,
+                            "smpteTimecode": smpte_tc,
+                            "subframePhase": subframe_phase,
+                            "clockLockState": clock_lock,
                             "new_points": new_points,
                             "is_mapping_active": is_mapping_active,
                             "thermal_state": payload.get("thermalState", "NOMINAL"),
@@ -4141,7 +4160,7 @@ class CamTrackDesktopApp:
             except Exception as e:
                 print(f"OpenTrackIO parse failed: {e}")
                 
-        # 3. Standard Live Link JSON format
+        # 3. Standard & Enriched Live Link JSON format
         try:
             import json
             decoded = data.decode("utf-8")
@@ -4162,6 +4181,11 @@ class CamTrackDesktopApp:
                     "x": tx, "y": ty, "z": tz,
                     "pitch": pitch, "yaw": yaw, "roll": roll,
                     "timestamp": timestamp,
+                    "taiNs": payload.get("taiNs"),
+                    "bcdTimecode": payload.get("bcdTimecode"),
+                    "smpteTimecode": payload.get("smpteTimecode"),
+                    "subframePhase": payload.get("subframePhase", 0.0),
+                    "clockLockState": payload.get("clockLockState"),
                     "new_points": new_points,
                     "is_mapping_active": is_mapping_active,
                     "thermal_state": payload.get("thermalState", "NOMINAL"),
@@ -4442,17 +4466,38 @@ class CamTrackDesktopApp:
         
         if self.live_view_mode.get() == "Cockpit":
             # True perspective projection matching iPhone camera wide lens
-            # Translate relative to camera:
-            # We use the raw camera translation and rotation to ensure perfect alignment with the background video stream
-            dx = x - self.cam_raw_x
-            dy = y - self.cam_raw_y
-            dz = z - self.cam_raw_z
+            # Use timecode-aligned pose from pose_history_ring when video stream is active
+            v_pose = getattr(self, "video_synced_pose", None) if self.is_video_stream_enabled.get() else None
+            if v_pose and (time.time() - v_pose.get("matched_at", 0.0) < 0.5):
+                cam_x = v_pose["x"]
+                cam_y = v_pose["y"]
+                cam_z = v_pose["z"]
+                cam_roll = v_pose["roll"]
+                cam_pitch = v_pose["pitch"]
+                cam_yaw = v_pose["yaw"]
+                cam_fl = v_pose.get("focalLength", self.cam_focal_length)
+                cam_k1 = v_pose.get("k1", self.cam_k1)
+                cam_k2 = v_pose.get("k2", self.cam_k2)
+            else:
+                cam_x = self.cam_raw_x
+                cam_y = self.cam_raw_y
+                cam_z = self.cam_raw_z
+                cam_roll = self.cam_raw_roll
+                cam_pitch = self.cam_raw_pitch
+                cam_yaw = self.cam_raw_yaw
+                cam_fl = self.cam_focal_length
+                cam_k1 = self.cam_k1
+                cam_k2 = self.cam_k2
+
+            dx = x - cam_x
+            dy = y - cam_y
+            dz = z - cam_z
             
             # Compute camera orientation quaternion in the aligned workspace space
             q_w, q_x, q_y, q_z = self.euler_to_quaternion(
-                self.cam_raw_roll, 
-                self.cam_raw_pitch, 
-                self.cam_raw_yaw
+                cam_roll, 
+                cam_pitch, 
+                cam_yaw
             )
             
             # Transform to camera space using conjugate rotation (inverse):
@@ -4466,13 +4511,13 @@ class CamTrackDesktopApp:
                 return None
                 
             # Focal length: dynamic mm equivalent on a 36mm wide sensor (active 16:9 height is 20.25mm)
-            focal_x = width * (self.cam_focal_length / 36.0)
-            focal_y = height * (self.cam_focal_length / 36.0) * (16.0 / 9.0)
+            focal_x = width * (cam_fl / 36.0)
+            focal_y = height * (cam_fl / 36.0) * (16.0 / 9.0)
             
             xn = xc / d
             yn = yc / d
             r2 = xn*xn + yn*yn
-            radial = 1.0 + self.cam_k1 * r2 + self.cam_k2 * r2 * r2
+            radial = 1.0 + cam_k1 * r2 + cam_k2 * r2 * r2
             xd = xn * radial
             yd = yn * radial
             
@@ -4574,6 +4619,18 @@ class CamTrackDesktopApp:
                         # Convert to PIL Image in background thread (RGB format, ultra-fast)
                         pil_img = frame.to_image()
                         self.latest_decoded_pil_image = pil_img
+                        
+                        # Match decoded video frame to closest camera pose in pose_history_ring
+                        decode_now = time.time()
+                        # Account for ~35ms H.264/HEVC RTP hardware encode+network+decode latency
+                        estimated_exposure_arrival = decode_now - 0.035
+                        with self.playout_lock:
+                            ring = list(getattr(self, "pose_history_ring", []))
+                        if ring:
+                            best_pose = min(ring, key=lambda p: abs(p.get("arrival_time", decode_now) - estimated_exposure_arrival))
+                            synced = dict(best_pose)
+                            synced["matched_at"] = decode_now
+                            self.video_synced_pose = synced
                         
                         # Auto-switch live view mode to Cockpit on first video frame decoded
                         if self.live_view_mode.get() != "Cockpit":
@@ -4787,9 +4844,10 @@ class CamTrackDesktopApp:
             if proj:
                 sx, sy = proj
                 self.live_canvas.create_oval(sx-5, sy-5, sx+5, sy+5, fill="#ff3366", outline="white", width=1.5)
+                tc_hud = getattr(self, "latest_stream_smpte", "") or self.abu_clock.now().smpte_string
                 self.live_canvas.create_text(
                     15, h-15, 
-                    text=f"CAM: ({last_pt[0]:+.2f}, {last_pt[1]:+.2f}, {last_pt[2]:+.2f}) | PTS: {len(pts_copy)}", 
+                    text=f"CAM: ({last_pt[0]:+.2f}, {last_pt[1]:+.2f}, {last_pt[2]:+.2f}) | TC: {tc_hud} | PTS: {len(pts_copy)}", 
                     anchor="w", fill="#00f0ff", font=("Consolas", 8, "bold")
                 )
 
@@ -4809,7 +4867,18 @@ class CamTrackDesktopApp:
             
             px, py, pz = parsed["x"], parsed["y"], parsed["z"]
             pitch, yaw, roll = parsed["pitch"], parsed["yaw"], parsed["roll"]
-            timestamp = parsed.get("timestamp", time.time())
+            timestamp = parsed.get("timestamp") or time.time()
+            focal_len = parsed.get("focalLength", 24.0)
+            k1_val = parsed.get("k1", 0.0)
+            k2_val = parsed.get("k2", 0.0)
+            
+            # Synthesize or preserve Abu Clock SMPTE / TAI / BCD metadata
+            snap = self.abu_clock.synthesize_from_utc_seconds(timestamp)
+            tai_ns = parsed.get("taiNs") or snap.tai_ns
+            bcd_tc = parsed.get("bcdTimecode") or snap.bcd_timecode
+            smpte_tc = parsed.get("smpteTimecode") or snap.smpte_string
+            subframe_phase = parsed.get("subframePhase", snap.phase)
+            lock_state = parsed.get("clockLockState") or snap.lock_state
             
             # Dynamic Forwarder Performance Stats
             now_time = time.time()
@@ -4825,9 +4894,7 @@ class CamTrackDesktopApp:
                 self.forward_packet_count_window = 0
                 self.last_forward_calc_time = now_time
                 
-            # Derive timecode from packet timestamp using SMPTE formatter
-            tc_str = self.timestamp_to_smpte(timestamp, fps=30)
-            self.root.after(0, lambda t=tc_str: self.forward_timecode_var.set(t))
+            self.root.after(0, lambda t=smpte_tc: self.forward_timecode_var.set(t))
             
             # Apply -90 degree offset globally around X-axis (Pitch) to align tracking data to UE!
             pitch_forward = pitch - 90.0
@@ -4837,8 +4904,15 @@ class CamTrackDesktopApp:
                     "deviceName": "AbuTrack",
                     "translation": [px, py, pz],
                     "rotation": [pitch_forward, yaw, roll],
-                    "focalLength": 24.0,
+                    "focalLength": focal_len,
+                    "k1": k1_val,
+                    "k2": k2_val,
                     "timestamp": timestamp,
+                    "taiNs": tai_ns,
+                    "smpteTimecode": smpte_tc,
+                    "bcdTimecode": bcd_tc,
+                    "subframePhase": subframe_phase,
+                    "clockLockState": lock_state,
                     "isMappingActive": parsed.get("is_mapping_active", True)
                 }
                 if "new_points" in parsed:
@@ -4846,6 +4920,21 @@ class CamTrackDesktopApp:
                     
                 data = json.dumps(payload).encode("utf-8")
                 self.forwarder_sock.sendto(data, (host, port))
+                
+            elif proto == "SMPTE FreeD-TC (0xD2 - 41B)":
+                packet = self.abu_clock.pack_freed_d2(
+                    pitch_deg=pitch_forward,
+                    yaw_deg=yaw,
+                    roll_deg=roll,
+                    x_m=px,
+                    y_m=py,
+                    z_m=pz,
+                    focal_length_mm=focal_len,
+                    focus_distance_m=1.5,
+                    utc_timestamp=timestamp,
+                    camera_id=1,
+                )
+                self.forwarder_sock.sendto(packet, (host, port))
                 
             elif proto == "FreeD Binary":
                 packet = bytearray()
@@ -4870,8 +4959,8 @@ class CamTrackDesktopApp:
                 packet.extend(pack24(px * 1000.0 * 64.0))
                 packet.extend(pack24(py * 1000.0 * 64.0))
                 
-                packet.extend([0x00, 0x00, 0x00])
-                packet.extend([0x00, 0x00, 0x00])
+                packet.extend(pack24(focal_len * 100.0))
+                packet.extend(pack24(1500.0))
                 packet.extend([0x00, 0x00])
                 
                 checksum = (0x40 - sum(packet)) & 0xFF
@@ -4888,6 +4977,15 @@ class CamTrackDesktopApp:
                     "sourceId": 101,
                     "timestamp": timestamp,
                     "isMappingActive": parsed.get("is_mapping_active", True),
+                    "timing": {
+                        "mode": "external",
+                        "taiNs": tai_ns,
+                        "smpteTimecode": smpte_tc,
+                        "bcdTimecode": bcd_tc,
+                        "subframePhase": subframe_phase,
+                        "clockLockState": lock_state,
+                        "frameRate": {"num": 60, "den": 1},
+                    },
                     "transforms": [
                         {
                             "translation": {"x": px, "y": py, "z": pz},
@@ -4895,8 +4993,10 @@ class CamTrackDesktopApp:
                         }
                     ],
                     "lens": {
-                        "focalLength": 24.0,
-                        "focusDistance": 1.5
+                        "focalLength": focal_len,
+                        "focusDistance": 1.5,
+                        "k1": k1_val,
+                        "k2": k2_val,
                     }
                 }
                 if "new_points" in parsed:

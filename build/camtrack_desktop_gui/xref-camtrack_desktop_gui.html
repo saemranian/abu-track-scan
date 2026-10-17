@@ -25,6 +25,7 @@ imports:
  &#8226;   <a href="#_collections_abc">_collections_abc</a>
  &#8226;   <a href="#_weakrefset">_weakrefset</a>
  &#8226;   <a href="#abc">abc</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#av">av</a>
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#collections">collections</a>
@@ -192,6 +193,7 @@ imports:
  &#8226;   <a href="#stat">stat</a>
  &#8226;   <a href="#struct">struct</a>
  &#8226;   <a href="#subprocess">subprocess</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
  &#8226;   <a href="#sys">sys</a>
  &#8226;   <a href="#tempfile">tempfile</a>
  &#8226;   <a href="#threading">threading</a>
@@ -352,7 +354,9 @@ imported by:
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#tracemalloc">tracemalloc</a>
  &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#xml.etree.ElementTree">xml.etree.ElementTree</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
 
   </div>
 
@@ -443,6 +447,17 @@ imported by:
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
     <a href="#matplotlib.backends.backend_webagg">matplotlib.backends.backend_webagg</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="'unittest.case'"></a>
+  <a target="code" href="" type="text/plain"><tt>'unittest.case'</tt></a>
+<span class="moduletype">MissingModule</span>  <div class="import">
+imported by:
+    <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
 
   </div>
 
@@ -581,6 +596,7 @@ imported by:
  &#8226;   <a href="#matplotlib.backends._backend_tk">matplotlib.backends._backend_tk</a>
  &#8226;   <a href="#matplotlib.backends.backend_webagg_core">matplotlib.backends.backend_webagg_core</a>
  &#8226;   <a href="#matplotlib.colors">matplotlib.colors</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
 
   </div>
 
@@ -795,6 +811,7 @@ imported by:
  &#8226;   <a href="#PIL.ImageFile">PIL.ImageFile</a>
  &#8226;   <a href="#PIL.ImageOps">PIL.ImageOps</a>
  &#8226;   <a href="#PIL.TiffImagePlugin">PIL.TiffImagePlugin</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
 
   </div>
 
@@ -1267,6 +1284,7 @@ imported by:
  &#8226;   <a href="#matplotlib.colors">matplotlib.colors</a>
  &#8226;   <a href="#matplotlib.image">matplotlib.image</a>
  &#8226;   <a href="#matplotlib.pyplot">matplotlib.pyplot</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
 
   </div>
 
@@ -2863,9 +2881,16 @@ imported by:
  &#8226;   <a href="#PIL._util">PIL._util</a>
  &#8226;   <a href="#PIL._version">PIL._version</a>
  &#8226;   <a href="#PIL.features">PIL.features</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
  &#8226;   <a href="#av.__main__">av.__main__</a>
- &#8226;   <a href="#codeop">codeop</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.legacy">charset_normalizer.legacy</a>
+ &#8226;   <a href="#charset_normalizer.md">charset_normalizer.md</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#charset_normalizer.version">charset_normalizer.version</a>
  &#8226;   <a href="#contourpy">contourpy</a>
  &#8226;   <a href="#contourpy.array">contourpy.array</a>
  &#8226;   <a href="#contourpy.chunk">contourpy.chunk</a>
@@ -2876,7 +2901,6 @@ imported by:
  &#8226;   <a href="#contourpy.types">contourpy.types</a>
  &#8226;   <a href="#cycler">cycler</a>
  &#8226;   <a href="#dateutil.parser._parser">dateutil.parser._parser</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#importlib.metadata._meta">importlib.metadata._meta</a>
  &#8226;   <a href="#matplotlib._mathtext">matplotlib._mathtext</a>
@@ -2890,7 +2914,6 @@ imported by:
  &#8226;   <a href="#numpy.f2py._backends._backend">numpy.f2py._backends._backend</a>
  &#8226;   <a href="#numpy.f2py._backends._meson">numpy.f2py._backends._meson</a>
  &#8226;   <a href="#packaging.version">packaging.version</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#pyparsing.actions">pyparsing.actions</a>
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
  &#8226;   <a href="#pyparsing.diagram">pyparsing.diagram</a>
@@ -3122,9 +3145,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#doctest">doctest</a>
- &#8226;   <a href="#pdb">pdb</a>
- &#8226;   <a href="#traceback">traceback</a>
+    <a href="#traceback">traceback</a>
 
   </div>
 
@@ -3653,43 +3674,6 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="_pyrepl"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/_pyrepl/__init__.py" type="text/plain"><tt>_pyrepl</tt></a>
-<span class="moduletype">Package</span>  <div class="import">
-imported by:
-    <a href="#_pyrepl.pager">_pyrepl.pager</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="_pyrepl.pager"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/_pyrepl/pager.py" type="text/plain"><tt>_pyrepl.pager</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#__future__">__future__</a>
- &#8226;   <a href="#_pyrepl">_pyrepl</a>
- &#8226;   <a href="#io">io</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#re">re</a>
- &#8226;   <a href="#subprocess">subprocess</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#tempfile">tempfile</a>
- &#8226;   <a href="#termios">termios</a>
- &#8226;   <a href="#tty">tty</a>
- &#8226;   <a href="#typing">typing</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#pydoc">pydoc</a>
-
-  </div>
-
-</div>
-
-<div class="node">
   <a name="_queue"></a>
   <tt>_queue</tt> <span class="moduletype"><tt>C:\Users\USer\AppData\Local\Programs\Python\Python313\DLLs\_queue.pyd</tt></span>  <div class="import">
 imported by:
@@ -3767,6 +3751,7 @@ imported by:
 imported by:
     <a href="#socket">socket</a>
  &#8226;   <a href="#types">types</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
 
   </div>
 
@@ -4103,6 +4088,47 @@ imported by:
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
  &#8226;   <a href="#selectors">selectors</a>
  &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="abu_clock_bridge"></a>
+  <a target="code" href="///C:/Users/USer/.gemini/antigravity/scratch/ios_app_cam_track_01/DesktopSync/abu_clock_bridge.py" type="text/plain"><tt>abu_clock_bridge</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#ctypes">ctypes</a>
+ &#8226;   <a href="#dataclasses">dataclasses</a>
+ &#8226;   <a href="#json">json</a>
+ &#8226;   <a href="#math">math</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#socket">socket</a>
+ &#8226;   <a href="#struct">struct</a>
+ &#8226;   <a href="#subprocess">subprocess</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#threading">threading</a>
+ &#8226;   <a href="#time">time</a>
+ &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#urllib.request">urllib.request</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="annotationlib"></a>
+  <a target="code" href="" type="text/plain"><tt>annotationlib</tt></a>
+<span class="moduletype">MissingModule</span>  <div class="import">
+imported by:
+    <a href="#typing_extensions">typing_extensions</a>
 
   </div>
 
@@ -4128,20 +4154,15 @@ imported by:
     <a href="#ast">ast</a>
  &#8226;   <a href="#av.__main__">av.__main__</a>
  &#8226;   <a href="#calendar">calendar</a>
- &#8226;   <a href="#code">code</a>
  &#8226;   <a href="#dis">dis</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#gzip">gzip</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#inspect">inspect</a>
  &#8226;   <a href="#matplotlib.dviread">matplotlib.dviread</a>
  &#8226;   <a href="#numpy.f2py.f2py2e">numpy.f2py.f2py2e</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#py_compile">py_compile</a>
  &#8226;   <a href="#random">random</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#tokenize">tokenize</a>
- &#8226;   <a href="#unittest.main">unittest.main</a>
  &#8226;   <a href="#uuid">uuid</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
  &#8226;   <a href="#zipfile">zipfile</a>
@@ -4271,7 +4292,6 @@ imported by:
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
  &#8226;   <a href="#matplotlib.backends.backend_webagg">matplotlib.backends.backend_webagg</a>
  &#8226;   <a href="#matplotlib.backends.backend_webagg_core">matplotlib.backends.backend_webagg_core</a>
- &#8226;   <a href="#unittest.async_case">unittest.async_case</a>
 
   </div>
 
@@ -4453,6 +4473,7 @@ imported by:
  &#8226;   <a href="#asyncio.streams">asyncio.streams</a>
  &#8226;   <a href="#asyncio.tasks">asyncio.tasks</a>
  &#8226;   <a href="#asyncio.unix_events">asyncio.unix_events</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
 
   </div>
 
@@ -5145,6 +5166,7 @@ imported by:
   <tt>atexit</tt> <span class="moduletype"><i>(builtin module)</i></span>  <div class="import">
 imported by:
     <a href="#PIL.Image">PIL.Image</a>
+ &#8226;   <a href="#certifi.core">certifi.core</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#matplotlib">matplotlib</a>
  &#8226;   <a href="#matplotlib._pylab_helpers">matplotlib._pylab_helpers</a>
@@ -5152,7 +5174,6 @@ imported by:
  &#8226;   <a href="#multiprocessing.popen_fork">multiprocessing.popen_fork</a>
  &#8226;   <a href="#multiprocessing.util">multiprocessing.util</a>
  &#8226;   <a href="#pyi_rth_mplconfig.py">pyi_rth_mplconfig.py</a>
- &#8226;   <a href="#rlcompleter">rlcompleter</a>
  &#8226;   <a href="#weakref">weakref</a>
 
   </div>
@@ -6608,34 +6629,14 @@ imported by:
  &#8226;   <a href="#email.base64mime">email.base64mime</a>
  &#8226;   <a href="#email.encoders">email.encoders</a>
  &#8226;   <a href="#encodings.base64_codec">encodings.base64_codec</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#matplotlib.colors">matplotlib.colors</a>
  &#8226;   <a href="#matplotlib.font_manager">matplotlib.font_manager</a>
  &#8226;   <a href="#secrets">secrets</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="bdb"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/bdb.py" type="text/plain"><tt>bdb</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#fnmatch">fnmatch</a>
- &#8226;   <a href="#inspect">inspect</a>
- &#8226;   <a href="#linecache">linecache</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#reprlib">reprlib</a>
- &#8226;   <a href="#sys">sys</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#pdb">pdb</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
 
   </div>
 
@@ -6653,9 +6654,9 @@ imported by:
  &#8226;   <a href="#email.message">email.message</a>
  &#8226;   <a href="#encodings.hex_codec">encodings.hex_codec</a>
  &#8226;   <a href="#encodings.uu_codec">encodings.uu_codec</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#plistlib">plistlib</a>
  &#8226;   <a href="#quopri">quopri</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
  &#8226;   <a href="#zipfile">zipfile</a>
 
   </div>
@@ -6672,7 +6673,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#dateutil.tz.tz">dateutil.tz.tz</a>
+    <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#dateutil.tz.tz">dateutil.tz.tz</a>
  &#8226;   <a href="#multiprocessing.heap">multiprocessing.heap</a>
  &#8226;   <a href="#random">random</a>
  &#8226;   <a href="#statistics">statistics</a>
@@ -6690,9 +6692,7 @@ imported by:
  &#8226;   <a href="#PIL.ImageMath">PIL.ImageMath</a>
  &#8226;   <a href="#av.error">av.error</a>
  &#8226;   <a href="#bz2">bz2</a>
- &#8226;   <a href="#code">code</a>
  &#8226;   <a href="#codecs">codecs</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#enum">enum</a>
  &#8226;   <a href="#gettext">gettext</a>
  &#8226;   <a href="#gzip">gzip</a>
@@ -6706,12 +6706,11 @@ imported by:
  &#8226;   <a href="#numpy.ma.core">numpy.ma.core</a>
  &#8226;   <a href="#numpy.random.mtrand">numpy.random.mtrand</a>
  &#8226;   <a href="#operator">operator</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#reprlib">reprlib</a>
- &#8226;   <a href="#rlcompleter">rlcompleter</a>
  &#8226;   <a href="#subprocess">subprocess</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#tokenize">tokenize</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#warnings">warnings</a>
 
   </div>
@@ -6776,10 +6775,35 @@ imported by:
 
 <div class="node">
   <a name="certifi"></a>
-  <a target="code" href="" type="text/plain"><tt>certifi</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/certifi/__init__.py" type="text/plain"><tt>certifi</tt></a>
+<span class="moduletype">Package</span>  <div class="import">
+imports:
+    <a href="#certifi.core">certifi.core</a>
+
+  </div>
+  <div class="import">
 imported by:
-    <a href="#matplotlib">matplotlib</a>
+    <a href="#certifi.core">certifi.core</a>
+ &#8226;   <a href="#matplotlib">matplotlib</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="certifi.core"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/certifi/core.py" type="text/plain"><tt>certifi.core</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#atexit">atexit</a>
+ &#8226;   <a href="#certifi">certifi</a>
+ &#8226;   <a href="#importlib.resources">importlib.resources</a>
+ &#8226;   <a href="#sys">sys</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#certifi">certifi</a>
 
   </div>
 
@@ -6787,50 +6811,219 @@ imported by:
 
 <div class="node">
   <a name="charset_normalizer"></a>
-  <a target="code" href="" type="text/plain"><tt>charset_normalizer</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/charset_normalizer/__init__.py" type="text/plain"><tt>charset_normalizer</tt></a>
+<span class="moduletype">Package</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.legacy">charset_normalizer.legacy</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#charset_normalizer.version">charset_normalizer.version</a>
+ &#8226;   <a href="#logging">logging</a>
+
+  </div>
+  <div class="import">
 imported by:
-    <a href="#numpy.f2py.crackfortran">numpy.f2py.crackfortran</a>
+    <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.legacy">charset_normalizer.legacy</a>
+ &#8226;   <a href="#charset_normalizer.md">charset_normalizer.md</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#charset_normalizer.version">charset_normalizer.version</a>
+ &#8226;   <a href="#numpy.f2py.crackfortran">numpy.f2py.crackfortran</a>
 
   </div>
 
 </div>
 
 <div class="node">
-  <a name="cmd"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/cmd.py" type="text/plain"><tt>cmd</tt></a>
+  <a name="charset_normalizer.api"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/charset_normalizer/api.py" type="text/plain"><tt>charset_normalizer.api</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#inspect">inspect</a>
- &#8226;   <a href="#readline">readline</a>
- &#8226;   <a href="#string">string</a>
- &#8226;   <a href="#sys">sys</a>
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.md">charset_normalizer.md</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#typing">typing</a>
 
   </div>
   <div class="import">
 imported by:
-    <a href="#pdb">pdb</a>
+    <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.legacy">charset_normalizer.legacy</a>
 
   </div>
 
 </div>
 
 <div class="node">
-  <a name="code"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/code.py" type="text/plain"><tt>code</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
+  <a name="charset_normalizer.cd"></a>
+  <tt>charset_normalizer.cd</tt> <span class="moduletype"><tt>C:\Users\USer\AppData\Local\Programs\Python\Python313\Lib\site-packages\charset_normalizer\cd.cp313-win_amd64.pyd</tt></span>  <div class="import">
 imports:
-    <a href="#argparse">argparse</a>
- &#8226;   <a href="#builtins">builtins</a>
- &#8226;   <a href="#codeop">codeop</a>
- &#8226;   <a href="#readline">readline</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#traceback">traceback</a>
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.md">charset_normalizer.md</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#codecs">codecs</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#importlib">importlib</a>
 
   </div>
   <div class="import">
 imported by:
-    <a href="#pdb">pdb</a>
+    <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="charset_normalizer.constant"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/charset_normalizer/constant.py" type="text/plain"><tt>charset_normalizer.constant</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#codecs">codecs</a>
+ &#8226;   <a href="#encodings.aliases">encodings.aliases</a>
+ &#8226;   <a href="#re">re</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.legacy">charset_normalizer.legacy</a>
+ &#8226;   <a href="#charset_normalizer.md">charset_normalizer.md</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="charset_normalizer.legacy"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/charset_normalizer/legacy.py" type="text/plain"><tt>charset_normalizer.legacy</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#warnings">warnings</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#charset_normalizer">charset_normalizer</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="charset_normalizer.md"></a>
+  <tt>charset_normalizer.md</tt> <span class="moduletype"><tt>C:\Users\USer\AppData\Local\Programs\Python\Python313\Lib\site-packages\charset_normalizer\md.cp313-win_amd64.pyd</tt></span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#logging">logging</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="charset_normalizer.models"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/charset_normalizer/models.py" type="text/plain"><tt>charset_normalizer.models</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#encodings.aliases">encodings.aliases</a>
+ &#8226;   <a href="#json">json</a>
+ &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="charset_normalizer.utils"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/charset_normalizer/utils.py" type="text/plain"><tt>charset_normalizer.utils</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#bisect">bisect</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#codecs">codecs</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#importlib">importlib</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#unicodedata">unicodedata</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.md">charset_normalizer.md</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="charset_normalizer.version"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/charset_normalizer/version.py" type="text/plain"><tt>charset_normalizer.version</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#charset_normalizer">charset_normalizer</a>
 
   </div>
 
@@ -6852,6 +7045,9 @@ imported by:
     <a href="#PIL.PdfParser">PIL.PdfParser</a>
  &#8226;   <a href="#_pickle">_pickle</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
  &#8226;   <a href="#encodings">encodings</a>
  &#8226;   <a href="#encodings.ascii">encodings.ascii</a>
  &#8226;   <a href="#encodings.base64_codec">encodings.base64_codec</a>
@@ -6979,24 +7175,7 @@ imported by:
  &#8226;   <a href="#plistlib">plistlib</a>
  &#8226;   <a href="#tokenize">tokenize</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="codeop"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/codeop.py" type="text/plain"><tt>codeop</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#__future__">__future__</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#code">code</a>
- &#8226;   <a href="#pdb">pdb</a>
+ &#8226;   <a href="#yaml.reader">yaml.reader</a>
 
   </div>
 
@@ -7041,7 +7220,6 @@ imported by:
  &#8226;   <a href="#dateutil.tz.tz">dateutil.tz.tz</a>
  &#8226;   <a href="#difflib">difflib</a>
  &#8226;   <a href="#dis">dis</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#email.feedparser">email.feedparser</a>
  &#8226;   <a href="#functools">functools</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
@@ -7067,7 +7245,9 @@ imported by:
  &#8226;   <a href="#pkgutil">pkgutil</a>
  &#8226;   <a href="#platform">platform</a>
  &#8226;   <a href="#pprint">pprint</a>
- &#8226;   <a href="#pydoc">pydoc</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._ntuples">psutil._ntuples</a>
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
  &#8226;   <a href="#pyparsing.results">pyparsing.results</a>
  &#8226;   <a href="#queue">queue</a>
@@ -7081,11 +7261,10 @@ imported by:
  &#8226;   <a href="#tkinter">tkinter</a>
  &#8226;   <a href="#tokenize">tokenize</a>
  &#8226;   <a href="#typing">typing</a>
- &#8226;   <a href="#unittest._log">unittest._log</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.util">unittest.util</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#urllib.parse">urllib.parse</a>
  &#8226;   <a href="#xml.etree.ElementTree">xml.etree.ElementTree</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
 
   </div>
 
@@ -7236,7 +7415,6 @@ imported by:
  &#8226;   <a href="#dateutil.tz.tz">dateutil.tz.tz</a>
  &#8226;   <a href="#getpass">getpass</a>
  &#8226;   <a href="#glob">glob</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#importlib.resources._adapters">importlib.resources._adapters</a>
  &#8226;   <a href="#importlib.resources._common">importlib.resources._common</a>
@@ -7265,13 +7443,14 @@ imported by:
  &#8226;   <a href="#numpy.lib._histograms_impl">numpy.lib._histograms_impl</a>
  &#8226;   <a href="#numpy.lib._npyio_impl">numpy.lib._npyio_impl</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pdb">pdb</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
  &#8226;   <a href="#pyparsing.testing">pyparsing.testing</a>
  &#8226;   <a href="#pyparsing.util">pyparsing.util</a>
  &#8226;   <a href="#subprocess">subprocess</a>
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#typing">typing</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#xml.etree.ElementTree">xml.etree.ElementTree</a>
  &#8226;   <a href="#zipfile._path">zipfile._path</a>
@@ -7298,7 +7477,6 @@ imported by:
  &#8226;   <a href="#asyncio.threads">asyncio.threads</a>
  &#8226;   <a href="#numpy._core._ufunc_config">numpy._core._ufunc_config</a>
  &#8226;   <a href="#numpy._core.printoptions">numpy._core.printoptions</a>
- &#8226;   <a href="#unittest.async_case">unittest.async_case</a>
 
   </div>
 
@@ -7555,7 +7733,6 @@ imported by:
  &#8226;   <a href="#email.generator">email.generator</a>
  &#8226;   <a href="#gettext">gettext</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#matplotlib._mathtext">matplotlib._mathtext</a>
  &#8226;   <a href="#matplotlib.font_manager">matplotlib.font_manager</a>
  &#8226;   <a href="#matplotlib.gridspec">matplotlib.gridspec</a>
@@ -7600,6 +7777,7 @@ imported by:
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
 
   </div>
 
@@ -7619,6 +7797,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#importlib.metadata">importlib.metadata</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
 
   </div>
 
@@ -7645,6 +7824,7 @@ imports:
 imported by:
     <a href="#_ios_support">_ios_support</a>
  &#8226;   <a href="#_pyi_rth_utils._win32">_pyi_rth_utils._win32</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#ctypes._aix">ctypes._aix</a>
  &#8226;   <a href="#ctypes._endian">ctypes._endian</a>
  &#8226;   <a href="#ctypes.macholib">ctypes.macholib</a>
@@ -7656,6 +7836,7 @@ imported by:
  &#8226;   <a href="#numpy._core._internal">numpy._core._internal</a>
  &#8226;   <a href="#numpy.ctypeslib">numpy.ctypeslib</a>
  &#8226;   <a href="#platform">platform</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
 
   </div>
@@ -8181,7 +8362,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#av">av</a>
+    <a href="#abu_clock_bridge">abu_clock_bridge</a>
+ &#8226;   <a href="#av">av</a>
  &#8226;   <a href="#av.audio.layout">av.audio.layout</a>
  &#8226;   <a href="#matplotlib._text_helpers">matplotlib._text_helpers</a>
  &#8226;   <a href="#matplotlib.font_manager">matplotlib.font_manager</a>
@@ -8219,14 +8401,17 @@ imported by:
  &#8226;   <a href="#dateutil.tz.win">dateutil.tz.win</a>
  &#8226;   <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#matplotlib.axis">matplotlib.axis</a>
  &#8226;   <a href="#matplotlib.backends.backend_webagg_core">matplotlib.backends.backend_webagg_core</a>
  &#8226;   <a href="#matplotlib.dates">matplotlib.dates</a>
  &#8226;   <a href="#matplotlib.pyplot">matplotlib.pyplot</a>
  &#8226;   <a href="#plistlib">plistlib</a>
+ &#8226;   <a href="#psutil">psutil</a>
  &#8226;   <a href="#pyparsing.common">pyparsing.common</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
 
   </div>
 
@@ -8671,9 +8856,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#difflib">difflib</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
 
   </div>
 
@@ -8696,7 +8879,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#inspect">inspect</a>
- &#8226;   <a href="#pdb">pdb</a>
 
   </div>
 
@@ -8704,27 +8886,8 @@ imported by:
 
 <div class="node">
   <a name="doctest"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/doctest.py" type="text/plain"><tt>doctest</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#__future__">__future__</a>
- &#8226;   <a href="#_colorize">_colorize</a>
- &#8226;   <a href="#argparse">argparse</a>
- &#8226;   <a href="#builtins">builtins</a>
- &#8226;   <a href="#collections">collections</a>
- &#8226;   <a href="#difflib">difflib</a>
- &#8226;   <a href="#inspect">inspect</a>
- &#8226;   <a href="#io">io</a>
- &#8226;   <a href="#linecache">linecache</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#pdb">pdb</a>
- &#8226;   <a href="#re">re</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#traceback">traceback</a>
- &#8226;   <a href="#unittest">unittest</a>
-
-  </div>
-  <div class="import">
+  <a target="code" href="" type="text/plain"><tt>doctest</tt></a>
+<span class="moduletype">ExcludedModule</span>  <div class="import">
 imported by:
     <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
 
@@ -9104,7 +9267,6 @@ imported by:
  &#8226;   <a href="#email.policy">email.policy</a>
  &#8226;   <a href="#http.client">http.client</a>
  &#8226;   <a href="#importlib.metadata._adapters">importlib.metadata._adapters</a>
- &#8226;   <a href="#pydoc">pydoc</a>
 
   </div>
 
@@ -9199,7 +9361,6 @@ imported by:
  &#8226;   <a href="#email.headerregistry">email.headerregistry</a>
  &#8226;   <a href="#email.message">email.message</a>
  &#8226;   <a href="#email.policy">email.policy</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
 
   </div>
@@ -9481,6 +9642,8 @@ imports:
   <div class="import">
 imported by:
     <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
  &#8226;   <a href="#encodings">encodings</a>
  &#8226;   <a href="#locale">locale</a>
 
@@ -11765,6 +11928,8 @@ imported by:
  &#8226;   <a href="#numpy._globals">numpy._globals</a>
  &#8226;   <a href="#numpy.f2py.symbolic">numpy.f2py.symbolic</a>
  &#8226;   <a href="#plistlib">plistlib</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
  &#8226;   <a href="#py_compile">py_compile</a>
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
  &#8226;   <a href="#re">re</a>
@@ -11772,6 +11937,7 @@ imported by:
  &#8226;   <a href="#socket">socket</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#tkinter">tkinter</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#uuid">uuid</a>
 
   </div>
@@ -11857,12 +12023,10 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#bdb">bdb</a>
- &#8226;   <a href="#glob">glob</a>
+    <a href="#glob">glob</a>
  &#8226;   <a href="#shutil">shutil</a>
  &#8226;   <a href="#tkinter.filedialog">tkinter.filedialog</a>
  &#8226;   <a href="#tracemalloc">tracemalloc</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
 
   </div>
@@ -11958,6 +12122,10 @@ imported by:
  &#8226;   <a href="#asyncio.threads">asyncio.threads</a>
  &#8226;   <a href="#asyncio.windows_events">asyncio.windows_events</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.md">charset_normalizer.md</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
  &#8226;   <a href="#concurrent.futures.process">concurrent.futures.process</a>
  &#8226;   <a href="#contextlib">contextlib</a>
  &#8226;   <a href="#copyreg">copyreg</a>
@@ -12048,6 +12216,9 @@ imported by:
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
  &#8226;   <a href="#platform">platform</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
  &#8226;   <a href="#pyparsing.exceptions">pyparsing.exceptions</a>
  &#8226;   <a href="#pyparsing.util">pyparsing.util</a>
@@ -12059,10 +12230,7 @@ imported by:
  &#8226;   <a href="#tracemalloc">tracemalloc</a>
  &#8226;   <a href="#types">types</a>
  &#8226;   <a href="#typing">typing</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
- &#8226;   <a href="#unittest.signals">unittest.signals</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#urllib.parse">urllib.parse</a>
  &#8226;   <a href="#warnings">warnings</a>
 
@@ -12122,7 +12290,6 @@ imported by:
     <a href="#base64">base64</a>
  &#8226;   <a href="#fileinput">fileinput</a>
  &#8226;   <a href="#mimetypes">mimetypes</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#quopri">quopri</a>
 
   </div>
@@ -12210,7 +12377,6 @@ imports:
 imported by:
     <a href="#pathlib._abc">pathlib._abc</a>
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
- &#8226;   <a href="#pdb">pdb</a>
 
   </div>
 
@@ -12341,7 +12507,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#html.entities">html.entities</a>
- &#8226;   <a href="#http.server">http.server</a>
 
   </div>
 
@@ -12376,7 +12541,6 @@ imports:
 imported by:
     <a href="#http.client">http.client</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
 
   </div>
 
@@ -12403,7 +12567,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
 
@@ -12442,46 +12605,6 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="http.server"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/http/server.py" type="text/plain"><tt>http.server</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#argparse">argparse</a>
- &#8226;   <a href="#base64">base64</a>
- &#8226;   <a href="#binascii">binascii</a>
- &#8226;   <a href="#contextlib">contextlib</a>
- &#8226;   <a href="#copy">copy</a>
- &#8226;   <a href="#datetime">datetime</a>
- &#8226;   <a href="#email.utils">email.utils</a>
- &#8226;   <a href="#html">html</a>
- &#8226;   <a href="#http">http</a>
- &#8226;   <a href="#http.client">http.client</a>
- &#8226;   <a href="#io">io</a>
- &#8226;   <a href="#itertools">itertools</a>
- &#8226;   <a href="#mimetypes">mimetypes</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#posixpath">posixpath</a>
- &#8226;   <a href="#pwd">pwd</a>
- &#8226;   <a href="#select">select</a>
- &#8226;   <a href="#shutil">shutil</a>
- &#8226;   <a href="#socket">socket</a>
- &#8226;   <a href="#socketserver">socketserver</a>
- &#8226;   <a href="#subprocess">subprocess</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#time">time</a>
- &#8226;   <a href="#urllib.parse">urllib.parse</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#pydoc">pydoc</a>
-
-  </div>
-
-</div>
-
-<div class="node">
   <a name="importlib"></a>
   <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/importlib/__init__.py" type="text/plain"><tt>importlib</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
@@ -12497,7 +12620,9 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#cv2">cv2</a>
+    <a href="#charset_normalizer.cd">charset_normalizer.cd</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#cv2">cv2</a>
  &#8226;   <a href="#dateutil">dateutil</a>
  &#8226;   <a href="#importlib">importlib</a>
  &#8226;   <a href="#importlib._abc">importlib._abc</a>
@@ -12557,7 +12682,6 @@ imported by:
  &#8226;   <a href="#importlib._abc">importlib._abc</a>
  &#8226;   <a href="#importlib.machinery">importlib.machinery</a>
  &#8226;   <a href="#importlib.util">importlib.util</a>
- &#8226;   <a href="#pydoc">pydoc</a>
 
   </div>
 
@@ -12589,7 +12713,6 @@ imported by:
  &#8226;   <a href="#importlib.machinery">importlib.machinery</a>
  &#8226;   <a href="#importlib.util">importlib.util</a>
  &#8226;   <a href="#py_compile">py_compile</a>
- &#8226;   <a href="#pydoc">pydoc</a>
 
   </div>
 
@@ -12637,7 +12760,6 @@ imported by:
  &#8226;   <a href="#inspect">inspect</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
  &#8226;   <a href="#py_compile">py_compile</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#runpy">runpy</a>
  &#8226;   <a href="#sysconfig">sysconfig</a>
 
@@ -12843,7 +12965,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#importlib.abc">importlib.abc</a>
+    <a href="#certifi.core">certifi.core</a>
+ &#8226;   <a href="#importlib.abc">importlib.abc</a>
  &#8226;   <a href="#importlib.resources">importlib.resources</a>
  &#8226;   <a href="#importlib.resources._adapters">importlib.resources._adapters</a>
  &#8226;   <a href="#importlib.resources._common">importlib.resources._common</a>
@@ -13013,7 +13136,6 @@ imported by:
     <a href="#numpy.testing._private.extbuild">numpy.testing._private.extbuild</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
  &#8226;   <a href="#py_compile">py_compile</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#runpy">runpy</a>
  &#8226;   <a href="#six">six</a>
  &#8226;   <a href="#sysconfig">sysconfig</a>
@@ -13058,10 +13180,7 @@ imported by:
  &#8226;   <a href="#asyncio.coroutines">asyncio.coroutines</a>
  &#8226;   <a href="#asyncio.format_helpers">asyncio.format_helpers</a>
  &#8226;   <a href="#asyncio.tasks">asyncio.tasks</a>
- &#8226;   <a href="#bdb">bdb</a>
- &#8226;   <a href="#cmd">cmd</a>
  &#8226;   <a href="#dataclasses">dataclasses</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#importlib.resources._common">importlib.resources._common</a>
  &#8226;   <a href="#matplotlib">matplotlib</a>
@@ -13079,16 +13198,14 @@ imported by:
  &#8226;   <a href="#numpy.lib._utils_impl">numpy.lib._utils_impl</a>
  &#8226;   <a href="#numpy.ma.core">numpy.ma.core</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
- &#8226;   <a href="#pydoc">pydoc</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
  &#8226;   <a href="#pyi_rth_inspect.py">pyi_rth_inspect.py</a>
  &#8226;   <a href="#pyparsing.diagram">pyparsing.diagram</a>
  &#8226;   <a href="#pyparsing.exceptions">pyparsing.exceptions</a>
  &#8226;   <a href="#pyparsing.util">pyparsing.util</a>
- &#8226;   <a href="#rlcompleter">rlcompleter</a>
  &#8226;   <a href="#typing">typing</a>
- &#8226;   <a href="#unittest.async_case">unittest.async_case</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#warnings">warnings</a>
 
   </div>
@@ -13130,7 +13247,6 @@ imported by:
  &#8226;   <a href="#PIL.WebPImagePlugin">PIL.WebPImagePlugin</a>
  &#8226;   <a href="#_colorize">_colorize</a>
  &#8226;   <a href="#_compression">_compression</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
  &#8226;   <a href="#asyncio.proactor_events">asyncio.proactor_events</a>
  &#8226;   <a href="#asyncio.unix_events">asyncio.unix_events</a>
  &#8226;   <a href="#bz2">bz2</a>
@@ -13139,7 +13255,6 @@ imported by:
  &#8226;   <a href="#dateutil.parser._parser">dateutil.parser._parser</a>
  &#8226;   <a href="#dateutil.zoneinfo">dateutil.zoneinfo</a>
  &#8226;   <a href="#dis">dis</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#email.feedparser">email.feedparser</a>
  &#8226;   <a href="#email.generator">email.generator</a>
  &#8226;   <a href="#email.iterators">email.iterators</a>
@@ -13152,7 +13267,6 @@ imported by:
  &#8226;   <a href="#gzip">gzip</a>
  &#8226;   <a href="#http.client">http.client</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#importlib.resources._adapters">importlib.resources._adapters</a>
  &#8226;   <a href="#importlib.resources.abc">importlib.resources.abc</a>
  &#8226;   <a href="#logging">logging</a>
@@ -13170,26 +13284,23 @@ imported by:
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#piexif._insert">piexif._insert</a>
  &#8226;   <a href="#piexif._remove">piexif._remove</a>
  &#8226;   <a href="#piexif._transplant">piexif._transplant</a>
  &#8226;   <a href="#plistlib">plistlib</a>
  &#8226;   <a href="#pprint">pprint</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#pyparsing.diagram">pyparsing.diagram</a>
  &#8226;   <a href="#quopri">quopri</a>
  &#8226;   <a href="#runpy">runpy</a>
  &#8226;   <a href="#shlex">shlex</a>
  &#8226;   <a href="#six">six</a>
  &#8226;   <a href="#socket">socket</a>
- &#8226;   <a href="#socketserver">socketserver</a>
  &#8226;   <a href="#subprocess">subprocess</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#tempfile">tempfile</a>
  &#8226;   <a href="#tokenize">tokenize</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#urllib.error">urllib.error</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#uuid">uuid</a>
@@ -13197,6 +13308,7 @@ imported by:
  &#8226;   <a href="#xml.sax">xml.sax</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
+ &#8226;   <a href="#yaml">yaml</a>
  &#8226;   <a href="#zipfile">zipfile</a>
  &#8226;   <a href="#zipfile._path">zipfile._path</a>
 
@@ -13215,7 +13327,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#urllib.parse">urllib.parse</a>
+    <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#urllib.parse">urllib.parse</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
 
   </div>
@@ -13247,7 +13360,6 @@ imported by:
  &#8226;   <a href="#dataclasses">dataclasses</a>
  &#8226;   <a href="#dateutil.rrule">dateutil.rrule</a>
  &#8226;   <a href="#glob">glob</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#importlib.metadata._itertools">importlib.metadata._itertools</a>
  &#8226;   <a href="#importlib.resources._common">importlib.resources._common</a>
@@ -13283,7 +13395,6 @@ imported by:
  &#8226;   <a href="#numpy.lib.recfunctions">numpy.lib.recfunctions</a>
  &#8226;   <a href="#numpy.ma.extras">numpy.ma.extras</a>
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#platform">platform</a>
  &#8226;   <a href="#plistlib">plistlib</a>
@@ -13319,7 +13430,7 @@ imported by:
 <div class="node">
   <a name="jinja2"></a>
   <a target="code" href="" type="text/plain"><tt>jinja2</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+<span class="moduletype">ExcludedModule</span>  <div class="import">
 imported by:
     <a href="#pyparsing.diagram">pyparsing.diagram</a>
 
@@ -13340,7 +13451,9 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+    <a href="#abu_clock_bridge">abu_clock_bridge</a>
+ &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
  &#8226;   <a href="#dateutil.zoneinfo">dateutil.zoneinfo</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#json.decoder">json.decoder</a>
@@ -13351,6 +13464,7 @@ imported by:
  &#8226;   <a href="#matplotlib.font_manager">matplotlib.font_manager</a>
  &#8226;   <a href="#numpy.__config__">numpy.__config__</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
 
   </div>
 
@@ -13422,7 +13536,7 @@ imported by:
  &#8226;   <a href="#collections">collections</a>
  &#8226;   <a href="#dataclasses">dataclasses</a>
  &#8226;   <a href="#inspect">inspect</a>
- &#8226;   <a href="#rlcompleter">rlcompleter</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
 
   </div>
 
@@ -13493,11 +13607,8 @@ imports:
   <div class="import">
 imported by:
     <a href="#asyncio.base_tasks">asyncio.base_tasks</a>
- &#8226;   <a href="#bdb">bdb</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#inspect">inspect</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#tracemalloc">tracemalloc</a>
  &#8226;   <a href="#warnings">warnings</a>
@@ -13571,6 +13682,10 @@ imported by:
  &#8226;   <a href="#asyncio.log">asyncio.log</a>
  &#8226;   <a href="#av.datasets">av.datasets</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+ &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.md">charset_normalizer.md</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
  &#8226;   <a href="#concurrent.futures._base">concurrent.futures._base</a>
  &#8226;   <a href="#hashlib">hashlib</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
@@ -13604,7 +13719,6 @@ imported by:
  &#8226;   <a href="#matplotlib.textpath">matplotlib.textpath</a>
  &#8226;   <a href="#matplotlib.ticker">matplotlib.ticker</a>
  &#8226;   <a href="#multiprocessing.util">multiprocessing.util</a>
- &#8226;   <a href="#unittest._log">unittest._log</a>
 
   </div>
 
@@ -13660,6 +13774,7 @@ imported by:
  &#8226;   <a href="#PIL.TiffImagePlugin">PIL.TiffImagePlugin</a>
  &#8226;   <a href="#_pydatetime">_pydatetime</a>
  &#8226;   <a href="#_pydecimal">_pydecimal</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#asyncio.tasks">asyncio.tasks</a>
  &#8226;   <a href="#asyncio.windows_events">asyncio.windows_events</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
@@ -13693,6 +13808,7 @@ imported by:
  &#8226;   <a href="#random">random</a>
  &#8226;   <a href="#selectors">selectors</a>
  &#8226;   <a href="#statistics">statistics</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
  &#8226;   <a href="#urllib.parse">urllib.parse</a>
 
   </div>
@@ -17085,8 +17201,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#http.server">http.server</a>
- &#8226;   <a href="#matplotlib.backends.backend_webagg">matplotlib.backends.backend_webagg</a>
+    <a href="#matplotlib.backends.backend_webagg">matplotlib.backends.backend_webagg</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
 
   </div>
@@ -24862,7 +24977,8 @@ imported by:
   <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/numpy/testing/_private/utils.py" type="text/plain"><tt>numpy.testing._private.utils</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#concurrent.futures">concurrent.futures</a>
+    <a href="#'unittest.case'">'unittest.case'</a>
+ &#8226;   <a href="#concurrent.futures">concurrent.futures</a>
  &#8226;   <a href="#contextlib">contextlib</a>
  &#8226;   <a href="#difflib">difflib</a>
  &#8226;   <a href="#doctest">doctest</a>
@@ -24916,7 +25032,6 @@ imports:
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#types">types</a>
  &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
  &#8226;   <a href="#warnings">warnings</a>
  &#8226;   <a href="#win32pdh">win32pdh</a>
 
@@ -25088,6 +25203,7 @@ imported by:
  &#8226;   <a href="#six">six</a>
  &#8226;   <a href="#statistics">statistics</a>
  &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
 
   </div>
 
@@ -25145,8 +25261,8 @@ imported by:
  &#8226;   <a href="#_colorize">_colorize</a>
  &#8226;   <a href="#_pyi_rth_utils">_pyi_rth_utils</a>
  &#8226;   <a href="#_pyi_rth_utils.tempfile">_pyi_rth_utils.tempfile</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
  &#8226;   <a href="#_strptime">_strptime</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.base_subprocess">asyncio.base_subprocess</a>
@@ -25158,9 +25274,9 @@ imported by:
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
  &#8226;   <a href="#av">av</a>
  &#8226;   <a href="#av.datasets">av.datasets</a>
- &#8226;   <a href="#bdb">bdb</a>
  &#8226;   <a href="#bz2">bz2</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
  &#8226;   <a href="#concurrent.futures.process">concurrent.futures.process</a>
  &#8226;   <a href="#concurrent.futures.thread">concurrent.futures.thread</a>
  &#8226;   <a href="#contextlib">contextlib</a>
@@ -25173,7 +25289,6 @@ imported by:
  &#8226;   <a href="#cv2.data">cv2.data</a>
  &#8226;   <a href="#cv2.load_config_py3">cv2.load_config_py3</a>
  &#8226;   <a href="#dateutil.tz.tz">dateutil.tz.tz</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#fileinput">fileinput</a>
  &#8226;   <a href="#fnmatch">fnmatch</a>
@@ -25184,7 +25299,6 @@ imported by:
  &#8226;   <a href="#glob">glob</a>
  &#8226;   <a href="#gzip">gzip</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#importlib.metadata._meta">importlib.metadata._meta</a>
  &#8226;   <a href="#importlib.resources._common">importlib.resources._common</a>
@@ -25251,13 +25365,14 @@ imported by:
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
  &#8226;   <a href="#os.path">os.path</a>
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
  &#8226;   <a href="#platform">platform</a>
  &#8226;   <a href="#plistlib">plistlib</a>
  &#8226;   <a href="#posixpath">posixpath</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
  &#8226;   <a href="#py_compile">py_compile</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#pyi_rth__tkinter.py">pyi_rth__tkinter.py</a>
  &#8226;   <a href="#pyi_rth_inspect.py">pyi_rth_inspect.py</a>
  &#8226;   <a href="#pyi_rth_mplconfig.py">pyi_rth_mplconfig.py</a>
@@ -25267,17 +25382,15 @@ imported by:
  &#8226;   <a href="#shlex">shlex</a>
  &#8226;   <a href="#shutil">shutil</a>
  &#8226;   <a href="#socket">socket</a>
- &#8226;   <a href="#socketserver">socketserver</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#subprocess">subprocess</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
  &#8226;   <a href="#sysconfig">sysconfig</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#tempfile">tempfile</a>
  &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#tkinter">tkinter</a>
  &#8226;   <a href="#tkinter.filedialog">tkinter.filedialog</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.main">unittest.main</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#uuid">uuid</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
@@ -25308,7 +25421,6 @@ imported by:
  &#8226;   <a href="#py_compile">py_compile</a>
  &#8226;   <a href="#sysconfig">sysconfig</a>
  &#8226;   <a href="#tracemalloc">tracemalloc</a>
- &#8226;   <a href="#unittest.util">unittest.util</a>
 
   </div>
 
@@ -25440,51 +25552,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#pathlib">pathlib</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="pdb"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/pdb.py" type="text/plain"><tt>pdb</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#_colorize">_colorize</a>
- &#8226;   <a href="#argparse">argparse</a>
- &#8226;   <a href="#bdb">bdb</a>
- &#8226;   <a href="#cmd">cmd</a>
- &#8226;   <a href="#code">code</a>
- &#8226;   <a href="#codeop">codeop</a>
- &#8226;   <a href="#contextlib">contextlib</a>
- &#8226;   <a href="#dis">dis</a>
- &#8226;   <a href="#glob">glob</a>
- &#8226;   <a href="#inspect">inspect</a>
- &#8226;   <a href="#io">io</a>
- &#8226;   <a href="#itertools">itertools</a>
- &#8226;   <a href="#linecache">linecache</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#pdb">pdb</a>
- &#8226;   <a href="#pprint">pprint</a>
- &#8226;   <a href="#pydoc">pydoc</a>
- &#8226;   <a href="#re">re</a>
- &#8226;   <a href="#readline">readline</a>
- &#8226;   <a href="#rlcompleter">rlcompleter</a>
- &#8226;   <a href="#runpy">runpy</a>
- &#8226;   <a href="#shlex">shlex</a>
- &#8226;   <a href="#signal">signal</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#textwrap">textwrap</a>
- &#8226;   <a href="#token">token</a>
- &#8226;   <a href="#tokenize">tokenize</a>
- &#8226;   <a href="#traceback">traceback</a>
- &#8226;   <a href="#types">types</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#doctest">doctest</a>
- &#8226;   <a href="#pdb">pdb</a>
 
   </div>
 
@@ -25759,7 +25826,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#dateutil.zoneinfo">dateutil.zoneinfo</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#pyi_rth_pkgutil.py">pyi_rth_pkgutil.py</a>
  &#8226;   <a href="#runpy">runpy</a>
 
@@ -25796,7 +25862,6 @@ imported by:
  &#8226;   <a href="#numpy.f2py.crackfortran">numpy.f2py.crackfortran</a>
  &#8226;   <a href="#numpy.lib._utils_impl">numpy.lib._utils_impl</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#uuid">uuid</a>
 
   </div>
@@ -25866,7 +25931,6 @@ imports:
 imported by:
     <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
  &#8226;   <a href="#fnmatch">fnmatch</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#mimetypes">mimetypes</a>
  &#8226;   <a href="#os">os</a>
@@ -25897,10 +25961,8 @@ imported by:
  &#8226;   <a href="#numpy.f2py.f2py2e">numpy.f2py.f2py2e</a>
  &#8226;   <a href="#numpy.lib._utils_impl">numpy.lib._utils_impl</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#pyparsing.results">pyparsing.results</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
 
   </div>
 
@@ -25908,10 +25970,130 @@ imported by:
 
 <div class="node">
   <a name="psutil"></a>
-  <a target="code" href="" type="text/plain"><tt>psutil</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/psutil/__init__.py" type="text/plain"><tt>psutil</tt></a>
+<span class="moduletype">Package</span>  <div class="import">
+imports:
+    <a href="#collections">collections</a>
+ &#8226;   <a href="#contextlib">contextlib</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._ntuples">psutil._ntuples</a>
+ &#8226;   <a href="#psutil._psutil_windows">psutil._psutil_windows</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
+ &#8226;   <a href="#pwd">pwd</a>
+ &#8226;   <a href="#signal">signal</a>
+ &#8226;   <a href="#socket">socket</a>
+ &#8226;   <a href="#subprocess">subprocess</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#threading">threading</a>
+ &#8226;   <a href="#time">time</a>
+
+  </div>
+  <div class="import">
 imported by:
     <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._ntuples">psutil._ntuples</a>
+ &#8226;   <a href="#psutil._psutil_windows">psutil._psutil_windows</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="psutil._common"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/psutil/_common.py" type="text/plain"><tt>psutil._common</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#collections">collections</a>
+ &#8226;   <a href="#ctypes">ctypes</a>
+ &#8226;   <a href="#enum">enum</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#inspect">inspect</a>
+ &#8226;   <a href="#ipaddress">ipaddress</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._ntuples">psutil._ntuples</a>
+ &#8226;   <a href="#socket">socket</a>
+ &#8226;   <a href="#stat">stat</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#threading">threading</a>
+ &#8226;   <a href="#warnings">warnings</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._ntuples">psutil._ntuples</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="psutil._ntuples"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/psutil/_ntuples.py" type="text/plain"><tt>psutil._ntuples</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#collections">collections</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="psutil._psutil_windows"></a>
+  <tt>psutil._psutil_windows</tt> <span class="moduletype"><tt>C:\Users\USer\AppData\Local\Programs\Python\Python313\Lib\site-packages\psutil\_psutil_windows.pyd</tt></span>  <div class="import">
+imports:
+    <a href="#psutil">psutil</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="psutil._pswindows"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/psutil/_pswindows.py" type="text/plain"><tt>psutil._pswindows</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#contextlib">contextlib</a>
+ &#8226;   <a href="#enum">enum</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._ntuples">psutil._ntuples</a>
+ &#8226;   <a href="#psutil._psutil_windows">psutil._psutil_windows</a>
+ &#8226;   <a href="#signal">signal</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#threading">threading</a>
+ &#8226;   <a href="#time">time</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#psutil">psutil</a>
 
   </div>
 
@@ -25923,10 +26105,10 @@ imported by:
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
     <a href="#getpass">getpass</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#netrc">netrc</a>
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
  &#8226;   <a href="#posixpath">posixpath</a>
+ &#8226;   <a href="#psutil">psutil</a>
  &#8226;   <a href="#shutil">shutil</a>
  &#8226;   <a href="#subprocess">subprocess</a>
  &#8226;   <a href="#tarfile">tarfile</a>
@@ -25961,72 +26143,10 @@ imported by:
 
 <div class="node">
   <a name="pydoc"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/pydoc.py" type="text/plain"><tt>pydoc</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#__future__">__future__</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
- &#8226;   <a href="#builtins">builtins</a>
- &#8226;   <a href="#collections">collections</a>
- &#8226;   <a href="#email.message">email.message</a>
- &#8226;   <a href="#getopt">getopt</a>
- &#8226;   <a href="#http.server">http.server</a>
- &#8226;   <a href="#importlib._bootstrap">importlib._bootstrap</a>
- &#8226;   <a href="#importlib._bootstrap_external">importlib._bootstrap_external</a>
- &#8226;   <a href="#importlib.machinery">importlib.machinery</a>
- &#8226;   <a href="#importlib.util">importlib.util</a>
- &#8226;   <a href="#inspect">inspect</a>
- &#8226;   <a href="#io">io</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#pkgutil">pkgutil</a>
- &#8226;   <a href="#platform">platform</a>
- &#8226;   <a href="#pydoc_data.topics">pydoc_data.topics</a>
- &#8226;   <a href="#re">re</a>
- &#8226;   <a href="#reprlib">reprlib</a>
- &#8226;   <a href="#select">select</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#sysconfig">sysconfig</a>
- &#8226;   <a href="#textwrap">textwrap</a>
- &#8226;   <a href="#threading">threading</a>
- &#8226;   <a href="#time">time</a>
- &#8226;   <a href="#tokenize">tokenize</a>
- &#8226;   <a href="#traceback">traceback</a>
- &#8226;   <a href="#urllib.parse">urllib.parse</a>
- &#8226;   <a href="#warnings">warnings</a>
- &#8226;   <a href="#webbrowser">webbrowser</a>
-
-  </div>
-  <div class="import">
+  <a target="code" href="" type="text/plain"><tt>pydoc</tt></a>
+<span class="moduletype">ExcludedModule</span>  <div class="import">
 imported by:
     <a href="#numpy.lib._utils_impl">numpy.lib._utils_impl</a>
- &#8226;   <a href="#pdb">pdb</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="pydoc_data"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/pydoc_data/__init__.py" type="text/plain"><tt>pydoc_data</tt></a>
-<span class="moduletype">Package</span>  <div class="import">
-imported by:
-    <a href="#pydoc_data.topics">pydoc_data.topics</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="pydoc_data.topics"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/pydoc_data/topics.py" type="text/plain"><tt>pydoc_data.topics</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#pydoc_data">pydoc_data</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#pydoc">pydoc</a>
 
   </div>
 
@@ -26521,13 +26641,14 @@ imported by:
  &#8226;   <a href="#PIL.XbmImagePlugin">PIL.XbmImagePlugin</a>
  &#8226;   <a href="#PIL.XpmImagePlugin">PIL.XpmImagePlugin</a>
  &#8226;   <a href="#_pydecimal">_pydecimal</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
  &#8226;   <a href="#_sre">_sre</a>
  &#8226;   <a href="#_strptime">_strptime</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#ast">ast</a>
  &#8226;   <a href="#base64">base64</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
+ &#8226;   <a href="#charset_normalizer.constant">charset_normalizer.constant</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
  &#8226;   <a href="#csv">csv</a>
  &#8226;   <a href="#ctypes._aix">ctypes._aix</a>
  &#8226;   <a href="#ctypes.macholib.dylib">ctypes.macholib.dylib</a>
@@ -26538,7 +26659,6 @@ imported by:
  &#8226;   <a href="#dateutil.parser.isoparser">dateutil.parser.isoparser</a>
  &#8226;   <a href="#dateutil.rrule">dateutil.rrule</a>
  &#8226;   <a href="#difflib">difflib</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#email._encoded_words">email._encoded_words</a>
  &#8226;   <a href="#email._header_value_parser">email._header_value_parser</a>
  &#8226;   <a href="#email.feedparser">email.feedparser</a>
@@ -26598,14 +26718,12 @@ imported by:
  &#8226;   <a href="#numpy.ma.core">numpy.ma.core</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
  &#8226;   <a href="#packaging.version">packaging.version</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
  &#8226;   <a href="#platform">platform</a>
  &#8226;   <a href="#plistlib">plistlib</a>
  &#8226;   <a href="#posixpath">posixpath</a>
  &#8226;   <a href="#pprint">pprint</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
  &#8226;   <a href="#pyparsing.diagram">pyparsing.diagram</a>
  &#8226;   <a href="#pyparsing.exceptions">pyparsing.exceptions</a>
@@ -26617,25 +26735,26 @@ imported by:
  &#8226;   <a href="#re._compiler">re._compiler</a>
  &#8226;   <a href="#re._constants">re._constants</a>
  &#8226;   <a href="#re._parser">re._parser</a>
- &#8226;   <a href="#rlcompleter">rlcompleter</a>
  &#8226;   <a href="#shlex">shlex</a>
  &#8226;   <a href="#sre_compile">sre_compile</a>
  &#8226;   <a href="#sre_constants">sre_constants</a>
  &#8226;   <a href="#sre_parse">sre_parse</a>
  &#8226;   <a href="#string">string</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
  &#8226;   <a href="#sysconfig">sysconfig</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#textwrap">textwrap</a>
  &#8226;   <a href="#tkinter">tkinter</a>
  &#8226;   <a href="#tokenize">tokenize</a>
  &#8226;   <a href="#typing">typing</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
  &#8226;   <a href="#urllib.parse">urllib.parse</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#warnings">warnings</a>
  &#8226;   <a href="#xml.etree.ElementPath">xml.etree.ElementPath</a>
  &#8226;   <a href="#xml.etree.ElementTree">xml.etree.ElementTree</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.reader">yaml.reader</a>
+ &#8226;   <a href="#yaml.resolver">yaml.resolver</a>
  &#8226;   <a href="#zipfile._path">zipfile._path</a>
  &#8226;   <a href="#zipfile._path.glob">zipfile._path.glob</a>
 
@@ -26727,20 +26846,6 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="readline"></a>
-  <a target="code" href="" type="text/plain"><tt>readline</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
-imported by:
-    <a href="#cmd">cmd</a>
- &#8226;   <a href="#code">code</a>
- &#8226;   <a href="#pdb">pdb</a>
- &#8226;   <a href="#rlcompleter">rlcompleter</a>
-
-  </div>
-
-</div>
-
-<div class="node">
   <a name="reprlib"></a>
   <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/reprlib.py" type="text/plain"><tt>reprlib</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
@@ -26755,12 +26860,10 @@ imported by:
     <a href="#asyncio.base_futures">asyncio.base_futures</a>
  &#8226;   <a href="#asyncio.base_tasks">asyncio.base_tasks</a>
  &#8226;   <a href="#asyncio.format_helpers">asyncio.format_helpers</a>
- &#8226;   <a href="#bdb">bdb</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
  &#8226;   <a href="#collections">collections</a>
  &#8226;   <a href="#dataclasses">dataclasses</a>
  &#8226;   <a href="#functools">functools</a>
- &#8226;   <a href="#pydoc">pydoc</a>
 
   </div>
 
@@ -26772,28 +26875,6 @@ imported by:
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
     <a href="#posix">posix</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="rlcompleter"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/rlcompleter.py" type="text/plain"><tt>rlcompleter</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#atexit">atexit</a>
- &#8226;   <a href="#builtins">builtins</a>
- &#8226;   <a href="#inspect">inspect</a>
- &#8226;   <a href="#keyword">keyword</a>
- &#8226;   <a href="#re">re</a>
- &#8226;   <a href="#readline">readline</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#pdb">pdb</a>
 
   </div>
 
@@ -26816,7 +26897,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#multiprocessing.spawn">multiprocessing.spawn</a>
- &#8226;   <a href="#pdb">pdb</a>
 
   </div>
 
@@ -26844,9 +26924,7 @@ imported by:
   <a name="select"></a>
   <tt>select</tt> <span class="moduletype"><tt>C:\Users\USer\AppData\Local\Programs\Python\Python313\DLLs\select.pyd</tt></span>  <div class="import">
 imported by:
-    <a href="#http.server">http.server</a>
- &#8226;   <a href="#pydoc">pydoc</a>
- &#8226;   <a href="#selectors">selectors</a>
+    <a href="#selectors">selectors</a>
  &#8226;   <a href="#subprocess">subprocess</a>
 
   </div>
@@ -26873,7 +26951,6 @@ imported by:
  &#8226;   <a href="#multiprocessing.connection">multiprocessing.connection</a>
  &#8226;   <a href="#multiprocessing.forkserver">multiprocessing.forkserver</a>
  &#8226;   <a href="#socket">socket</a>
- &#8226;   <a href="#socketserver">socketserver</a>
  &#8226;   <a href="#subprocess">subprocess</a>
 
   </div>
@@ -26907,7 +26984,6 @@ imports:
 imported by:
     <a href="#PIL.ImageShow">PIL.ImageShow</a>
  &#8226;   <a href="#matplotlib.cbook">matplotlib.cbook</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
 
   </div>
@@ -26943,7 +27019,6 @@ imported by:
  &#8226;   <a href="#PIL.ImageShow">PIL.ImageShow</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#ctypes.util">ctypes.util</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#matplotlib">matplotlib</a>
  &#8226;   <a href="#multiprocessing.util">multiprocessing.util</a>
  &#8226;   <a href="#numpy.f2py._backends._distutils">numpy.f2py._backends._distutils</a>
@@ -26986,9 +27061,9 @@ imported by:
  &#8226;   <a href="#multiprocessing.process">multiprocessing.process</a>
  &#8226;   <a href="#multiprocessing.resource_sharer">multiprocessing.resource_sharer</a>
  &#8226;   <a href="#multiprocessing.resource_tracker">multiprocessing.resource_tracker</a>
- &#8226;   <a href="#pdb">pdb</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
  &#8226;   <a href="#subprocess">subprocess</a>
- &#8226;   <a href="#unittest.signals">unittest.signals</a>
 
   </div>
 
@@ -27114,6 +27189,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#_ssl">_ssl</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.events">asyncio.events</a>
  &#8226;   <a href="#asyncio.proactor_events">asyncio.proactor_events</a>
@@ -27126,40 +27202,17 @@ imported by:
  &#8226;   <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#ftplib">ftplib</a>
  &#8226;   <a href="#http.client">http.client</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#matplotlib.backend_bases">matplotlib.backend_bases</a>
  &#8226;   <a href="#multiprocessing.connection">multiprocessing.connection</a>
  &#8226;   <a href="#multiprocessing.forkserver">multiprocessing.forkserver</a>
  &#8226;   <a href="#multiprocessing.reduction">multiprocessing.reduction</a>
  &#8226;   <a href="#multiprocessing.resource_sharer">multiprocessing.resource_sharer</a>
  &#8226;   <a href="#platform">platform</a>
- &#8226;   <a href="#socketserver">socketserver</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#uuid">uuid</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="socketserver"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/socketserver.py" type="text/plain"><tt>socketserver</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#io">io</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#selectors">selectors</a>
- &#8226;   <a href="#socket">socket</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#threading">threading</a>
- &#8226;   <a href="#time">time</a>
- &#8226;   <a href="#traceback">traceback</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#http.server">http.server</a>
 
   </div>
 
@@ -27270,6 +27323,7 @@ imported by:
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib._abc">pathlib._abc</a>
  &#8226;   <a href="#posixpath">posixpath</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
  &#8226;   <a href="#shutil">shutil</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#zipfile">zipfile</a>
@@ -27318,8 +27372,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#cmd">cmd</a>
- &#8226;   <a href="#dateutil.parser._parser">dateutil.parser._parser</a>
+    <a href="#dateutil.parser._parser">dateutil.parser._parser</a>
  &#8226;   <a href="#email._encoded_words">email._encoded_words</a>
  &#8226;   <a href="#email._header_value_parser">email._header_value_parser</a>
  &#8226;   <a href="#email.quoprimime">email.quoprimime</a>
@@ -27379,6 +27432,7 @@ imported by:
  &#8226;   <a href="#PIL.SpiderImagePlugin">PIL.SpiderImagePlugin</a>
  &#8226;   <a href="#PIL.TiffImagePlugin">PIL.TiffImagePlugin</a>
  &#8226;   <a href="#PIL._binary">PIL._binary</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#asyncio.windows_events">asyncio.windows_events</a>
  &#8226;   <a href="#base64">base64</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
@@ -27445,7 +27499,7 @@ imported by:
  &#8226;   <a href="#PIL.ImageShow">PIL.ImageShow</a>
  &#8226;   <a href="#PIL.JpegImagePlugin">PIL.JpegImagePlugin</a>
  &#8226;   <a href="#_aix_support">_aix_support</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.base_subprocess">asyncio.base_subprocess</a>
  &#8226;   <a href="#asyncio.events">asyncio.events</a>
@@ -27455,7 +27509,6 @@ imported by:
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
  &#8226;   <a href="#ctypes._aix">ctypes._aix</a>
  &#8226;   <a href="#ctypes.util">ctypes.util</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#matplotlib">matplotlib</a>
  &#8226;   <a href="#matplotlib.cbook">matplotlib.cbook</a>
  &#8226;   <a href="#matplotlib.dviread">matplotlib.dviread</a>
@@ -27469,9 +27522,36 @@ imported by:
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#platform">platform</a>
+ &#8226;   <a href="#psutil">psutil</a>
  &#8226;   <a href="#pyi_rth_multiprocessing.py">pyi_rth_multiprocessing.py</a>
  &#8226;   <a href="#uuid">uuid</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="sync_photos"></a>
+  <a target="code" href="///C:/Users/USer/.gemini/antigravity/scratch/ios_app_cam_track_01/DesktopSync/sync_photos.py" type="text/plain"><tt>sync_photos</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#PIL">PIL</a>
+ &#8226;   <a href="#PIL.ExifTags">PIL.ExifTags</a>
+ &#8226;   <a href="#PIL.Image">PIL.Image</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
+ &#8226;   <a href="#csv">csv</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#json">json</a>
+ &#8226;   <a href="#math">math</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#sys">sys</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
 
   </div>
 
@@ -27503,7 +27583,7 @@ imported by:
  &#8226;   <a href="#_pydecimal">_pydecimal</a>
  &#8226;   <a href="#_pyi_rth_utils">_pyi_rth_utils</a>
  &#8226;   <a href="#_pyi_rth_utils.tempfile">_pyi_rth_utils.tempfile</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#ast">ast</a>
  &#8226;   <a href="#asyncio">asyncio</a>
@@ -27519,11 +27599,9 @@ imported by:
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
  &#8226;   <a href="#av.datasets">av.datasets</a>
  &#8226;   <a href="#base64">base64</a>
- &#8226;   <a href="#bdb">bdb</a>
  &#8226;   <a href="#calendar">calendar</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
- &#8226;   <a href="#cmd">cmd</a>
- &#8226;   <a href="#code">code</a>
+ &#8226;   <a href="#certifi.core">certifi.core</a>
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#collections">collections</a>
  &#8226;   <a href="#concurrent.futures.process">concurrent.futures.process</a>
@@ -27541,7 +27619,6 @@ imported by:
  &#8226;   <a href="#dateutil.tz.tz">dateutil.tz.tz</a>
  &#8226;   <a href="#decimal">decimal</a>
  &#8226;   <a href="#dis">dis</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#email._header_value_parser">email._header_value_parser</a>
  &#8226;   <a href="#email.generator">email.generator</a>
  &#8226;   <a href="#email.iterators">email.iterators</a>
@@ -27560,7 +27637,6 @@ imported by:
  &#8226;   <a href="#glob">glob</a>
  &#8226;   <a href="#gzip">gzip</a>
  &#8226;   <a href="#http.client">http.client</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#importlib">importlib</a>
  &#8226;   <a href="#importlib._bootstrap_external">importlib._bootstrap_external</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
@@ -27627,7 +27703,6 @@ imported by:
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#packaging.version">packaging.version</a>
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#piexif._insert">piexif._insert</a>
  &#8226;   <a href="#piexif._load">piexif._load</a>
@@ -27635,8 +27710,10 @@ imported by:
  &#8226;   <a href="#platform">platform</a>
  &#8226;   <a href="#posixpath">posixpath</a>
  &#8226;   <a href="#pprint">pprint</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
  &#8226;   <a href="#py_compile">py_compile</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#pyi_rth__tkinter.py">pyi_rth__tkinter.py</a>
  &#8226;   <a href="#pyi_rth_inspect.py">pyi_rth_inspect.py</a>
  &#8226;   <a href="#pyi_rth_multiprocessing.py">pyi_rth_multiprocessing.py</a>
@@ -27654,10 +27731,10 @@ imported by:
  &#8226;   <a href="#shutil">shutil</a>
  &#8226;   <a href="#six">six</a>
  &#8226;   <a href="#socket">socket</a>
- &#8226;   <a href="#socketserver">socketserver</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#statistics">statistics</a>
  &#8226;   <a href="#subprocess">subprocess</a>
+ &#8226;   <a href="#sync_photos">sync_photos</a>
  &#8226;   <a href="#sysconfig">sysconfig</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#tempfile">tempfile</a>
@@ -27667,12 +27744,7 @@ imported by:
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#types">types</a>
  &#8226;   <a href="#typing">typing</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.main">unittest.main</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
- &#8226;   <a href="#unittest.suite">unittest.suite</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#uuid">uuid</a>
  &#8226;   <a href="#warnings">warnings</a>
@@ -27683,6 +27755,7 @@ imported by:
  &#8226;   <a href="#xml.sax">xml.sax</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
  &#8226;   <a href="#zipfile">zipfile</a>
  &#8226;   <a href="#zipfile._path">zipfile._path</a>
  &#8226;   <a href="#zipimport">zipimport</a>
@@ -27715,7 +27788,6 @@ imported by:
  &#8226;   <a href="#numpy.ctypeslib">numpy.ctypeslib</a>
  &#8226;   <a href="#numpy.testing._private.extbuild">numpy.testing._private.extbuild</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pydoc">pydoc</a>
 
   </div>
 
@@ -27779,7 +27851,6 @@ imported by:
  &#8226;   <a href="#PIL.Image">PIL.Image</a>
  &#8226;   <a href="#PIL.JpegImagePlugin">PIL.JpegImagePlugin</a>
  &#8226;   <a href="#_pyi_rth_utils.tempfile">_pyi_rth_utils.tempfile</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
  &#8226;   <a href="#ctypes.util">ctypes.util</a>
@@ -27806,9 +27877,7 @@ imported by:
   <a target="code" href="" type="text/plain"><tt>termios</tt></a>
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
-    <a href="#_pyrepl.pager">_pyrepl.pager</a>
- &#8226;   <a href="#getpass">getpass</a>
- &#8226;   <a href="#tty">tty</a>
+    <a href="#getpass">getpass</a>
 
   </div>
 
@@ -27835,8 +27904,6 @@ imported by:
  &#8226;   <a href="#numpy.lib._utils_impl">numpy.lib._utils_impl</a>
  &#8226;   <a href="#numpy.ma.core">numpy.ma.core</a>
  &#8226;   <a href="#numpy.testing._private.extbuild">numpy.testing._private.extbuild</a>
- &#8226;   <a href="#pdb">pdb</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#traceback">traceback</a>
 
   </div>
@@ -27864,6 +27931,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#_threading_local">_threading_local</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.events">asyncio.events</a>
  &#8226;   <a href="#asyncio.mixins">asyncio.mixins</a>
@@ -27895,10 +27963,11 @@ imported by:
  &#8226;   <a href="#multiprocessing.util">multiprocessing.util</a>
  &#8226;   <a href="#numpy.random.bit_generator">numpy.random.bit_generator</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pydoc">pydoc</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
  &#8226;   <a href="#queue">queue</a>
- &#8226;   <a href="#socketserver">socketserver</a>
  &#8226;   <a href="#subprocess">subprocess</a>
  &#8226;   <a href="#sysconfig">sysconfig</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
@@ -27933,6 +28002,7 @@ imported by:
  &#8226;   <a href="#_datetime">_datetime</a>
  &#8226;   <a href="#_pydatetime">_pydatetime</a>
  &#8226;   <a href="#_strptime">_strptime</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.windows_events">asyncio.windows_events</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
@@ -27946,7 +28016,6 @@ imported by:
  &#8226;   <a href="#gc">gc</a>
  &#8226;   <a href="#gzip">gzip</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#matplotlib.backend_bases">matplotlib.backend_bases</a>
  &#8226;   <a href="#matplotlib.backend_tools">matplotlib.backend_tools</a>
@@ -27960,16 +28029,14 @@ imported by:
  &#8226;   <a href="#multiprocessing.synchronize">multiprocessing.synchronize</a>
  &#8226;   <a href="#numpy.f2py.rules">numpy.f2py.rules</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pydoc">pydoc</a>
+ &#8226;   <a href="#psutil">psutil</a>
+ &#8226;   <a href="#psutil._pswindows">psutil._pswindows</a>
  &#8226;   <a href="#queue">queue</a>
  &#8226;   <a href="#random">random</a>
- &#8226;   <a href="#socketserver">socketserver</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#subprocess">subprocess</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#threading">threading</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#uuid">uuid</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
@@ -28169,7 +28236,6 @@ imported by:
 <span class="moduletype">SourceModule</span>  <div class="import">
 imported by:
     <a href="#inspect">inspect</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#tokenize">tokenize</a>
 
   </div>
@@ -28200,8 +28266,6 @@ imported by:
  &#8226;   <a href="#inspect">inspect</a>
  &#8226;   <a href="#linecache">linecache</a>
  &#8226;   <a href="#numpy.lib.format">numpy.lib.format</a>
- &#8226;   <a href="#pdb">pdb</a>
- &#8226;   <a href="#pydoc">pydoc</a>
 
   </div>
 
@@ -28243,9 +28307,7 @@ imported by:
  &#8226;   <a href="#asyncio.base_tasks">asyncio.base_tasks</a>
  &#8226;   <a href="#asyncio.format_helpers">asyncio.format_helpers</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
- &#8226;   <a href="#code">code</a>
  &#8226;   <a href="#concurrent.futures.process">concurrent.futures.process</a>
- &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#matplotlib.cbook">matplotlib.cbook</a>
@@ -28255,16 +28317,10 @@ imported by:
  &#8226;   <a href="#multiprocessing.queues">multiprocessing.queues</a>
  &#8226;   <a href="#multiprocessing.util">multiprocessing.util</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#py_compile">py_compile</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
- &#8226;   <a href="#socketserver">socketserver</a>
  &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#tkinter">tkinter</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
  &#8226;   <a href="#warnings">warnings</a>
 
   </div>
@@ -28288,22 +28344,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#warnings">warnings</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="tty"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/tty.py" type="text/plain"><tt>tty</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#termios">termios</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#_pyrepl.pager">_pyrepl.pager</a>
 
   </div>
 
@@ -28372,7 +28412,6 @@ imported by:
  &#8226;   <a href="#numpy.f2py.auxfuncs">numpy.f2py.auxfuncs</a>
  &#8226;   <a href="#numpy.lib._utils_impl">numpy.lib._utils_impl</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#pdb">pdb</a>
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
  &#8226;   <a href="#pprint">pprint</a>
@@ -28384,10 +28423,11 @@ imported by:
  &#8226;   <a href="#tempfile">tempfile</a>
  &#8226;   <a href="#tkinter">tkinter</a>
  &#8226;   <a href="#typing">typing</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#urllib.parse">urllib.parse</a>
  &#8226;   <a href="#warnings">warnings</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
 
   </div>
 
@@ -28471,7 +28511,7 @@ imported by:
  &#8226;   <a href="#PIL._util">PIL._util</a>
  &#8226;   <a href="#PIL._webp">PIL._webp</a>
  &#8226;   <a href="#PIL.features">PIL.features</a>
- &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
+ &#8226;   <a href="#abu_clock_bridge">abu_clock_bridge</a>
  &#8226;   <a href="#asyncio.timeouts">asyncio.timeouts</a>
  &#8226;   <a href="#av._core">av._core</a>
  &#8226;   <a href="#av.audio.codeccontext">av.audio.codeccontext</a>
@@ -28503,6 +28543,10 @@ imported by:
  &#8226;   <a href="#av.video.frame">av.video.frame</a>
  &#8226;   <a href="#av.video.reformatter">av.video.reformatter</a>
  &#8226;   <a href="#av.video.stream">av.video.stream</a>
+ &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
+ &#8226;   <a href="#charset_normalizer.legacy">charset_normalizer.legacy</a>
+ &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
+ &#8226;   <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
  &#8226;   <a href="#contourpy">contourpy</a>
  &#8226;   <a href="#contourpy._contourpy">contourpy._contourpy</a>
  &#8226;   <a href="#contourpy.array">contourpy.array</a>
@@ -28555,6 +28599,7 @@ imported by:
  &#8226;   <a href="#pyparsing.testing">pyparsing.testing</a>
  &#8226;   <a href="#pyparsing.unicode">pyparsing.unicode</a>
  &#8226;   <a href="#pyparsing.util">pyparsing.util</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
 
   </div>
 
@@ -28562,8 +28607,30 @@ imported by:
 
 <div class="node">
   <a name="typing_extensions"></a>
-  <a target="code" href="" type="text/plain"><tt>typing_extensions</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/typing_extensions.py" type="text/plain"><tt>typing_extensions</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#'collections.abc'">'collections.abc'</a>
+ &#8226;   <a href="#_socket">_socket</a>
+ &#8226;   <a href="#abc">abc</a>
+ &#8226;   <a href="#annotationlib">annotationlib</a>
+ &#8226;   <a href="#asyncio.coroutines">asyncio.coroutines</a>
+ &#8226;   <a href="#builtins">builtins</a>
+ &#8226;   <a href="#collections">collections</a>
+ &#8226;   <a href="#contextlib">contextlib</a>
+ &#8226;   <a href="#enum">enum</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#inspect">inspect</a>
+ &#8226;   <a href="#io">io</a>
+ &#8226;   <a href="#keyword">keyword</a>
+ &#8226;   <a href="#operator">operator</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#types">types</a>
+ &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#warnings">warnings</a>
+
+  </div>
+  <div class="import">
 imported by:
     <a href="#kiwisolver._cext">kiwisolver._cext</a>
  &#8226;   <a href="#matplotlib.ft2font">matplotlib.ft2font</a>
@@ -28579,7 +28646,8 @@ imported by:
   <a name="unicodedata"></a>
   <tt>unicodedata</tt> <span class="moduletype"><tt>C:\Users\USer\AppData\Local\Programs\Python\Python313\DLLs\unicodedata.pyd</tt></span>  <div class="import">
 imported by:
-    <a href="#encodings.idna">encodings.idna</a>
+    <a href="#charset_normalizer.utils">charset_normalizer.utils</a>
+ &#8226;   <a href="#encodings.idna">encodings.idna</a>
  &#8226;   <a href="#matplotlib._mathtext">matplotlib._mathtext</a>
  &#8226;   <a href="#re._parser">re._parser</a>
  &#8226;   <a href="#stringprep">stringprep</a>
@@ -28592,272 +28660,12 @@ imported by:
 
 <div class="node">
   <a name="unittest"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/__init__.py" type="text/plain"><tt>unittest</tt></a>
-<span class="moduletype">Package</span>  <div class="import">
-imports:
-    <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.async_case">unittest.async_case</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.main">unittest.main</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
- &#8226;   <a href="#unittest.signals">unittest.signals</a>
- &#8226;   <a href="#unittest.suite">unittest.suite</a>
- &#8226;   <a href="#unittest.util">unittest.util</a>
-
-  </div>
-  <div class="import">
+  <a target="code" href="" type="text/plain"><tt>unittest</tt></a>
+<span class="moduletype">ExcludedModule</span>  <div class="import">
 imported by:
-    <a href="#doctest">doctest</a>
- &#8226;   <a href="#numpy.testing">numpy.testing</a>
+    <a href="#numpy.testing">numpy.testing</a>
  &#8226;   <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
  &#8226;   <a href="#pyparsing.testing">pyparsing.testing</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest._log">unittest._log</a>
- &#8226;   <a href="#unittest.async_case">unittest.async_case</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.main">unittest.main</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
- &#8226;   <a href="#unittest.signals">unittest.signals</a>
- &#8226;   <a href="#unittest.suite">unittest.suite</a>
- &#8226;   <a href="#unittest.util">unittest.util</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest._log"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/_log.py" type="text/plain"><tt>unittest._log</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#collections">collections</a>
- &#8226;   <a href="#logging">logging</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest.case">unittest.case</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.async_case"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/async_case.py" type="text/plain"><tt>unittest.async_case</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#asyncio">asyncio</a>
- &#8226;   <a href="#contextvars">contextvars</a>
- &#8226;   <a href="#inspect">inspect</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest">unittest</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.case"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/case.py" type="text/plain"><tt>unittest.case</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#collections">collections</a>
- &#8226;   <a href="#contextlib">contextlib</a>
- &#8226;   <a href="#difflib">difflib</a>
- &#8226;   <a href="#functools">functools</a>
- &#8226;   <a href="#pprint">pprint</a>
- &#8226;   <a href="#re">re</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#time">time</a>
- &#8226;   <a href="#traceback">traceback</a>
- &#8226;   <a href="#types">types</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest._log">unittest._log</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
- &#8226;   <a href="#unittest.util">unittest.util</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest._log">unittest._log</a>
- &#8226;   <a href="#unittest.async_case">unittest.async_case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
- &#8226;   <a href="#unittest.suite">unittest.suite</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.loader"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/loader.py" type="text/plain"><tt>unittest.loader</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#fnmatch">fnmatch</a>
- &#8226;   <a href="#functools">functools</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#re">re</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#traceback">traceback</a>
- &#8226;   <a href="#types">types</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.suite">unittest.suite</a>
- &#8226;   <a href="#unittest.util">unittest.util</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.main">unittest.main</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.main"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/main.py" type="text/plain"><tt>unittest.main</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#argparse">argparse</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
- &#8226;   <a href="#unittest.signals">unittest.signals</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest">unittest</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.result"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/result.py" type="text/plain"><tt>unittest.result</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#functools">functools</a>
- &#8226;   <a href="#io">io</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#traceback">traceback</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.util">unittest.util</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.runner"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/runner.py" type="text/plain"><tt>unittest.runner</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#sys">sys</a>
- &#8226;   <a href="#time">time</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
- &#8226;   <a href="#unittest.signals">unittest.signals</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.main">unittest.main</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.signals"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/signals.py" type="text/plain"><tt>unittest.signals</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#functools">functools</a>
- &#8226;   <a href="#signal">signal</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#weakref">weakref</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.main">unittest.main</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.suite"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/suite.py" type="text/plain"><tt>unittest.suite</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#sys">sys</a>
- &#8226;   <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.util">unittest.util</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="unittest.util"></a>
-  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/unittest/util.py" type="text/plain"><tt>unittest.util</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#collections">collections</a>
- &#8226;   <a href="#os.path">os.path</a>
- &#8226;   <a href="#unittest">unittest</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#unittest">unittest</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.loader">unittest.loader</a>
- &#8226;   <a href="#unittest.result">unittest.result</a>
- &#8226;   <a href="#unittest.suite">unittest.suite</a>
 
   </div>
 
@@ -28919,14 +28727,12 @@ imported by:
     <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#http.client">http.client</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#matplotlib.image">matplotlib.image</a>
  &#8226;   <a href="#matplotlib.textpath">matplotlib.textpath</a>
  &#8226;   <a href="#mimetypes">mimetypes</a>
  &#8226;   <a href="#nturl2path">nturl2path</a>
  &#8226;   <a href="#numpy.lib._datasource">numpy.lib._datasource</a>
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
- &#8226;   <a href="#pydoc">pydoc</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#xml.etree.ElementInclude">xml.etree.ElementInclude</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
@@ -28975,7 +28781,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#av.datasets">av.datasets</a>
+    <a href="#abu_clock_bridge">abu_clock_bridge</a>
+ &#8226;   <a href="#av.datasets">av.datasets</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
  &#8226;   <a href="#matplotlib">matplotlib</a>
  &#8226;   <a href="#numpy.lib._datasource">numpy.lib._datasource</a>
@@ -29098,7 +28905,7 @@ imported by:
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
  &#8226;   <a href="#calendar">calendar</a>
  &#8226;   <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
- &#8226;   <a href="#codeop">codeop</a>
+ &#8226;   <a href="#charset_normalizer.legacy">charset_normalizer.legacy</a>
  &#8226;   <a href="#ctypes">ctypes</a>
  &#8226;   <a href="#dateutil.parser">dateutil.parser</a>
  &#8226;   <a href="#dateutil.parser._parser">dateutil.parser._parser</a>
@@ -29116,7 +28923,6 @@ imported by:
  &#8226;   <a href="#gzip">gzip</a>
  &#8226;   <a href="#hmac">hmac</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#importlib.abc">importlib.abc</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#importlib.metadata._adapters">importlib.metadata._adapters</a>
@@ -29183,14 +28989,13 @@ imported by:
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
  &#8226;   <a href="#platform">platform</a>
- &#8226;   <a href="#pydoc">pydoc</a>
+ &#8226;   <a href="#psutil._common">psutil._common</a>
  &#8226;   <a href="#pyparsing.core">pyparsing.core</a>
  &#8226;   <a href="#pyparsing.exceptions">pyparsing.exceptions</a>
  &#8226;   <a href="#pyparsing.util">pyparsing.util</a>
  &#8226;   <a href="#random">random</a>
  &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#re._parser">re._parser</a>
- &#8226;   <a href="#rlcompleter">rlcompleter</a>
  &#8226;   <a href="#runpy">runpy</a>
  &#8226;   <a href="#sre_compile">sre_compile</a>
  &#8226;   <a href="#sre_constants">sre_constants</a>
@@ -29203,9 +29008,7 @@ imported by:
  &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#typing">typing</a>
- &#8226;   <a href="#unittest.async_case">unittest.async_case</a>
- &#8226;   <a href="#unittest.case">unittest.case</a>
- &#8226;   <a href="#unittest.runner">unittest.runner</a>
+ &#8226;   <a href="#typing_extensions">typing_extensions</a>
  &#8226;   <a href="#urllib.parse">urllib.parse</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#xml.etree.ElementTree">xml.etree.ElementTree</a>
@@ -29260,7 +29063,6 @@ imported by:
  &#8226;   <a href="#multiprocessing.util">multiprocessing.util</a>
  &#8226;   <a href="#numpy.lib._npyio_impl">numpy.lib._npyio_impl</a>
  &#8226;   <a href="#tempfile">tempfile</a>
- &#8226;   <a href="#unittest.signals">unittest.signals</a>
  &#8226;   <a href="#xml.etree.ElementTree">xml.etree.ElementTree</a>
  &#8226;   <a href="#xml.sax.expatreader">xml.sax.expatreader</a>
 
@@ -29289,7 +29091,6 @@ imports:
 imported by:
     <a href="#camtrack_desktop_gui.py">camtrack_desktop_gui.py</a>
  &#8226;   <a href="#matplotlib.backends.backend_webagg">matplotlib.backends.backend_webagg</a>
- &#8226;   <a href="#pydoc">pydoc</a>
 
   </div>
 
@@ -29297,8 +29098,7 @@ imported by:
 
 <div class="node">
   <a name="win32pdh"></a>
-  <a target="code" href="" type="text/plain"><tt>win32pdh</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+  <tt>win32pdh</tt> <span class="moduletype"><tt>C:\Users\USer\AppData\Local\Programs\Python\Python313\Lib\site-packages\win32\win32pdh.pyd</tt></span>  <div class="import">
 imported by:
     <a href="#numpy.testing._private.utils">numpy.testing._private.utils</a>
 
@@ -29675,10 +29475,387 @@ imported by:
 
 <div class="node">
   <a name="yaml"></a>
-  <a target="code" href="" type="text/plain"><tt>yaml</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/__init__.py" type="text/plain"><tt>yaml</tt></a>
+<span class="moduletype">Package</span>  <div class="import">
+imports:
+    <a href="#io">io</a>
+ &#8226;   <a href="#yaml.cyaml">yaml.cyaml</a>
+ &#8226;   <a href="#yaml.dumper">yaml.dumper</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.events">yaml.events</a>
+ &#8226;   <a href="#yaml.loader">yaml.loader</a>
+ &#8226;   <a href="#yaml.nodes">yaml.nodes</a>
+ &#8226;   <a href="#yaml.tokens">yaml.tokens</a>
+
+  </div>
+  <div class="import">
 imported by:
     <a href="#numpy.__config__">numpy.__config__</a>
+ &#8226;   <a href="#yaml._yaml">yaml._yaml</a>
+ &#8226;   <a href="#yaml.composer">yaml.composer</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.cyaml">yaml.cyaml</a>
+ &#8226;   <a href="#yaml.dumper">yaml.dumper</a>
+ &#8226;   <a href="#yaml.emitter">yaml.emitter</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.events">yaml.events</a>
+ &#8226;   <a href="#yaml.loader">yaml.loader</a>
+ &#8226;   <a href="#yaml.nodes">yaml.nodes</a>
+ &#8226;   <a href="#yaml.parser">yaml.parser</a>
+ &#8226;   <a href="#yaml.reader">yaml.reader</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
+ &#8226;   <a href="#yaml.resolver">yaml.resolver</a>
+ &#8226;   <a href="#yaml.scanner">yaml.scanner</a>
+ &#8226;   <a href="#yaml.serializer">yaml.serializer</a>
+ &#8226;   <a href="#yaml.tokens">yaml.tokens</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml._yaml"></a>
+  <tt>yaml._yaml</tt> <span class="moduletype"><tt>C:\Users\USer\AppData\Local\Programs\Python\Python313\Lib\site-packages\yaml\_yaml.cp313-win_amd64.pyd</tt></span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.cyaml">yaml.cyaml</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.composer"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/composer.py" type="text/plain"><tt>yaml.composer</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.events">yaml.events</a>
+ &#8226;   <a href="#yaml.nodes">yaml.nodes</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.loader">yaml.loader</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.constructor"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/constructor.py" type="text/plain"><tt>yaml.constructor</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#'collections.abc'">'collections.abc'</a>
+ &#8226;   <a href="#base64">base64</a>
+ &#8226;   <a href="#binascii">binascii</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#types">types</a>
+ &#8226;   <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.nodes">yaml.nodes</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.cyaml">yaml.cyaml</a>
+ &#8226;   <a href="#yaml.loader">yaml.loader</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.cyaml"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/cyaml.py" type="text/plain"><tt>yaml.cyaml</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml._yaml">yaml._yaml</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
+ &#8226;   <a href="#yaml.resolver">yaml.resolver</a>
+ &#8226;   <a href="#yaml.serializer">yaml.serializer</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml">yaml</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.dumper"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/dumper.py" type="text/plain"><tt>yaml.dumper</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.emitter">yaml.emitter</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
+ &#8226;   <a href="#yaml.resolver">yaml.resolver</a>
+ &#8226;   <a href="#yaml.serializer">yaml.serializer</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml">yaml</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.emitter"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/emitter.py" type="text/plain"><tt>yaml.emitter</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.events">yaml.events</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.dumper">yaml.dumper</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.error"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/error.py" type="text/plain"><tt>yaml.error</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.composer">yaml.composer</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.emitter">yaml.emitter</a>
+ &#8226;   <a href="#yaml.parser">yaml.parser</a>
+ &#8226;   <a href="#yaml.reader">yaml.reader</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
+ &#8226;   <a href="#yaml.resolver">yaml.resolver</a>
+ &#8226;   <a href="#yaml.scanner">yaml.scanner</a>
+ &#8226;   <a href="#yaml.serializer">yaml.serializer</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.events"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/events.py" type="text/plain"><tt>yaml.events</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.composer">yaml.composer</a>
+ &#8226;   <a href="#yaml.emitter">yaml.emitter</a>
+ &#8226;   <a href="#yaml.parser">yaml.parser</a>
+ &#8226;   <a href="#yaml.serializer">yaml.serializer</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.loader"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/loader.py" type="text/plain"><tt>yaml.loader</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.composer">yaml.composer</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.parser">yaml.parser</a>
+ &#8226;   <a href="#yaml.reader">yaml.reader</a>
+ &#8226;   <a href="#yaml.resolver">yaml.resolver</a>
+ &#8226;   <a href="#yaml.scanner">yaml.scanner</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml">yaml</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.nodes"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/nodes.py" type="text/plain"><tt>yaml.nodes</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.composer">yaml.composer</a>
+ &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
+ &#8226;   <a href="#yaml.representer">yaml.representer</a>
+ &#8226;   <a href="#yaml.resolver">yaml.resolver</a>
+ &#8226;   <a href="#yaml.serializer">yaml.serializer</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.parser"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/parser.py" type="text/plain"><tt>yaml.parser</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.events">yaml.events</a>
+ &#8226;   <a href="#yaml.scanner">yaml.scanner</a>
+ &#8226;   <a href="#yaml.tokens">yaml.tokens</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.loader">yaml.loader</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.reader"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/reader.py" type="text/plain"><tt>yaml.reader</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#codecs">codecs</a>
+ &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.loader">yaml.loader</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.representer"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/representer.py" type="text/plain"><tt>yaml.representer</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#base64">base64</a>
+ &#8226;   <a href="#collections">collections</a>
+ &#8226;   <a href="#copyreg">copyreg</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#types">types</a>
+ &#8226;   <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.nodes">yaml.nodes</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.cyaml">yaml.cyaml</a>
+ &#8226;   <a href="#yaml.dumper">yaml.dumper</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.resolver"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/resolver.py" type="text/plain"><tt>yaml.resolver</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#re">re</a>
+ &#8226;   <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.nodes">yaml.nodes</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.cyaml">yaml.cyaml</a>
+ &#8226;   <a href="#yaml.dumper">yaml.dumper</a>
+ &#8226;   <a href="#yaml.loader">yaml.loader</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.scanner"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/scanner.py" type="text/plain"><tt>yaml.scanner</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.tokens">yaml.tokens</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.loader">yaml.loader</a>
+ &#8226;   <a href="#yaml.parser">yaml.parser</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.serializer"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/serializer.py" type="text/plain"><tt>yaml.serializer</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.error">yaml.error</a>
+ &#8226;   <a href="#yaml.events">yaml.events</a>
+ &#8226;   <a href="#yaml.nodes">yaml.nodes</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml.cyaml">yaml.cyaml</a>
+ &#8226;   <a href="#yaml.dumper">yaml.dumper</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="yaml.tokens"></a>
+  <a target="code" href="///C:/Users/USer/AppData/Local/Programs/Python/Python313/Lib/site-packages/yaml/tokens.py" type="text/plain"><tt>yaml.tokens</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#yaml">yaml</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#yaml">yaml</a>
+ &#8226;   <a href="#yaml.parser">yaml.parser</a>
+ &#8226;   <a href="#yaml.scanner">yaml.scanner</a>
 
   </div>
 

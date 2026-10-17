@@ -3,17 +3,21 @@
 
 a = Analysis(
     ['DesktopSync\\camtrack_desktop_gui.py'],
-    pathex=[],
+    pathex=['DesktopSync'],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['abu_clock_bridge'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['jinja2', 'markupsafe', 'setuptools', 'unittest', 'pydoc', 'doctest', 'sqlite3', 'test'],
     noarchive=False,
-    optimize=0,
+    optimize=2,
 )
+a.datas = [
+    d for d in a.datas
+    if not d[0].startswith(('_tcl_data\\tzdata', '_tcl_data\\msgs', '_tk_data\\msgs'))
+]
 pyz = PYZ(a.pure)
 
 exe = EXE(

@@ -1,9 +1,9 @@
 {
   "desktop": {
-    "version": "0.1.0.3",
-    "build": 96,
-    "last_build_time": "2026-10-18 01:46:50",
-    "last_task": "Phase 5 Step 5.2: Upgrade sync_photos.py and camtrack_desktop_gui.py with Optical Exposure-Midpoint EXIF parsing, Frame-00 Slate Flash Offset auto-solver, Quaternion SLERP interpolation, .abuscan.json & COLMAP images.txt manifest exporters, and Digital Clapper Slate window"
+    "version": "0.1.0.4",
+    "build": 97,
+    "last_build_time": "2026-10-18 01:53:38",
+    "last_task": "Step 5.3: Upgrade UDP receiver/forwarder with 41B 0xD2 FreeD-TC, OpenTrackIO timing block, and Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer"
   },
   "ios": {
     "version": "0.0.7.6",
@@ -125,6 +125,15 @@
       "version": "0.1.0.3",
       "build": 96,
       "task": "Phase 5 Step 5.2: Upgrade sync_photos.py and camtrack_desktop_gui.py with Optical Exposure-Midpoint EXIF parsing, Frame-00 Slate Flash Offset auto-solver, Quaternion SLERP interpolation, .abuscan.json & COLMAP images.txt manifest exporters, and Digital Clapper Slate window"
+    },
+    {
+      "timestamp": "2026-10-18 01:53:38",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.3",
+      "version": "0.1.0.4",
+      "build": 97,
+      "task": "Step 5.3: Upgrade UDP receiver/forwarder with 41B 0xD2 FreeD-TC, OpenTrackIO timing block, and Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer"
     }
   ]
 }
