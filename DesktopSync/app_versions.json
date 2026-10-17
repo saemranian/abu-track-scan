@@ -6,10 +6,10 @@
     "last_task": "Baseline release (June 3, 2026) prior to 4-part v0.1.0.2 versioning"
   },
   "ios": {
-    "version": "0.0.7.5",
-    "build": 99,
-    "last_build_time": "2026-10-18 01:26:09",
-    "last_task": "Upgrade UDPStreamingManager with AbuClock SMPTE/TAI fields in LiveLink JSON, 41-byte FreeD-TC 0xD2, and OpenTrackIO PTP_SMPTE_ST2059_2 timing block"
+    "version": "0.0.7.6",
+    "build": 100,
+    "last_build_time": "2026-10-18 01:31:22",
+    "last_task": "Phase 3 Step 3.2: Lock 4K RTP H.264/HEVC timestamps to disciplined AbuClock TAI optical exposure midpoint and embed RFC 5285 (0xBEDE) RTP header extension carrying 32-bit BCD timecode and 64-bit TAI nanoseconds"
   },
   "ue_plugin": {
     "version": "0.0.0.0",
@@ -80,6 +80,15 @@
       "version": "0.0.7.5",
       "build": 99,
       "task": "Upgrade UDPStreamingManager with AbuClock SMPTE/TAI fields in LiveLink JSON, 41-byte FreeD-TC 0xD2, and OpenTrackIO PTP_SMPTE_ST2059_2 timing block"
+    },
+    {
+      "timestamp": "2026-10-18 01:31:22",
+      "component": "ios",
+      "component_label": "iOS App (Abu Track & Scan)",
+      "previous_version": "0.0.7.5",
+      "version": "0.0.7.6",
+      "build": 100,
+      "task": "Phase 3 Step 3.2: Lock 4K RTP H.264/HEVC timestamps to disciplined AbuClock TAI optical exposure midpoint and embed RFC 5285 (0xBEDE) RTP header extension carrying 32-bit BCD timecode and 64-bit TAI nanoseconds"
     }
   ]
 }

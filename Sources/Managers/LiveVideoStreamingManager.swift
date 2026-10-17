@@ -38,6 +38,15 @@ class LiveVideoStreamingManager: NSObject {
     // Continuous frame counter to act as a guaranteed strictly increasing presentation time clock source
     private var frameCount: Int64 = 0
     
+    // Thread-safe ring buffer mapping frame index -> AbuClock exposure-midpoint metadata
+    private struct FrameClockMetadata {
+        let ntpTimestamp: Double
+        let taiNs: UInt64
+        let bcdTimecode: UInt32
+        let smpteString: String
+    }
+    private var frameClockRing: [Int64: FrameClockMetadata] = [:]
+    
     override init() {
         super.init()
     }
@@ -59,6 +68,7 @@ class LiveVideoStreamingManager: NSObject {
             self.currentBitrate = bitrate
             self.currentFPS = fps
             self.frameCount = 0
+            self.frameClockRing.removeAll()
             self.currentCodec = codec
             self.currentDiagLevel = diagLevel
             self.isStreamingActive = true
@@ -84,6 +94,7 @@ class LiveVideoStreamingManager: NSObject {
             let session = self.compressionSession
             self.compressionSession = nil
             self.pixelTransferSession = nil
+            self.frameClockRing.removeAll()
             self.sessionLock.unlock()
             
             // Teardown VideoToolbox Session outside lock to prevent deadlocks
@@ -97,7 +108,7 @@ class LiveVideoStreamingManager: NSObject {
         }
     }
     
-    func encodeAndStream(pixelBuffer: CVPixelBuffer, ntpTimestamp: Double) {
+    func encodeAndStream(pixelBuffer: CVPixelBuffer, ntpTimestamp: Double, clockSample: AbuClockSample? = nil) {
         self.sessionLock.lock()
         guard self.isStreamingActive else {
             self.sessionLock.unlock()
@@ -171,15 +182,26 @@ class LiveVideoStreamingManager: NSObject {
         let currentFrameIndex = self.frameCount
         self.frameCount += 1
         
-        // Pass the precise double NTP timestamp through sourceFrameRefCon
-        let timestampUs = Int(ntpTimestamp * 1_000_000.0)
-        let refCon = UnsafeMutableRawPointer(bitPattern: timestampUs)
+        // Store disciplined AbuClock exposure-midpoint sample in the ring buffer (retaining last 128 frames)
+        let sample = clockSample ?? AbuClockKitBridge.shared.now()
+        self.frameClockRing[currentFrameIndex] = FrameClockMetadata(
+            ntpTimestamp: ntpTimestamp,
+            taiNs: sample.taiNs,
+            bcdTimecode: sample.bcdTimecode,
+            smpteString: sample.smpteString
+        )
+        if self.frameClockRing.count > 128 {
+            self.frameClockRing.removeValue(forKey: currentFrameIndex - 128)
+        }
+        
+        // Pass (currentFrameIndex + 1) through sourceFrameRefCon so 0 is never nil
+        let refCon = UnsafeMutableRawPointer(bitPattern: Int(currentFrameIndex) + 1)
         
         // Log frame submission details periodically for diagnostics
         if currentFrameIndex % 60 == 0 {
             let bufWidth = CVPixelBufferGetWidth(copy)
             let bufHeight = CVPixelBufferGetHeight(copy)
-            AppLogger.info("LiveVideoStreamingManager: Submitting GPU-copied frame #\(currentFrameIndex) to VideoToolbox (Size: \(bufWidth)x\(bufHeight))")
+            AppLogger.info("LiveVideoStreamingManager: Submitting GPU-copied frame #\(currentFrameIndex) [TC \(sample.smpteString) | TAI \(sample.taiNs)] to VideoToolbox (Size: \(bufWidth)x\(bufHeight))")
         }
         
         var flags: VTEncodeInfoFlags = []
@@ -242,12 +264,19 @@ class LiveVideoStreamingManager: NSObject {
                     return
                 }
                 
-                // Decode the NTP timestamp from the source reference pointer
-                let timestampUs = Int(bitPattern: sourceFrameRefCon)
-                let originalNtpTime = Double(timestampUs) / 1_000_000.0
+                // Retrieve FrameClockMetadata from ring buffer via frame index
+                let frameIdx = Int64(Int(bitPattern: sourceFrameRefCon) - 1)
+                manager.sessionLock.lock()
+                let meta = manager.frameClockRing.removeValue(forKey: frameIdx)
+                manager.sessionLock.unlock()
+                
+                let fallbackSample = AbuClockKitBridge.shared.now()
+                let ntpTime = meta?.ntpTimestamp ?? fallbackSample.utcSeconds
+                let taiNs = meta?.taiNs ?? fallbackSample.taiNs
+                let bcdTc = meta?.bcdTimecode ?? fallbackSample.bcdTimecode
                 
                 // Process and packetize the sample buffer synchronously while it's guaranteed valid
-                manager.processEncodedFrame(sampleBuffer: sampleBuffer, ntpTimestamp: originalNtpTime)
+                manager.processEncodedFrame(sampleBuffer: sampleBuffer, ntpTimestamp: ntpTime, taiNs: taiNs, bcdTimecode: bcdTc)
             },
             refcon: selfPtr,
             compressionSessionOut: &session
@@ -350,9 +379,66 @@ class LiveVideoStreamingManager: NSObject {
         }
     }
     
-    // MARK: - Frame Processing & Packetization (RFC 6184 / RFC 7798 RTP)
+    // MARK: - Frame Processing & Packetization (RFC 6184 / RFC 7798 RTP + RFC 5285 AbuClock Extension)
     
-    private func processEncodedFrame(sampleBuffer: CMSampleBuffer, ntpTimestamp: Double) {
+    private func buildRTPHeader(marker: Bool, rtpTimestamp: UInt32, includeAbuClockExtension: Bool, bcdTimecode: UInt32, taiNs: UInt64) -> Data {
+        var packet = Data()
+        packet.reserveCapacity(includeAbuClockExtension ? 32 : 12)
+        
+        // 1. RTP Fixed Header (12 bytes)
+        // Byte 0: V=2 (0x80), P=0, X=includeAbuClockExtension (0x10), CC=0
+        packet.append(includeAbuClockExtension ? 0x90 : 0x80)
+        // Byte 1: Payload Type = 96 (Dynamic H.264/HEVC), Marker Bit set on final packet of frame
+        packet.append(UInt8(96 | (marker ? 0x80 : 0x00)))
+        
+        // Bytes 2..3: Sequence Number (UInt16 BE)
+        packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
+        packet.append(UInt8(rtpSequenceNumber & 0xFF))
+        rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
+        
+        // Bytes 4..7: 90kHz RTP Timestamp locked to AbuClock TAI Exposure Midpoint (UInt32 BE)
+        packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
+        packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
+        packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
+        packet.append(UInt8(rtpTimestamp & 0xFF))
+        
+        // Bytes 8..11: SSRC (UInt32 BE)
+        packet.append(UInt8((ssrc >> 24) & 0xFF))
+        packet.append(UInt8((ssrc >> 16) & 0xFF))
+        packet.append(UInt8((ssrc >> 8) & 0xFF))
+        packet.append(UInt8(ssrc & 0xFF))
+        
+        // 2. Optional RFC 5285 One-Byte RTP Header Extension (0xBEDE, 4 words = 16 bytes payload)
+        if includeAbuClockExtension {
+            // Profile-specific identifier: 0xBEDE (RFC 5285 One-Byte Header)
+            packet.append(0xBE)
+            packet.append(0xDE)
+            // Length in 32-bit words: 4 (16 bytes)
+            packet.append(0x00)
+            packet.append(0x04)
+            
+            // Extension Element #1: ID=1, L=3 (4 bytes): 32-bit SMPTE ST 12-1 BCD Timecode
+            packet.append(0x13)
+            packet.append(UInt8((bcdTimecode >> 24) & 0xFF))
+            packet.append(UInt8((bcdTimecode >> 16) & 0xFF))
+            packet.append(UInt8((bcdTimecode >> 8) & 0xFF))
+            packet.append(UInt8(bcdTimecode & 0xFF))
+            
+            // Extension Element #2: ID=2, L=7 (8 bytes): 64-bit TAI Nanoseconds (Exposure Midpoint)
+            packet.append(0x27)
+            for shift in stride(from: 56, through: 0, by: -8) {
+                packet.append(UInt8((taiNs >> shift) & 0xFF))
+            }
+            
+            // 2 bytes zero padding to align to 32-bit word boundary (5 + 9 + 2 = 16 bytes)
+            packet.append(0x00)
+            packet.append(0x00)
+        }
+        
+        return packet
+    }
+    
+    private func processEncodedFrame(sampleBuffer: CMSampleBuffer, ntpTimestamp: Double, taiNs: UInt64 = 0, bcdTimecode: UInt32 = 0) {
         self.sessionLock.lock()
         let socketReady = self.isSocketConfigured && self.socketFD >= 0
         self.sessionLock.unlock()
@@ -438,7 +524,7 @@ class LiveVideoStreamingManager: NSObject {
                     
                     if status == noErr, let ptr = paramPtr, paramSize > 0 {
                         let naluData = Data(bytes: ptr, count: paramSize)
-                        sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, isLast: false)
+                        sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, taiNs: taiNs, bcdTimecode: bcdTimecode, isLast: false)
                     } else {
                         AppLogger.error("LiveVideoStreamingManager processEncodedFrame: parameter set failed at index \(i) with status: \(status)")
                     }
@@ -483,7 +569,7 @@ class LiveVideoStreamingManager: NSObject {
                 if offset + Int(naluLength) <= totalLength {
                     let naluData = buffer.subdata(in: offset..<(offset + Int(naluLength)))
                     let isLastNalu = (offset + Int(naluLength) >= totalLength)
-                    sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, isLast: isLastNalu)
+                    sendNALUnit(naluData, ntpTimestamp: ntpTimestamp, taiNs: taiNs, bcdTimecode: bcdTimecode, isLast: isLastNalu)
                 } else {
                     break // Out of bounds NALU length!
                 }
@@ -492,12 +578,13 @@ class LiveVideoStreamingManager: NSObject {
         }
     }
     
-    private func sendNALUnit(_ nalu: Data, ntpTimestamp: Double, isLast: Bool) {
+    private func sendNALUnit(_ nalu: Data, ntpTimestamp: Double, taiNs: UInt64 = 0, bcdTimecode: UInt32 = 0, isLast: Bool) {
         guard !nalu.isEmpty else { return }
         
-        // Scaled NTP Shutter timestamp in 90kHz ticks for accurate UE Composure frame alignment
-        let rtpTimestamp = UInt32((ntpTimestamp * 90000.0).truncatingRemainder(dividingBy: 4294967296.0))
-        let maxPayloadSize = 1400 // Safe Ethernet MTU Size to prevent packet fragmentation
+        // Scaled AbuClock TAI exposure-midpoint timestamp in 90kHz ticks for accurate UE Composure & DesktopSync frame alignment
+        let timeSec = taiNs > 0 ? (Double(taiNs) / 1_000_000_000.0) : ntpTimestamp
+        let rtpTimestamp = UInt32((timeSec * 90000.0).truncatingRemainder(dividingBy: 4294967296.0))
+        let maxPayloadSize = 1380 // Safe Ethernet MTU Size (leaving room for 20-byte RFC 5285 AbuClock extension)
         
         let isHEVC = (self.currentCodec == "H.265")
         
@@ -513,25 +600,13 @@ class LiveVideoStreamingManager: NSObject {
             }
             
             if nalu.count <= maxPayloadSize {
-                var packet = Data()
-                
-                // 1. RTP Header (12 bytes)
-                packet.append(0x80) // V=2, P=0, X=0, CC=0
-                packet.append(UInt8(96 | (isLast ? 0x80 : 0x00))) // Payload Type = 96 (Dynamic), Marker Bit set on final packet
-                
-                packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
-                packet.append(UInt8(rtpSequenceNumber & 0xFF))
-                rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
-                
-                packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
-                packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
-                packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
-                packet.append(UInt8(rtpTimestamp & 0xFF))
-                
-                packet.append(UInt8((ssrc >> 24) & 0xFF))
-                packet.append(UInt8((ssrc >> 16) & 0xFF))
-                packet.append(UInt8((ssrc >> 8) & 0xFF))
-                packet.append(UInt8(ssrc & 0xFF))
+                var packet = buildRTPHeader(
+                    marker: isLast,
+                    rtpTimestamp: rtpTimestamp,
+                    includeAbuClockExtension: isLast && taiNs > 0,
+                    bcdTimecode: bcdTimecode,
+                    taiNs: taiNs
+                )
                 
                 // 2. Payload (Full H.265 NALU)
                 packet.append(nalu)
@@ -553,26 +628,15 @@ class LiveVideoStreamingManager: NSObject {
                     let isFirstFragment = (bytesSent == 0)
                     let isLastFragment = (bytesSent + maxPayloadSize >= totalPayloadSize)
                     let chunkSize = min(maxPayloadSize, totalPayloadSize - bytesSent)
+                    let markerBit = isLast && isLastFragment
                     
-                    var packet = Data()
-                    
-                    // 1. RTP Header (12 bytes)
-                    packet.append(0x80)
-                    packet.append(UInt8(96 | ((isLast && isLastFragment) ? 0x80 : 0x00))) // Marker bit set on final fragment of final frame NALU
-                    
-                    packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
-                    packet.append(UInt8(rtpSequenceNumber & 0xFF))
-                    rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
-                    
-                    packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
-                    packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
-                    packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
-                    packet.append(UInt8(rtpTimestamp & 0xFF))
-                    
-                    packet.append(UInt8((ssrc >> 24) & 0xFF))
-                    packet.append(UInt8((ssrc >> 16) & 0xFF))
-                    packet.append(UInt8((ssrc >> 8) & 0xFF))
-                    packet.append(UInt8(ssrc & 0xFF))
+                    var packet = buildRTPHeader(
+                        marker: markerBit,
+                        rtpTimestamp: rtpTimestamp,
+                        includeAbuClockExtension: markerBit && taiNs > 0,
+                        bcdTimecode: bcdTimecode,
+                        taiNs: taiNs
+                    )
                     
                     // 2. FU Indicator (2 bytes)
                     packet.append(fuIndicator1)
@@ -608,28 +672,13 @@ class LiveVideoStreamingManager: NSObject {
             
             if nalu.count <= maxPayloadSize {
                 // Send as a single RTP packet (RFC 6184)
-                var packet = Data()
-                
-                // 1. RTP Header (12 bytes)
-                packet.append(0x80) // V=2, P=0, X=0, CC=0
-                packet.append(UInt8(96 | (isLast ? 0x80 : 0x00))) // Payload Type = 96 (Dynamic H.264), Marker Bit set on final packet
-                
-                // Sequence Number (UInt16)
-                packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
-                packet.append(UInt8(rtpSequenceNumber & 0xFF))
-                rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
-                
-                // Timestamp (UInt32)
-                packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
-                packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
-                packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
-                packet.append(UInt8(rtpTimestamp & 0xFF))
-                
-                // SSRC (UInt32)
-                packet.append(UInt8((ssrc >> 24) & 0xFF))
-                packet.append(UInt8((ssrc >> 16) & 0xFF))
-                packet.append(UInt8((ssrc >> 8) & 0xFF))
-                packet.append(UInt8(ssrc & 0xFF))
+                var packet = buildRTPHeader(
+                    marker: isLast,
+                    rtpTimestamp: rtpTimestamp,
+                    includeAbuClockExtension: isLast && taiNs > 0,
+                    bcdTimecode: bcdTimecode,
+                    taiNs: taiNs
+                )
                 
                 // 2. Payload (Full NALU)
                 packet.append(nalu)
@@ -651,29 +700,15 @@ class LiveVideoStreamingManager: NSObject {
                     let isFirstFragment = (bytesSent == 0)
                     let isLastFragment = (bytesSent + maxPayloadSize >= totalPayloadSize)
                     let chunkSize = min(maxPayloadSize, totalPayloadSize - bytesSent)
+                    let markerBit = isLast && isLastFragment
                     
-                    var packet = Data()
-                    
-                    // 1. RTP Header (12 bytes)
-                    packet.append(0x80)
-                    packet.append(UInt8(96 | ((isLast && isLastFragment) ? 0x80 : 0x00))) // Marker bit set on final fragment of final frame NALU
-                    
-                    // Sequence Number (UInt16)
-                    packet.append(UInt8((rtpSequenceNumber >> 8) & 0xFF))
-                    packet.append(UInt8(rtpSequenceNumber & 0xFF))
-                    rtpSequenceNumber = rtpSequenceNumber.addingReportingOverflow(1).partialValue
-                    
-                    // Timestamp (UInt32)
-                    packet.append(UInt8((rtpTimestamp >> 24) & 0xFF))
-                    packet.append(UInt8((rtpTimestamp >> 16) & 0xFF))
-                    packet.append(UInt8((rtpTimestamp >> 8) & 0xFF))
-                    packet.append(UInt8(rtpTimestamp & 0xFF))
-                    
-                    // SSRC (UInt32)
-                    packet.append(UInt8((ssrc >> 24) & 0xFF))
-                    packet.append(UInt8((ssrc >> 16) & 0xFF))
-                    packet.append(UInt8((ssrc >> 8) & 0xFF))
-                    packet.append(UInt8(ssrc & 0xFF))
+                    var packet = buildRTPHeader(
+                        marker: markerBit,
+                        rtpTimestamp: rtpTimestamp,
+                        includeAbuClockExtension: markerBit && taiNs > 0,
+                        bcdTimecode: bcdTimecode,
+                        taiNs: taiNs
+                    )
                     
                     // 2. FU-A Indicator Byte
                     packet.append(fuIndicator)

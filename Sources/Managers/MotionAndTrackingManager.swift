@@ -707,9 +707,19 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard isTrackingActive && isLiveVideoStreamingEnabled else { return }
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
-        let ntpTime = Date().timeIntervalSince1970 + ntpSyncOffset
-        LiveVideoStreamingManager.shared.encodeAndStream(pixelBuffer: pixelBuffer, ntpTimestamp: ntpTime)
+        var expDurationSec: Double = 1.0 / 60.0
+        if let input = frontCameraSession?.inputs.first as? AVCaptureDeviceInput {
+            let dur = CMTimeGetSeconds(input.device.exposureDuration)
+            if dur.isFinite && dur > 0 {
+                expDurationSec = dur
+            }
+        }
+        let midpointSample = AbuClockKitBridge.shared.sampleAtExposureMidpoint(exposureDurationSec: expDurationSec)
+        LiveVideoStreamingManager.shared.encodeAndStream(
+            pixelBuffer: pixelBuffer,
+            ntpTimestamp: midpointSample.utcSeconds,
+            clockSample: midpointSample
+        )
     }
 
     // MARK: - ARSessionDelegate
@@ -728,9 +738,13 @@ class MotionAndTrackingManager: NSObject, ObservableObject, ARSessionDelegate, A
         
         if isLiveVideoStreamingEnabled && selectedLens != "Front" {
             let pixelBuffer = frame.capturedImage
-            let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
-            let ntpTime = Date().timeIntervalSince1970 + ntpSyncOffset
-            LiveVideoStreamingManager.shared.encodeAndStream(pixelBuffer: pixelBuffer, ntpTimestamp: ntpTime)
+            let expDurationSec = frame.camera.exposureDuration > 0 ? frame.camera.exposureDuration : (1.0 / 60.0)
+            let midpointSample = AbuClockKitBridge.shared.sampleAtExposureMidpoint(exposureDurationSec: expDurationSec)
+            LiveVideoStreamingManager.shared.encodeAndStream(
+                pixelBuffer: pixelBuffer,
+                ntpTimestamp: midpointSample.utcSeconds,
+                clockSample: midpointSample
+            )
         }
         
         let currentFrameTime = frame.timestamp
