@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var requestedPermissions = false
     @State private var showDigitalSlate = false
+    @State private var showQuickGuide = false
     
     init() {
         // Customize tab bar colors for premium dark theme
@@ -29,22 +30,31 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Persistent Abu Clock SMPTE ST 12-1 / ST 2059-2 Timecode & Genlock HUD Bar
+            // Minimalist Abu Clock SMPTE ST 12-1 / ST 2059-2 Timecode & Quick-Action Top Bar
             HStack(spacing: 8) {
-                Circle()
-                    .fill(clockBridge.lockState.contains("Locked") ? Color.green : Color.orange)
-                    .frame(width: 7, height: 7)
-                Text("ABU CLOCK")
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .foregroundColor(.cyan)
-                Text(clockBridge.liveSmpteTimecode)
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundColor(clockBridge.isFlashMarkerFrameZero ? .yellow : .white)
-                Spacer()
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(clockBridge.lockState.contains("Locked") ? ProTheme.statusNominal : ProTheme.statusWarning)
+                        .frame(width: 7, height: 7)
+                    Text(clockBridge.liveSmpteTimecode)
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundColor(clockBridge.isFlashMarkerFrameZero ? .yellow : .white)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(6)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(ProTheme.borderSubtle, lineWidth: 1))
+
                 Text(clockBridge.lockState)
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
-                    .foregroundColor(.gray)
+                    .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                    .foregroundColor(ProTheme.textSecondary)
                     .lineLimit(1)
+
+                Spacer(minLength: 4)
+
+                InfoHelpButton(topic: .abuClockHud)
+
                 Button(action: {
                     showDigitalSlate = true
                 }) {
@@ -52,12 +62,23 @@ struct ContentView: View {
                         Image(systemName: "film.stack")
                         Text("SLATE")
                     }
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .font(.system(size: 9.5, weight: .black, design: .rounded))
                     .foregroundColor(.black)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.cyan)
-                    .cornerRadius(5)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(ProTheme.accentCyan)
+                    .cornerRadius(6)
+                }
+
+                Button(action: {
+                    showQuickGuide = true
+                }) {
+                    Image(systemName: "questionmark.circle.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(ProTheme.accentCyan)
+                        .frame(width: 28, height: 28)
+                        .background(ProTheme.accentCyan.opacity(0.12))
+                        .clipShape(Circle())
                 }
             }
             .padding(.horizontal, 12)
@@ -67,36 +88,36 @@ struct ContentView: View {
             TabView(selection: $selectedTab) {
                 DashboardView(locationManager: locationManager, trackingManager: trackingManager)
                     .tabItem {
-                        Image(systemName: "gyroscope")
-                        Text("Dashboard")
+                        Image(systemName: "scope")
+                        Text("Track & Scan")
                     }
                     .tag(0)
                 
                 SessionsView()
                     .tabItem {
-                        Image(systemName: "list.bullet.rectangle.portrait")
+                        Image(systemName: "folder.fill")
                         Text("Sessions")
                     }
                     .tag(1)
                 
                 SettingsView(locationManager: locationManager, trackingManager: trackingManager)
                     .tabItem {
-                        Image(systemName: "camera.aperture")
-                        Text("Calibration")
+                        Image(systemName: "slider.horizontal.3")
+                        Text("Setup")
                     }
                     .tag(2)
                 
                 UEMonitorView()
                     .tabItem {
                         Image(systemName: "tv.and.mediabox.fill")
-                        Text("UE Monitor")
+                        Text("Monitor")
                     }
                     .tag(3)
                 
                 AcademyView()
                     .tabItem {
-                        Image(systemName: "graduationcap.fill")
-                        Text("Academy")
+                        Image(systemName: "book.fill")
+                        Text("Guide")
                     }
                     .tag(4)
             }
@@ -104,6 +125,9 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
         .fullScreenCover(isPresented: $showDigitalSlate) {
             AbuClockSlateView()
+        }
+        .sheet(isPresented: $showQuickGuide) {
+            QuickStartGuideSheet()
         }
         .onAppear {
             if !requestedPermissions {

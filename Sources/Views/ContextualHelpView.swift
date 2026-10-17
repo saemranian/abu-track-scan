@@ -1,5 +1,84 @@
 import SwiftUI
 
+// MARK: - Unified Studio Minimalist Theme Tokens
+
+struct ProTheme {
+    static let background = Color(red: 0.02, green: 0.03, blue: 0.08)
+    static let cardBackground = Color(red: 0.055, green: 0.075, blue: 0.145)
+    static let surfaceElevated = Color(red: 0.08, green: 0.11, blue: 0.20)
+    static let borderSubtle = Color.white.opacity(0.10)
+    static let accentCyan = Color(red: 0.0, green: 0.88, blue: 0.96)
+    static let textPrimary = Color.white
+    static let textSecondary = Color(white: 0.65)
+    static let statusNominal = Color(red: 0.18, green: 0.88, blue: 0.48)
+    static let statusWarning = Color(red: 1.0, green: 0.76, blue: 0.15)
+    static let statusCritical = Color(red: 1.0, green: 0.28, blue: 0.34)
+}
+
+// MARK: - Minimalist SF Symbol Viewport Pill Button (34x34pt touch target)
+
+struct ViewportIconButton: View {
+    let icon: String
+    let label: String
+    let isActive: Bool
+    var activeColor: Color = ProTheme.accentCyan
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                Text(label)
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+            }
+            .foregroundColor(isActive ? activeColor : Color.white.opacity(0.68))
+            .padding(.horizontal, 8)
+            .frame(height: 30)
+            .background(isActive ? activeColor.opacity(0.18) : Color.black.opacity(0.68))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isActive ? activeColor.opacity(0.75) : Color.white.opacity(0.15), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Compact Workflow Step Banner
+
+struct WorkflowStepBanner: View {
+    let stepsText: String
+    let helpTopic: HelpTopic
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(ProTheme.accentCyan)
+            Text(stepsText)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundColor(ProTheme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 4)
+            InfoHelpButton(topic: helpTopic)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(ProTheme.cardBackground.opacity(0.9))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(ProTheme.borderSubtle, lineWidth: 1)
+        )
+    }
+}
+
 // MARK: - Contextual Help Topics
 
 enum HelpTopic: String, Identifiable {
@@ -27,7 +106,7 @@ enum HelpTopic: String, Identifiable {
         case .dslrRigOffsets: return "ruler.fill"
         case .originOverrides: return "scope"
         case .cameraOptics: return "camera.metering.center.weighted"
-        case .lidarDepth: return "Viewfinder.rectangular"
+        case .lidarDepth: return "viewfinder.rectangular"
         case .udpLiveStream: return "antenna.radiowaves.left.and.right"
         case .coordinateSpace: return "move.3d"
         case .sessionsSync: return "photo.stack.fill"

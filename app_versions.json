@@ -6,10 +6,10 @@
     "last_task": "Step 5.3: Upgrade UDP receiver/forwarder with 41B 0xD2 FreeD-TC, OpenTrackIO timing block, and Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer"
   },
   "ios": {
-    "version": "0.0.7.7",
-    "build": 101,
-    "last_build_time": "2026-10-18 02:30:16",
-    "last_task": "Phase 1 Step 1.1: Add ContextualHelpView.swift with InfoHelpButton, ContextualHelpSheet, rig coordinate diagram, and 3-tab QuickStartGuideSheet"
+    "version": "0.0.7.8",
+    "build": 102,
+    "last_build_time": "2026-10-18 02:35:12",
+    "last_task": "Phase 1 Step 1.2: Redesign ContentView and DashboardView with SF Symbol floating viewport toolbar, Single-Device Viewport Switcher, Horizontal Pro Camera Dial Ribbon, and 3-Card Telemetry Summary Strip"
   },
   "ue_plugin": {
     "version": "0.0.0.2",
@@ -143,6 +143,15 @@
       "version": "0.0.7.7",
       "build": 101,
       "task": "Phase 1 Step 1.1: Add ContextualHelpView.swift with InfoHelpButton, ContextualHelpSheet, rig coordinate diagram, and 3-tab QuickStartGuideSheet"
+    },
+    {
+      "timestamp": "2026-10-18 02:35:12",
+      "component": "ios",
+      "component_label": "iOS App (Abu Track & Scan)",
+      "previous_version": "0.0.7.7",
+      "version": "0.0.7.8",
+      "build": 102,
+      "task": "Phase 1 Step 1.2: Redesign ContentView and DashboardView with SF Symbol floating viewport toolbar, Single-Device Viewport Switcher, Horizontal Pro Camera Dial Ribbon, and 3-Card Telemetry Summary Strip"
     }
   ]
 }

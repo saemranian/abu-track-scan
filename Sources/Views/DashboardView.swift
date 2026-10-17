@@ -77,12 +77,15 @@ struct DashboardView: View {
     @State private var shutterFeedbackMessage = ""
     @State private var isCameraReady = false
     @State private var showCameraComposition = false
+    @State private var showFullDiagnostics = false
+    @State private var singleDeviceLayout: Int = 0 // 0 = Split, 1 = Camera Only, 2 = 3D Map Only
+    @State private var activeCameraDial: String = "NONE" // NONE, FORMAT, ZOOM, SHUTTER, ISO, WB, FOCUS
     
     var body: some View {
         NavigationView {
             ZStack {
                 // Background Radial Gradient
-                Color(red: 0.02, green: 0.03, blue: 0.08)
+                ProTheme.background
                     .ignoresSafeArea()
                 
                 RadialGradient(
@@ -93,210 +96,213 @@ struct DashboardView: View {
                 )
                 .ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: 16) {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 12) {
                         
-                        // 00 // DEVICE SETUP CONFIGURATION
+                        // 1. Minimalist Capture Mode & Layout Bar
                         VStack(spacing: 8) {
-                            HStack {
-                                Label("00 // DEVICE SETUP CONFIGURATION", systemImage: "macbook.and.iphone")
-                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                    .foregroundColor(.cyan)
+                            HStack(spacing: 8) {
+                                Image(systemName: captureMode == .dualDevice ? "camera.on.rectangle.fill" : "iphone.rear.camera")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(ProTheme.accentCyan)
+                                Text("CAPTURE WORKFLOW")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .foregroundColor(ProTheme.textPrimary)
                                 Spacer()
+                                InfoHelpButton(topic: .loggingParams)
                             }
                             .padding(.horizontal, 16)
                             
                             Picker("Capture Setup", selection: $captureMode) {
-                                ForEach(CaptureMode.allCases) { mode in
-                                    Text(mode.rawValue).tag(mode)
-                                }
+                                Text("🎥 DSLR Rig (Dual)").tag(CaptureMode.dualDevice)
+                                Text("📱 Single-Device (iPhone)").tag(CaptureMode.singleDevice)
                             }
                             .pickerStyle(.segmented)
                             .padding(.horizontal, 16)
-                            .disabled(trackingManager.isTrackingActive) // Prevent shifting mode while recording
-                        }
-                        .padding(.top, 12)
-                        
-                        // Sleek, Expanded Hero 3D Point Cloud Viewport
-                        VStack(spacing: 6) {
-                            HStack {
-                                Label("LiDAR Depth 3D Projected Canvas", systemImage: "circle.grid.3x3.fill")
-                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                    .foregroundColor(.cyan)
-                                Spacer()
-                                Text(trackingManager.isTrackingActive ? "\(trackingManager.accumulatedPointCloud.count) pts" : "System Standby")
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.gray)
+                            .disabled(trackingManager.isTrackingActive)
+
+                            if captureMode == .singleDevice {
+                                Picker("Viewport Layout", selection: $singleDeviceLayout) {
+                                    Text("Split View").tag(0)
+                                    Text("Camera Full").tag(1)
+                                    Text("3D Map Full").tag(2)
+                                }
+                                .pickerStyle(.segmented)
+                                .padding(.horizontal, 16)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                            
-                            ZStack(alignment: .bottomTrailing) {
-                                ZStack {
-                                    if showCameraComposition {
-                                        ARPreviewContainer(trackingManager: trackingManager)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                            .opacity(0.8)
-                                    }
-                                    
-                                    PointCloudVisualizerView(
-                                        trackingManager: trackingManager,
-                                        showCameraComposition: showCameraComposition,
-                                        points: trackingManager.accumulatedPointCloud,
-                                        isTracking: trackingManager.isTrackingActive,
-                                        rotX: isFollowModeActive ? -trackingManager.pitch * Double.pi / 180.0 - Double.pi / 2.0 : rotX,
-                                        rotY: isFollowModeActive ? -trackingManager.yaw * Double.pi / 180.0 : rotY,
-                                        rotZ: isFollowModeActive ? -trackingManager.roll * Double.pi / 180.0 : 0.0,
-                                        panX: isFollowModeActive ? trackingManager.localX : panX,
-                                        panY: isFollowModeActive ? trackingManager.localY : panY,
-                                        panZ: isFollowModeActive ? trackingManager.localZ : panZ,
-                                        zoom: zoom,
-                                        cameraPosition: (x: trackingManager.localX, y: trackingManager.localY, z: trackingManager.localZ),
-                                        trajectory: trackingManager.cameraTrajectory,
-                                        showTrajectory: showTrajectory,
-                                        showCamera: showCamera
-                                    )
-                                    
-                                    MultiTouchGestureOverlay(
-                                        rotX: $rotX,
-                                        rotY: $rotY,
-                                        panX: $panX,
-                                        panY: $panY,
-                                        panZ: $panZ,
-                                        zoom: $zoom,
-                                        onInteractionBegan: {
-                                            isFollowModeActive = false
-                                            showCameraComposition = false
-                                        }
-                                    )
-                                }
-                                .frame(height: 290)
-                                .background(showCameraComposition ? Color.clear : Color(red: 0.03, green: 0.04, blue: 0.08))
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
-                                )
-                                
-                                // Floating HUD Controls
-                                HStack(spacing: 6) {
-                                    // 3D VR auto oriented viewfinder cockpit snap follow toggler
-                                    Button(action: {
-                                        isFollowModeActive.toggle()
-                                        if isFollowModeActive {
-                                            rotX = -trackingManager.pitch * Double.pi / 180.0 - Double.pi / 2.0
-                                            rotY = -trackingManager.yaw * Double.pi / 180.0
-                                            panX = trackingManager.localX
-                                            panY = trackingManager.localY
-                                            panZ = trackingManager.localZ
-                                            zoom = 1.0
-                                        }
-                                    }) {
-                                        Text("FOLLOW")
-                                            .font(.system(size: 8, weight: .black, design: .monospaced))
-                                            .foregroundColor(isFollowModeActive ? .cyan : .gray)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 3)
-                                            .background(Color.black.opacity(0.6))
-                                            .cornerRadius(4)
-                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(isFollowModeActive ? Color.cyan.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
-                                    }
-                                    
-                                    Button(action: {
-                                        isFollowModeActive = false
-                                        rotX = -0.4
-                                        rotY = -trackingManager.yaw * Double.pi / 180.0
-                                        panX = trackingManager.localX
-                                        panY = trackingManager.localY
-                                        panZ = trackingManager.localZ
-                                        zoom = 1.0
-                                    }) {
-                                        Text("CENTER")
-                                            .font(.system(size: 8, weight: .black, design: .monospaced))
-                                            .foregroundColor(.cyan)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 3)
-                                            .background(Color.black.opacity(0.6))
-                                            .cornerRadius(4)
-                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.cyan.opacity(0.6), lineWidth: 0.5))
-                                    }
-                                    
-                                    Button(action: {
-                                        isFollowModeActive = false
-                                        rotX = -0.4
-                                        rotY = -0.6
-                                        panX = 0.0
-                                        panY = 0.0
-                                        panZ = 0.0
-                                        zoom = 1.0
-                                    }) {
-                                        Text("RESET")
-                                            .font(.system(size: 8, weight: .black, design: .monospaced))
-                                            .foregroundColor(.red)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 3)
-                                            .background(Color.black.opacity(0.6))
-                                            .cornerRadius(4)
-                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.red.opacity(0.6), lineWidth: 0.5))
-                                    }
-                                    
-                                    Button(action: { showTrajectory.toggle() }) {
-                                        Text("PATH")
-                                            .font(.system(size: 8, weight: .black, design: .monospaced))
-                                            .foregroundColor(showTrajectory ? .yellow : .gray)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 3)
-                                            .background(Color.black.opacity(0.6))
-                                            .cornerRadius(4)
-                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(showTrajectory ? Color.yellow.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
-                                    }
-                                    
-                                    Button(action: { showCamera.toggle() }) {
-                                        Text("CAM")
-                                            .font(.system(size: 8, weight: .black, design: .monospaced))
-                                            .foregroundColor(showCamera ? .red : .gray)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 3)
-                                            .background(Color.black.opacity(0.6))
-                                            .cornerRadius(4)
-                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(showCamera ? Color.red.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
-                                    }
-                                    
-                                    Button(action: { showCameraComposition.toggle() }) {
-                                        Text("AR COMP")
-                                            .font(.system(size: 8, weight: .black, design: .monospaced))
-                                            .foregroundColor(showCameraComposition ? .green : .gray)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 3)
-                                            .background(Color.black.opacity(0.6))
-                                            .cornerRadius(4)
-                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(showCameraComposition ? Color.green.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
-                                    }
-                                    
-                                    Button(action: { trackingManager.isMappingSensorsActive.toggle() }) {
-                                        Text("SCAN")
-                                            .font(.system(size: 8, weight: .black, design: .monospaced))
-                                            .foregroundColor(trackingManager.isMappingSensorsActive ? .cyan : .gray)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 3)
-                                            .background(Color.black.opacity(0.6))
-                                            .cornerRadius(4)
-                                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(trackingManager.isMappingSensorsActive ? Color.cyan.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 0.5))
-                                    }
-                                }
-                                .padding(8)
-                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.top, 8)
                         
-                        // Integrated Viewfinder preview, Circular shutter, and Pro manual sliders config
-                        if captureMode == .singleDevice {
+                        // 2. Hero 3D Spatial & LiDAR Viewport (shown in Dual-Device, or Split / 3D Map Full in Single-Device)
+                        if captureMode == .dualDevice || singleDeviceLayout != 1 {
+                            VStack(spacing: 6) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "cube.transparent.fill")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(ProTheme.accentCyan)
+                                    Text("3D Spatial & LiDAR Canvas")
+                                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                                        .foregroundColor(ProTheme.textPrimary)
+                                    Spacer()
+                                    Text(trackingManager.isTrackingActive ? "\(trackingManager.accumulatedPointCloud.count) pts" : "Standby")
+                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusNominal : ProTheme.textSecondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(ProTheme.cardBackground)
+                                        .cornerRadius(6)
+                                    InfoHelpButton(topic: .viewport3D)
+                                }
+                                .padding(.horizontal, 16)
+                                
+                                ZStack(alignment: .bottom) {
+                                    ZStack {
+                                        if showCameraComposition {
+                                            ARPreviewContainer(trackingManager: trackingManager)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                .opacity(0.8)
+                                        }
+                                        
+                                        PointCloudVisualizerView(
+                                            trackingManager: trackingManager,
+                                            showCameraComposition: showCameraComposition,
+                                            points: trackingManager.accumulatedPointCloud,
+                                            isTracking: trackingManager.isTrackingActive,
+                                            rotX: isFollowModeActive ? -trackingManager.pitch * Double.pi / 180.0 - Double.pi / 2.0 : rotX,
+                                            rotY: isFollowModeActive ? -trackingManager.yaw * Double.pi / 180.0 : rotY,
+                                            rotZ: isFollowModeActive ? -trackingManager.roll * Double.pi / 180.0 : 0.0,
+                                            panX: isFollowModeActive ? trackingManager.localX : panX,
+                                            panY: isFollowModeActive ? trackingManager.localY : panY,
+                                            panZ: isFollowModeActive ? trackingManager.localZ : panZ,
+                                            zoom: zoom,
+                                            cameraPosition: (x: trackingManager.localX, y: trackingManager.localY, z: trackingManager.localZ),
+                                            trajectory: trackingManager.cameraTrajectory,
+                                            showTrajectory: showTrajectory,
+                                            showCamera: showCamera
+                                        )
+                                        
+                                        MultiTouchGestureOverlay(
+                                            rotX: $rotX,
+                                            rotY: $rotY,
+                                            panX: $panX,
+                                            panY: $panY,
+                                            panZ: $panZ,
+                                            zoom: $zoom,
+                                            onInteractionBegan: {
+                                                isFollowModeActive = false
+                                                showCameraComposition = false
+                                            }
+                                        )
+                                    }
+                                    .frame(height: (captureMode == .singleDevice && singleDeviceLayout == 0) ? 215 : 285)
+                                    .background(showCameraComposition ? Color.clear : Color(red: 0.03, green: 0.04, blue: 0.08))
+                                    .cornerRadius(12)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(ProTheme.borderSubtle, lineWidth: 1)
+                                    )
+                                    
+                                    // Minimalist SF Symbol Floating Pill Bar (30pt height touch targets)
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 6) {
+                                            ViewportIconButton(
+                                                icon: "location.north.line.fill",
+                                                label: "Follow",
+                                                isActive: isFollowModeActive,
+                                                activeColor: ProTheme.accentCyan
+                                            ) {
+                                                isFollowModeActive.toggle()
+                                                if isFollowModeActive {
+                                                    rotX = -trackingManager.pitch * Double.pi / 180.0 - Double.pi / 2.0
+                                                    rotY = -trackingManager.yaw * Double.pi / 180.0
+                                                    panX = trackingManager.localX
+                                                    panY = trackingManager.localY
+                                                    panZ = trackingManager.localZ
+                                                    zoom = 1.0
+                                                }
+                                            }
+                                            
+                                            ViewportIconButton(
+                                                icon: "scope",
+                                                label: "Center",
+                                                isActive: false,
+                                                activeColor: ProTheme.accentCyan
+                                            ) {
+                                                isFollowModeActive = false
+                                                rotX = -0.4
+                                                rotY = -trackingManager.yaw * Double.pi / 180.0
+                                                panX = trackingManager.localX
+                                                panY = trackingManager.localY
+                                                panZ = trackingManager.localZ
+                                                zoom = 1.0
+                                            }
+                                            
+                                            ViewportIconButton(
+                                                icon: "arrow.counterclockwise",
+                                                label: "Reset",
+                                                isActive: false,
+                                                activeColor: ProTheme.statusCritical
+                                            ) {
+                                                isFollowModeActive = false
+                                                rotX = -0.4
+                                                rotY = -0.6
+                                                panX = 0.0
+                                                panY = 0.0
+                                                panZ = 0.0
+                                                zoom = 1.0
+                                            }
+                                            
+                                            ViewportIconButton(
+                                                icon: "point.topleft.down.to.point.bottomright.curvepath",
+                                                label: "Path",
+                                                isActive: showTrajectory,
+                                                activeColor: ProTheme.statusWarning
+                                            ) {
+                                                showTrajectory.toggle()
+                                            }
+                                            
+                                            ViewportIconButton(
+                                                icon: "video.fill",
+                                                label: "Frustum",
+                                                isActive: showCamera,
+                                                activeColor: ProTheme.statusCritical
+                                            ) {
+                                                showCamera.toggle()
+                                            }
+                                            
+                                            ViewportIconButton(
+                                                icon: "arkit",
+                                                label: "AR Comp",
+                                                isActive: showCameraComposition,
+                                                activeColor: ProTheme.statusNominal
+                                            ) {
+                                                showCameraComposition.toggle()
+                                            }
+                                            
+                                            ViewportIconButton(
+                                                icon: "viewfinder.rectangular",
+                                                label: "LiDAR",
+                                                isActive: trackingManager.isMappingSensorsActive,
+                                                activeColor: ProTheme.accentCyan
+                                            ) {
+                                                trackingManager.isMappingSensorsActive.toggle()
+                                            }
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 8)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                        
+                        // 3. Single-Device Pro Camera Viewfinder & Horizontal Dial Ribbon
+                        if captureMode == .singleDevice && singleDeviceLayout != 2 {
                             singleDeviceViewfinder
                         }
                         
-                        // Sleek, Minimal Action Button Row
-                        HStack(spacing: 12) {
-                            // Primary Start/Stop Shutter Button
+                        // 4. Primary Action Row (Start/Stop Capture + GPS Toggle)
+                        HStack(spacing: 10) {
                             Button(action: {
                                 if trackingManager.isTrackingActive {
                                     stopSession()
@@ -305,87 +311,137 @@ struct DashboardView: View {
                                 }
                             }) {
                                 HStack(spacing: 10) {
-                                    Circle()
-                                        .fill(trackingManager.isTrackingActive ? Color.red : Color.cyan)
-                                        .frame(width: 10, height: 10)
-                                        .scaleEffect(trackingManager.isTrackingActive ? 1.2 : 1.0)
-                                        .animation(trackingManager.isTrackingActive ? Animation.easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default, value: trackingManager.isTrackingActive)
+                                    Image(systemName: trackingManager.isTrackingActive ? "stop.circle.fill" : "record.circle")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusCritical : ProTheme.accentCyan)
                                     
-                                    Text(trackingManager.isTrackingActive ? "STOP CAPTURE RUN" : "START CAPTURE RUN")
-                                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                                    Text(trackingManager.isTrackingActive ? "STOP CAPTURE" : "START CAPTURE")
+                                        .font(.system(size: 13, weight: .black, design: .rounded))
                                         .foregroundColor(.white)
                                     
                                     Spacer()
                                     
-                                    Text(trackingManager.isTrackingActive ? formatDuration(trackingManager.sessionDuration) : "STANDBY")
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(trackingManager.isTrackingActive ? .red : .gray)
+                                    Text(trackingManager.isTrackingActive ? formatDuration(trackingManager.sessionDuration) : "READY")
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                        .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusCritical : ProTheme.textSecondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.black.opacity(0.35))
+                                        .cornerRadius(6)
                                 }
-                                .padding()
-                                .background(Color(red: 0.06, green: 0.08, blue: 0.15))
-                                .cornerRadius(10)
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(trackingManager.isTrackingActive ? Color.red.opacity(0.4) : Color.cyan.opacity(0.3), lineWidth: 1))
+                                .padding(.horizontal, 14)
+                                .frame(height: 50)
+                                .background(ProTheme.cardBackground)
+                                .cornerRadius(12)
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(trackingManager.isTrackingActive ? ProTheme.statusCritical.opacity(0.6) : ProTheme.accentCyan.opacity(0.45), lineWidth: 1.2))
                             }
                             
-                            // High-End GPS Status / Mode Switcher
                             Button(action: {
                                 RigSettings.isGPSEnabled.toggle()
                                 locationManager.isGPSEnabled = RigSettings.isGPSEnabled
                             }) {
-                                Image(systemName: locationManager.isGPSEnabled ? "location.fill" : "location.slash")
-                                    .font(.footnote)
-                                    .foregroundColor(locationManager.isGPSEnabled ? .green : .orange)
-                                    .frame(width: 48, height: 48)
-                                    .background(Color(red: 0.06, green: 0.08, blue: 0.15))
-                                    .cornerRadius(10)
-                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(locationManager.isGPSEnabled ? Color.green.opacity(0.3) : Color.orange.opacity(0.3), lineWidth: 1))
+                                VStack(spacing: 2) {
+                                    Image(systemName: locationManager.isGPSEnabled ? "location.fill" : "location.slash")
+                                        .font(.system(size: 14, weight: .bold))
+                                    Text("GPS")
+                                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                                }
+                                .foregroundColor(locationManager.isGPSEnabled ? ProTheme.statusNominal : ProTheme.statusWarning)
+                                .frame(width: 50, height: 50)
+                                .background(ProTheme.cardBackground)
+                                .cornerRadius(12)
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(locationManager.isGPSEnabled ? ProTheme.statusNominal.opacity(0.35) : ProTheme.statusWarning.opacity(0.35), lineWidth: 1))
                             }
                         }
                         .padding(.horizontal)
                         
-                        // Unified Pro Telemetry Console Table (Sleek Slate-Minimal Styling)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("TELEMETRIC CORE DIAGNOSTIC STREAM")
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 4)
-                            
-                            VStack(spacing: 0) {
-                                TelemetryRow(label: "LOCAL TRACK X/Y/Z", value: String(format: "%+.3f, %+.3f, %+.3f m", trackingManager.localX, trackingManager.localY, trackingManager.localZ), highlight: .cyan)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "DEVICE YAW/PITCH/ROLL", value: String(format: "%+.1f°, %+.1f°, %+.1f°", trackingManager.yaw, trackingManager.pitch, trackingManager.roll), highlight: .white)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "BARO HEIGHT/PRESSURE", value: trackingManager.barometerActive ? String(format: "%+.3fm  (%.3f kPa)", trackingManager.relativeAltitude, trackingManager.pressureInKPa) : "NO BAROMETER ACCORD", highlight: .purple)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "GNSS ABSOLUTE COORDS", value: locationManager.isGPSEnabled ? String(format: "%.6f, %.6f (±%.1fm)", locationManager.latitude, locationManager.longitude, locationManager.horizontalAccuracy) : "INDOOR GEODETIC FALLBACK", highlight: locationManager.isGPSEnabled ? .green : .orange)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "SYS HARDWARE LOAD (CPU/RAM)", value: String(format: "CPU: %.1f%%  RAM: %.1f%%", cpuUsage, ramUsage), highlight: cpuUsage > 80.0 || ramUsage > 80.0 ? .red : .green)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "IPHONE THERMAL STATE (TEMP)", value: thermalStateStr, highlight: thermalStateStr == "NOMINAL" ? .green : (thermalStateStr == "FAIR" ? .yellow : .red))
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "MOBILE EPOCH SYSTEM TIME", value: localEpochTimeStr, highlight: .orange)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "ABU CLOCK SMPTE TIMECODE", value: "\(AbuClockKitBridge.shared.liveSmpteTimecode)  [\(AbuClockKitBridge.shared.liveBcdHex)]", highlight: .cyan)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "ABU CLOCK KALMAN PLL", value: String(format: "%@ (%+.1f ppb)", AbuClockKitBridge.shared.lockState, AbuClockKitBridge.shared.driftPpb), highlight: .green)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "MOBILE LOCAL IP ADDRESS", value: UDPStreamingManager.getLocalIPAddress(), highlight: .green)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "HARDWARE SCAN HZ (LOCKED)", value: String(format: "%.1f Hz", trackingManager.hardwareScanHz), highlight: .cyan)
-                                Divider().background(Color.gray.opacity(0.1))
-                                TelemetryRow(label: "SESSION TELEMETRY DATA", value: trackingManager.activeSessionID != nil ? "ID: \(String(trackingManager.activeSessionID!.suffix(8)))  [REC: \(trackingManager.entryCount)]" : "STREAM DISCONNECTED", highlight: .yellow)
+                        // 5. Minimal 3-Card Live Telemetry Summary Strip + Collapsible Hardware Diagnostics
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                createMetricPill(
+                                    icon: "move.3d",
+                                    title: "POSITION (m)",
+                                    value: String(format: "%+.2f, %+.2f, %+.2f", trackingManager.localX, trackingManager.localY, trackingManager.localZ),
+                                    color: ProTheme.accentCyan
+                                )
+                                createMetricPill(
+                                    icon: "gyroscope",
+                                    title: "ROTATION (°)",
+                                    value: String(format: "%+.1f°, %+.1f°, %+.1f°", trackingManager.yaw, trackingManager.pitch, trackingManager.roll),
+                                    color: .white
+                                )
+                                createMetricPill(
+                                    icon: "waveform.path.ecg",
+                                    title: "RATE & SYNC",
+                                    value: String(format: "%.0f Hz • %@", trackingManager.hardwareScanHz, thermalStateStr),
+                                    color: ProTheme.statusNominal
+                                )
                             }
-                            .background(Color(red: 0.06, green: 0.08, blue: 0.15))
-                            .cornerRadius(10)
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.15), lineWidth: 1))
+                            
+                            // Collapsible Full Hardware & Clock Diagnostics Drawer
+                            VStack(spacing: 0) {
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showFullDiagnostics.toggle()
+                                    }
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "cpu")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(ProTheme.accentCyan)
+                                        Text("Hardware, Network & Clock Diagnostics")
+                                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                                            .foregroundColor(ProTheme.textPrimary)
+                                        Spacer()
+                                        Text(UDPStreamingManager.getLocalIPAddress())
+                                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                            .foregroundColor(ProTheme.statusNominal)
+                                        Image(systemName: showFullDiagnostics ? "chevron.up" : "chevron.down")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(ProTheme.textSecondary)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                }
+                                .buttonStyle(.plain)
+
+                                if showFullDiagnostics {
+                                    Divider().background(ProTheme.borderSubtle)
+                                    TelemetryRow(label: "LOCAL TRACK X/Y/Z", value: String(format: "%+.3f, %+.3f, %+.3f m", trackingManager.localX, trackingManager.localY, trackingManager.localZ), highlight: .cyan)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "DEVICE YAW/PITCH/ROLL", value: String(format: "%+.1f°, %+.1f°, %+.1f°", trackingManager.yaw, trackingManager.pitch, trackingManager.roll), highlight: .white)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "BARO HEIGHT/PRESSURE", value: trackingManager.barometerActive ? String(format: "%+.3fm  (%.3f kPa)", trackingManager.relativeAltitude, trackingManager.pressureInKPa) : "NO BAROMETER ACCORD", highlight: .purple)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "GNSS ABSOLUTE COORDS", value: locationManager.isGPSEnabled ? String(format: "%.6f, %.6f (±%.1fm)", locationManager.latitude, locationManager.longitude, locationManager.horizontalAccuracy) : "INDOOR GEODETIC FALLBACK", highlight: locationManager.isGPSEnabled ? .green : .orange)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "SYS HARDWARE LOAD (CPU/RAM)", value: String(format: "CPU: %.1f%%  RAM: %.1f%%", cpuUsage, ramUsage), highlight: cpuUsage > 80.0 || ramUsage > 80.0 ? .red : .green)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "IPHONE THERMAL STATE (TEMP)", value: thermalStateStr, highlight: thermalStateStr == "NOMINAL" ? .green : (thermalStateStr == "FAIR" ? .yellow : .red))
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "MOBILE EPOCH SYSTEM TIME", value: localEpochTimeStr, highlight: .orange)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "ABU CLOCK SMPTE TIMECODE", value: "\(AbuClockKitBridge.shared.liveSmpteTimecode)  [\(AbuClockKitBridge.shared.liveBcdHex)]", highlight: .cyan)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "ABU CLOCK KALMAN PLL", value: String(format: "%@ (%+.1f ppb)", AbuClockKitBridge.shared.lockState, AbuClockKitBridge.shared.driftPpb), highlight: .green)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "MOBILE LOCAL IP ADDRESS", value: UDPStreamingManager.getLocalIPAddress(), highlight: .green)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "HARDWARE SCAN HZ (LOCKED)", value: String(format: "%.1f Hz", trackingManager.hardwareScanHz), highlight: .cyan)
+                                    Divider().background(Color.gray.opacity(0.1))
+                                    TelemetryRow(label: "SESSION TELEMETRY DATA", value: trackingManager.activeSessionID != nil ? "ID: \(String(trackingManager.activeSessionID!.suffix(8)))  [REC: \(trackingManager.entryCount)]" : "STREAM DISCONNECTED", highlight: .yellow)
+                                }
+                            }
+                            .background(ProTheme.cardBackground)
+                            .cornerRadius(12)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 12)
                     }
                 }
             }
-            .navigationTitle("ABU TRACK")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarHidden(true)
         }
         .onAppear {
             locationManager.isGPSEnabled = RigSettings.isGPSEnabled
@@ -787,18 +843,83 @@ struct DashboardView: View {
         return (used: 0.0, total: 0.0)
     }
     
+    private func createMetricPill(icon: String, title: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(color)
+                Text(title)
+                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                    .foregroundColor(ProTheme.textSecondary)
+            }
+            Text(value)
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .foregroundColor(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(ProTheme.cardBackground)
+        .cornerRadius(10)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(ProTheme.borderSubtle, lineWidth: 1))
+    }
+
+    private func cameraDialPill(id: String, icon: String, label: String, value: String, accent: Color = ProTheme.accentCyan) -> some View {
+        let isSelected = (activeCameraDial == id)
+        return Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activeCameraDial = isSelected ? "NONE" : id
+            }
+        }) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: icon)
+                        .font(.system(size: 9, weight: .bold))
+                    Text(label)
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(isSelected ? accent : ProTheme.textSecondary)
+
+                Text(value)
+                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                    .foregroundColor(isSelected ? accent : .white)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(isSelected ? accent.opacity(0.18) : ProTheme.surfaceElevated)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? accent.opacity(0.8) : ProTheme.borderSubtle, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     private var singleDeviceViewfinder: some View {
         VStack(spacing: 8) {
-            HStack {
-                Label("01 // IN-APP DSLR SHUTTER VIEWPORT", systemImage: "camera.fill")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(.red)
+            HStack(spacing: 8) {
+                Image(systemName: "camera.aperture")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(ProTheme.statusCritical)
+                Text("Optical Viewfinder & Pro Shutter")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(ProTheme.textPrimary)
                 Spacer()
                 if !shutterFeedbackMessage.isEmpty {
                     Text(shutterFeedbackMessage)
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundColor(.green)
+                        .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                        .foregroundColor(ProTheme.statusNominal)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(ProTheme.statusNominal.opacity(0.15))
+                        .cornerRadius(4)
                 }
+                InfoHelpButton(topic: .proCameraHud)
             }
             .padding(.horizontal, 16)
             
@@ -811,238 +932,248 @@ struct DashboardView: View {
                             CameraPreviewContainer(previewLayer: cameraManager.getPreviewLayer())
                         }
                         
-                        // Cyberpunk save directory path HUD overlay
+                        // Compact Session Save Badge Overlay
                         VStack {
                             HStack {
-                                Text("SAVE PATH: Files -> On My iPhone -> Abu Track -> Sessions -> \(trackingManager.activeSessionID?.suffix(8) ?? "SESSION_ID")")
-                                    .font(.system(size: 6.5, weight: .bold, design: .monospaced))
-                                    .foregroundColor(.cyan.opacity(0.85))
-                                    .padding(4)
-                                    .background(Color.black.opacity(0.6))
-                                    .cornerRadius(4)
+                                HStack(spacing: 4) {
+                                    Image(systemName: "folder.fill")
+                                        .font(.system(size: 8))
+                                    Text("Sessions/\(trackingManager.activeSessionID?.suffix(8) ?? "STANDBY")")
+                                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                                }
+                                .foregroundColor(ProTheme.accentCyan)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 4)
+                                .background(Color.black.opacity(0.65))
+                                .cornerRadius(6)
                                 Spacer()
+                                Text("EXP MIDPOINT SYNC")
+                                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                                    .foregroundColor(ProTheme.statusNominal)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 4)
+                                    .background(Color.black.opacity(0.65))
+                                    .cornerRadius(6)
                             }
                             Spacer()
                         }
                         .padding(8)
                         .allowsHitTesting(false)
                     }
-                    .frame(width: 280, height: 210) // 4:3 Perfect Aspect Ratio, no cropping!
+                    .frame(maxWidth: .infinity)
+                    .frame(height: singleDeviceLayout == 1 ? 290 : 210)
                     .cornerRadius(12)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.15), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
                 } else {
-                    VStack(spacing: 12) {
+                    VStack(spacing: 10) {
                         Image(systemName: "camera.fill")
-                            .font(.largeTitle)
-                            .foregroundColor(.gray)
-                        Text("Initializing lens fusion drivers...")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundColor(.gray)
+                            .font(.title2)
+                            .foregroundColor(ProTheme.textSecondary)
+                        Text("Initializing optical sensor...")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(ProTheme.textSecondary)
                     }
-                    .frame(width: 280, height: 210)
-                    .background(Color(red: 0.05, green: 0.06, blue: 0.12))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 210)
+                    .background(ProTheme.cardBackground)
                     .cornerRadius(12)
                 }
                 
-                // Circular DSLR Shutter Button overlay
+                // Tactile Circular DSLR Shutter Button overlay
                 Button(action: {
                     triggerInAppCapture()
                 }) {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.2))
-                            .frame(width: 58, height: 58)
-                            .blur(radius: 1)
+                            .fill(Color.white.opacity(0.18))
+                            .frame(width: 56, height: 56)
                         Circle()
-                            .stroke(Color.white, lineWidth: 3)
-                            .frame(width: 52, height: 52)
+                            .stroke(Color.white, lineWidth: 2.5)
+                            .frame(width: 50, height: 50)
                         Circle()
-                            .fill(trackingManager.isTrackingActive ? Color.red : Color.gray)
-                            .frame(width: 42, height: 42)
+                            .fill(trackingManager.isTrackingActive ? ProTheme.statusCritical : Color.gray)
+                            .frame(width: 40, height: 40)
                     }
                 }
-                .padding(.bottom, 12)
-                .disabled(!trackingManager.isTrackingActive) // Trigger captures only during continuous georeferencing
+                .padding(.bottom, 10)
+                .disabled(!trackingManager.isTrackingActive)
             }
             .padding(.horizontal)
             
-            // PRO MANUAL CAMERA OVERLAYS
-            VStack(alignment: .leading, spacing: 10) {
-                Text("PRO MANUAL SHUTTER & LENS SETTINGS")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(.gray)
-                    .padding(.horizontal, 4)
-                
-                VStack(spacing: 12) {
-                    // 1. Picture format selection and 48MP high-res sensor toggler
-                    HStack {
-                        Text("FORMAT")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .foregroundColor(.gray)
-                        Spacer()
-                        Picker("Format", selection: $pictureFormat) {
-                            Text("JPG").tag("JPG")
-                            Text("HEIF").tag("HEIF")
-                            Text("RAW (DNG)").tag("DNG")
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(width: 160)
-                        
-                        Toggle("48MP", isOn: $is48MP)
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .toggleStyle(SwitchToggleStyle(tint: .red))
-                            .frame(width: 80)
+            // Blackmagic-Style Horizontal Pro Camera Dial Ribbon (Tap any pill to expand its precision control)
+            VStack(alignment: .leading, spacing: 8) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        cameraDialPill(
+                            id: "FORMAT",
+                            icon: "doc.richtext",
+                            label: "FORMAT",
+                            value: "\(pictureFormat)\(is48MP ? " 48M" : "")",
+                            accent: ProTheme.statusCritical
+                        )
+                        cameraDialPill(
+                            id: "ZOOM",
+                            icon: "plus.magnifyingglass",
+                            label: "LENS",
+                            value: String(format: "%.1fx", zoomFactor),
+                            accent: ProTheme.accentCyan
+                        )
+                        cameraDialPill(
+                            id: "SHUTTER",
+                            icon: "timer",
+                            label: "SHUTTER",
+                            value: shutterLabels[shutterSpeedIndex],
+                            accent: ProTheme.accentCyan
+                        )
+                        cameraDialPill(
+                            id: "ISO",
+                            icon: "camera.metering.matrix",
+                            label: "ISO",
+                            value: isAutoISO ? "AUTO" : String(format: "%.0f", isoValue),
+                            accent: ProTheme.accentCyan
+                        )
+                        cameraDialPill(
+                            id: "WB",
+                            icon: "sun.max.fill",
+                            label: "WB",
+                            value: isAutoWB ? "AUTO" : String(format: "%.0fK", wbTemperature),
+                            accent: ProTheme.statusWarning
+                        )
+                        cameraDialPill(
+                            id: "FOCUS",
+                            icon: "viewfinder",
+                            label: "FOCUS",
+                            value: isAutoFocus ? "AF" : (focusPosition == 1.0 ? "INF" : String(format: "%.2f", focusPosition)),
+                            accent: ProTheme.statusNominal
+                        )
                     }
-                    
-                    Divider().background(Color.gray.opacity(0.1))
-                    
-                    // Lens & Digital Zoom Selector (0.5x Ultra Wide, 1.0x Wide, 5.0x Telephoto, and Digital Zoom options)
-                    VStack(spacing: 6) {
-                        HStack {
-                            Text("LENS ZOOM")
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundColor(.gray)
-                            Spacer()
-                            Text(String(format: "%.1fx", zoomFactor))
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(.cyan)
-                        }
-                        
-                        HStack(spacing: 8) {
-                            ForEach([0.5, 1.0, 2.0, 5.0, 10.0, 25.0], id: \.self) { factor in
-                                Button(action: {
-                                    zoomFactor = factor
-                                    cameraManager.setZoomFactor(zoomFactor)
-                                }) {
-                                    Text(String(format: "%.1fx", factor))
-                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                        .foregroundColor(zoomFactor == factor ? .cyan : .white)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 4)
-                                        .background(zoomFactor == factor ? Color.cyan.opacity(0.15) : Color.white.opacity(0.05))
-                                        .cornerRadius(4)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 4)
-                                                .stroke(zoomFactor == factor ? Color.cyan : Color.clear, lineWidth: 1)
-                                        )
+                    .padding(.horizontal, 2)
+                }
+
+                // Active Parameter Precision Drawer (Only visible when a pill is tapped)
+                if activeCameraDial != "NONE" {
+                    VStack(spacing: 10) {
+                        if activeCameraDial == "FORMAT" {
+                            HStack {
+                                Picker("Format", selection: $pictureFormat) {
+                                    Text("JPG").tag("JPG")
+                                    Text("HEIF").tag("HEIF")
+                                    Text("RAW (DNG)").tag("DNG")
+                                }
+                                .pickerStyle(.segmented)
+                                Spacer(minLength: 12)
+                                Toggle("48MP", isOn: $is48MP)
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .toggleStyle(SwitchToggleStyle(tint: ProTheme.statusCritical))
+                                    .fixedSize()
+                            }
+                        } else if activeCameraDial == "ZOOM" {
+                            VStack(spacing: 8) {
+                                HStack(spacing: 6) {
+                                    ForEach([0.5, 1.0, 2.0, 5.0, 10.0, 25.0], id: \.self) { factor in
+                                        Button(action: {
+                                            zoomFactor = factor
+                                            cameraManager.setZoomFactor(zoomFactor)
+                                        }) {
+                                            Text(String(format: "%.1fx", factor))
+                                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                                .foregroundColor(zoomFactor == factor ? ProTheme.accentCyan : .white)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 5)
+                                                .background(zoomFactor == factor ? ProTheme.accentCyan.opacity(0.2) : Color.white.opacity(0.06))
+                                                .cornerRadius(6)
+                                        }
+                                    }
+                                }
+                                Slider(value: $zoomFactor, in: 0.5...25.0, step: 0.1)
+                                    .tint(ProTheme.accentCyan)
+                                    .onChange(of: zoomFactor) { newValue in
+                                        cameraManager.setZoomFactor(newValue)
+                                    }
+                            }
+                        } else if activeCameraDial == "SHUTTER" {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    ForEach(0..<shutterLabels.count, id: \.self) { idx in
+                                        Button(action: {
+                                            shutterSpeedIndex = idx
+                                            updateManualExposure()
+                                        }) {
+                                            Text(shutterLabels[idx])
+                                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                                .foregroundColor(shutterSpeedIndex == idx ? .black : .white)
+                                                .padding(.horizontal, 9)
+                                                .padding(.vertical, 6)
+                                                .background(shutterSpeedIndex == idx ? ProTheme.accentCyan : Color.white.opacity(0.08))
+                                                .cornerRadius(6)
+                                        }
+                                    }
+                                }
+                            }
+                        } else if activeCameraDial == "ISO" {
+                            VStack(spacing: 6) {
+                                HStack {
+                                    Text("ISO Sensitivity")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(ProTheme.textSecondary)
+                                    Spacer()
+                                    Toggle("Auto ISO", isOn: $isAutoISO)
+                                        .font(.system(size: 10, weight: .bold))
+                                        .toggleStyle(SwitchToggleStyle(tint: ProTheme.accentCyan))
+                                        .fixedSize()
+                                        .onChange(of: isAutoISO) { _ in updateManualExposure() }
+                                }
+                                if !isAutoISO {
+                                    Slider(value: $isoValue, in: 50...3000, step: 50)
+                                        .tint(ProTheme.accentCyan)
+                                        .onChange(of: isoValue) { _ in updateManualExposure() }
+                                }
+                            }
+                        } else if activeCameraDial == "WB" {
+                            VStack(spacing: 6) {
+                                HStack {
+                                    Text("Color Temperature (Kelvin)")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(ProTheme.textSecondary)
+                                    Spacer()
+                                    Toggle("Auto WB", isOn: $isAutoWB)
+                                        .font(.system(size: 10, weight: .bold))
+                                        .toggleStyle(SwitchToggleStyle(tint: ProTheme.statusWarning))
+                                        .fixedSize()
+                                        .onChange(of: isAutoWB) { _ in updateManualExposure() }
+                                }
+                                if !isAutoWB {
+                                    Slider(value: $wbTemperature, in: 2500...9000, step: 100)
+                                        .tint(ProTheme.statusWarning)
+                                        .onChange(of: wbTemperature) { _ in updateManualExposure() }
+                                }
+                            }
+                        } else if activeCameraDial == "FOCUS" {
+                            VStack(spacing: 6) {
+                                HStack {
+                                    Text("Lens Focus Distance")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(ProTheme.textSecondary)
+                                    Spacer()
+                                    Toggle("Auto Focus", isOn: $isAutoFocus)
+                                        .font(.system(size: 10, weight: .bold))
+                                        .toggleStyle(SwitchToggleStyle(tint: ProTheme.statusNominal))
+                                        .fixedSize()
+                                        .onChange(of: isAutoFocus) { _ in updateManualFocus() }
+                                }
+                                if !isAutoFocus {
+                                    Slider(value: $focusPosition, in: 0.0...1.0, step: 0.05)
+                                        .tint(ProTheme.statusNominal)
+                                        .onChange(of: focusPosition) { _ in updateManualFocus() }
                                 }
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        
-                        Slider(value: $zoomFactor, in: 0.5...25.0, step: 0.1)
-                            .tint(.cyan)
-                            .onChange(of: zoomFactor) { newValue in
-                                cameraManager.setZoomFactor(newValue)
-                            }
                     }
-                    
-                    Divider().background(Color.gray.opacity(0.1))
-                    
-                    // 2. Shutter speed picker configuration
-                    HStack {
-                        Text("SHUTTER SPEED")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .foregroundColor(.gray)
-                        Spacer()
-                        Picker("Shutter", selection: $shutterSpeedIndex) {
-                            ForEach(0..<shutterLabels.count, id: \.self) { idx in
-                                Text(shutterLabels[idx]).tag(idx)
-                            }
-                        }
-                        .pickerStyle(.wheel)
-                        .frame(width: 160, height: 50)
-                        .clipped()
-                        .onChange(of: shutterSpeedIndex) { _ in
-                            updateManualExposure()
-                        }
-                    }
-                    
-                    Divider().background(Color.gray.opacity(0.1))
-                    
-                    // 3. ISO Slider control
-                    VStack(spacing: 4) {
-                        HStack {
-                            Text("ISO SENSITIVITY")
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundColor(.gray)
-                            Spacer()
-                            Toggle("AUTO", isOn: $isAutoISO)
-                                .font(.system(size: 8, weight: .black, design: .monospaced))
-                                .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                                .onChange(of: isAutoISO) { _ in updateManualExposure() }
-                            if !isAutoISO {
-                                Text(String(format: "%.0f", isoValue))
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.cyan)
-                                    .frame(width: 40, alignment: .trailing)
-                            }
-                        }
-                        if !isAutoISO {
-                            Slider(value: $isoValue, in: 50...3000, step: 50)
-                                .tint(.cyan)
-                                .onChange(of: isoValue) { _ in updateManualExposure() }
-                        }
-                    }
-                    
-                    Divider().background(Color.gray.opacity(0.1))
-                    
-                    // 4. White balance temperature slider control (Kelvin values)
-                    VStack(spacing: 4) {
-                        HStack {
-                            Text("WHITE BALANCE (KELVIN)")
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundColor(.gray)
-                            Spacer()
-                            Toggle("AUTO", isOn: $isAutoWB)
-                                .font(.system(size: 8, weight: .black, design: .monospaced))
-                                .toggleStyle(SwitchToggleStyle(tint: .yellow))
-                                .onChange(of: isAutoWB) { _ in updateManualExposure() }
-                            if !isAutoWB {
-                                Text(String(format: "%.0fK", wbTemperature))
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.yellow)
-                                    .frame(width: 55, alignment: .trailing)
-                            }
-                        }
-                        if !isAutoWB {
-                            Slider(value: $wbTemperature, in: 2500...9000, step: 100)
-                                .tint(.yellow)
-                                .onChange(of: wbTemperature) { _ in updateManualExposure() }
-                        }
-                    }
-                    
-                    Divider().background(Color.gray.opacity(0.1))
-                    
-                    // 5. Focus mode slider and auto/manual toggle (0.0 nearest focus, 1.0 infinity focus)
-                    VStack(spacing: 4) {
-                        HStack {
-                            Text("FOCUS MODE")
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundColor(.gray)
-                            Spacer()
-                            Toggle("AUTO", isOn: $isAutoFocus)
-                                .font(.system(size: 8, weight: .black, design: .monospaced))
-                                .toggleStyle(SwitchToggleStyle(tint: .green))
-                                .onChange(of: isAutoFocus) { _ in updateManualFocus() }
-                            if !isAutoFocus {
-                                Text(focusPosition == 1.0 ? "INF" : String(format: "%.2f", focusPosition))
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.green)
-                                    .frame(width: 40, alignment: .trailing)
-                            }
-                        }
-                        if !isAutoFocus {
-                            Slider(value: $focusPosition, in: 0.0...1.0, step: 0.05)
-                                .tint(.green)
-                                .onChange(of: focusPosition) { _ in updateManualFocus() }
-                        }
-                    }
+                    .padding(12)
+                    .background(ProTheme.cardBackground)
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(ProTheme.borderSubtle, lineWidth: 1))
                 }
-                .padding(12)
-                .background(Color(red: 0.06, green: 0.08, blue: 0.15))
-                .cornerRadius(10)
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.15), lineWidth: 1))
             }
             .padding(.horizontal)
         }
