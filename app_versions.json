@@ -1,9 +1,9 @@
 {
   "desktop": {
-    "version": "0.1.0.6",
-    "build": 99,
-    "last_build_time": "2026-10-18 02:53:53",
-    "last_task": "Phase 2 Step 2.2: Declutter Live Track and Scan & Sync tabs with ScrollableSidebarFrame, CollapsibleCard drawers, 3D icon toolbar, and hover tooltips on all controls"
+    "version": "0.1.0.7",
+    "build": 100,
+    "last_build_time": "2026-10-18 02:54:16",
+    "last_task": "Phase 2 Step 2.3: Rebuild standalone dist/abu_track_desktop.exe binary with v0.1.0.7 minimalist UI/UX redesign"
   },
   "ios": {
     "version": "0.0.7.9",
@@ -179,6 +179,15 @@
       "version": "0.1.0.6",
       "build": 99,
       "task": "Phase 2 Step 2.2: Declutter Live Track and Scan & Sync tabs with ScrollableSidebarFrame, CollapsibleCard drawers, 3D icon toolbar, and hover tooltips on all controls"
+    },
+    {
+      "timestamp": "2026-10-18 02:54:16",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.6",
+      "version": "0.1.0.7",
+      "build": 100,
+      "task": "Phase 2 Step 2.3: Rebuild standalone dist/abu_track_desktop.exe binary with v0.1.0.7 minimalist UI/UX redesign"
     }
   ]
 }
