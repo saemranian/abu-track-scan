@@ -8,3 +8,4 @@ Every code edit to the **Windows Workstation (`win`)**, **iOS App (`ios`)**, or 
 | `2026-06-03 22:39:23` | **Windows Workstation (DesktopSync)** | `v1.0.1` | `#94` | Baseline Build #94 (`e1795b0`) prior to 4-part `v0.1.0.2` transition |
 | `2026-06-03 22:39:23` | **iOS App (Abu Track & Scan)** | `v0.0.7` | `#94` | Baseline Build #94 (`e1795b0`) prior to 4-part `v0.0.7.1` transition |
 | `2026-06-03 22:39:23` | **UE5 Plugin (LiveLinkAbuTrack)** | `v1.0.0` (untracked) | `#0` | Baseline static `.uplugin` prior to 4-part `v0.0.0.1` transition |
+| `2026-10-18 01:18:22` | **iOS App (Abu Track & Scan)** | `v0.0.7.1` | `#95` | Embed AbuClockKit 2-state Kalman PLL on mach_continuous_time, UDP 50320 Stratum-1 SNTP + ABU_ECO_V1 auto-discovery, and UDP 50319 SCHEDULE_CAPTURE_AT barrier listener |
