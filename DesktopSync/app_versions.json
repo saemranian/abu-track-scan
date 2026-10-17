@@ -12,10 +12,10 @@
     "last_task": "Phase 3 Step 3.2: Lock 4K RTP H.264/HEVC timestamps to disciplined AbuClock TAI optical exposure midpoint and embed RFC 5285 (0xBEDE) RTP header extension carrying 32-bit BCD timecode and 64-bit TAI nanoseconds"
   },
   "ue_plugin": {
-    "version": "0.0.0.0",
-    "build": 0,
-    "last_build_time": "2026-06-03 22:39:23",
-    "last_task": "Untracked baseline (1.0.0) prior to v0.0.0.1 versioning"
+    "version": "0.0.0.1",
+    "build": 1,
+    "last_build_time": "2026-10-18 01:34:33",
+    "last_task": "Phase 4 Step 4.1: Initialize UE5 Plugin version control (v0.0.0.1) and merge AbuClockUE (UAbuClockTimecodeProvider, UAbuClockCustomTimeStep, FAbuClockRuntimeBridge, AbuClockFFI.h) into LiveLinkAbuTrack"
   },
   "history": [
     {
@@ -89,6 +89,15 @@
       "version": "0.0.7.6",
       "build": 100,
       "task": "Phase 3 Step 3.2: Lock 4K RTP H.264/HEVC timestamps to disciplined AbuClock TAI optical exposure midpoint and embed RFC 5285 (0xBEDE) RTP header extension carrying 32-bit BCD timecode and 64-bit TAI nanoseconds"
+    },
+    {
+      "timestamp": "2026-10-18 01:34:33",
+      "component": "ue_plugin",
+      "component_label": "UE5 Plugin (LiveLinkAbuTrack)",
+      "previous_version": "0.0.0.0",
+      "version": "0.0.0.1",
+      "build": 1,
+      "task": "Phase 4 Step 4.1: Initialize UE5 Plugin version control (v0.0.0.1) and merge AbuClockUE (UAbuClockTimecodeProvider, UAbuClockCustomTimeStep, FAbuClockRuntimeBridge, AbuClockFFI.h) into LiveLinkAbuTrack"
     }
   ]
 }

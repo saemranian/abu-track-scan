@@ -23,6 +23,7 @@ public class LiveLinkAbuTrack : ModuleRules
 			{
 				"Core",
 				"LiveLinkInterface",
+				"TimeManagement",
 				"Messaging",
 				"Networking",
 				"Sockets"
@@ -37,7 +38,8 @@ public class LiveLinkAbuTrack : ModuleRules
 				"InputCore",
 				"Slate",
 				"SlateCore",
-				"Json"
+				"Json",
+				"HTTP"
 			}
 		);
 		
