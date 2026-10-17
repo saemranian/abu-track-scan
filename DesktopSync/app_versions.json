@@ -6,10 +6,10 @@
     "last_task": "Baseline release (June 3, 2026) prior to 4-part v0.1.0.2 versioning"
   },
   "ios": {
-    "version": "0.0.7.2",
-    "build": 96,
-    "last_build_time": "2026-10-18 01:20:21",
-    "last_task": "Add live SMPTE timecode HUD bar, telemetry rows, and full-screen Abu Clock Digital Clapper Slate with Frame-00 optical flash marker"
+    "version": "0.0.7.3",
+    "build": 97,
+    "last_build_time": "2026-10-18 01:21:37",
+    "last_task": "Upgrade CameraManager and DashboardView with optical exposure-midpoint TAI/SMPTE timestamping, deterministic filenames, and UDP 50319 SCHEDULE_CAPTURE_AT barrier trigger"
   },
   "ue_plugin": {
     "version": "0.0.0.0",
@@ -53,6 +53,15 @@
       "version": "0.0.7.2",
       "build": 96,
       "task": "Add live SMPTE timecode HUD bar, telemetry rows, and full-screen Abu Clock Digital Clapper Slate with Frame-00 optical flash marker"
+    },
+    {
+      "timestamp": "2026-10-18 01:21:37",
+      "component": "ios",
+      "component_label": "iOS App (Abu Track & Scan)",
+      "previous_version": "0.0.7.2",
+      "version": "0.0.7.3",
+      "build": 97,
+      "task": "Upgrade CameraManager and DashboardView with optical exposure-midpoint TAI/SMPTE timestamping, deterministic filenames, and UDP 50319 SCHEDULE_CAPTURE_AT barrier trigger"
     }
   ]
 }

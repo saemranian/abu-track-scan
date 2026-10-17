@@ -629,19 +629,21 @@ struct DashboardView: View {
                 }
                 
                 let pixelBuffer = frame.capturedImage
-                let timestamp = Date().timeIntervalSince1970
+                let ext = self.pictureFormat == "HEIF" ? "HEIC" : "JPG"
+                let expHalfSec = (frame.camera.exposureDuration > 0 ? frame.camera.exposureDuration : 0.008) * 0.5
+                let stamp = AbuClockKitBridge.shared.stampArKitTimestamp(
+                    arFrameTimestampSeconds: frame.timestamp + expHalfSec,
+                    fileExtension: ext.lowercased()
+                )
+                let timestamp = max((Double(stamp.disciplinedTaiNanoseconds) * 1.0e-9) - AbuClockKitBridge.taiMinusUtcSeconds, Date().timeIntervalSince1970)
                 
                 guard let sessionID = self.trackingManager.activeSessionID else { return }
                 let fileManager = FileManager.default
                 guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
                 let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
                 
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy_MM_dd_HH_mm"
-                let datePrefix = formatter.string(from: Date())
-                
-                let ext = self.pictureFormat == "HEIF" ? "HEIC" : "JPG"
-                let filename = "\(datePrefix)_IMG_\(self.entryCount + 1255).\(ext)"
+                let token = stamp.smpteTimecode.replacingOccurrences(of: ":", with: "").replacingOccurrences(of: ";", with: "")
+                let filename = "\(stamp.sensorId)_\(token)_\(stamp.disciplinedTaiNanoseconds)_IMG_\(self.entryCount + 1255).\(ext)"
                 let fileURL = sessionFolderURL.appendingPathComponent(filename)
                 
                 DispatchQueue.global(qos: .userInitiated).async {

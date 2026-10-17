@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import UIKit
 import SwiftUI
+import ImageIO
 
 protocol CameraManagerDelegate: AnyObject {
     func cameraManager(_ manager: CameraManager, didCapturePhotoAt url: URL, timestamp: Double, filename: String)
@@ -21,9 +22,18 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     private var isConfigured = false
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var selectedFormat = "JPG" // Selected picture format (JPG, HEIF, DNG)
+    private var lastShutterStartMachNs: UInt64 = 0
+    @Published var lastOpticalStamp: OpticalMidpointStamp?
     
     override init() {
         super.init()
+        // Register for Abu Clock SCHEDULE_CAPTURE_AT future-time barrier triggers (UDP 50319)
+        AbuClockKitBridge.shared.onScheduledCaptureTrigger = { [weak self] barrier, stamp in
+            guard let self = self else { return }
+            self.lastShutterStartMachNs = stamp.hostMachNanoseconds
+            let fmt = (barrier.format ?? self.selectedFormat).uppercased()
+            self.capturePhoto(format: fmt, is48MP: false)
+        }
     }
     
     func setupCamera(completion: @escaping (Bool) -> Void) {
@@ -320,6 +330,11 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
     
     // MARK: - AVCapturePhotoCaptureDelegate
     
+    func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
+        // Record exact hardware monotonic start-of-exposure (T_SOF) before ISP/DNG compression latency
+        self.lastShutterStartMachNs = AbuClockKitBridge.currentMachNanoseconds()
+    }
+    
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         if let error = error {
             print("CameraManager: Capture failed: \(error.localizedDescription)")
@@ -333,19 +348,21 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             return
         }
         
-        let timestamp = Date().timeIntervalSince1970 // Microsecond-accurate time
+        // Extract exact CMOS integration time (ExposureTime in seconds) from EXIF metadata or active device
+        var exposureSeconds: Double = self.videoDeviceInput?.device.exposureDuration.seconds ?? 0.008
+        if let exifDict = photo.metadata[String(kCGImagePropertyExifDictionary)] as? [String: Any],
+           let exifExp = exifDict[String(kCGImagePropertyExifExposureTime)] as? Double,
+           exifExp > 0.0 {
+            exposureSeconds = exifExp
+        }
+        if exposureSeconds.isNaN || exposureSeconds <= 0.0 {
+            exposureSeconds = 0.008
+        }
         
-        // Save file to current session folder
-        let fileManager = FileManager.default
-        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first,
-              let sessionID = activeSessionID else { return }
-        
-        let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
-        
-        // Build filename based on dynamic formats
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy_MM_dd_HH_mm"
-        let datePrefix = formatter.string(from: Date())
+        // Compute Optical Exposure Midpoint: T_mid = T_SOF + T_exposure / 2
+        let sofMachNs = self.lastShutterStartMachNs > 0 ? self.lastShutterStartMachNs : AbuClockKitBridge.currentMachNanoseconds()
+        let halfExpNs = UInt64(max(exposureSeconds * 0.5, 0.0) * 1_000_000_000.0)
+        let midpointMachNs = sofMachNs &+ halfExpNs
         
         let extensionStr: String
         if photo.isRawPhoto {
@@ -356,19 +373,40 @@ class CameraManager: NSObject, AVCapturePhotoCaptureDelegate, ObservableObject {
             extensionStr = "JPG"
         }
         
+        let stamp = AbuClockKitBridge.shared.stampMonotonicNanoseconds(
+            midpointMachNs,
+            fileExtension: extensionStr.lowercased()
+        )
+        DispatchQueue.main.async {
+            self.lastOpticalStamp = stamp
+        }
+        
+        // Convert disciplined TAI ns back to UTC epoch seconds for legacy CSV compatibility (UTC = TAI - 37s)
+        let taiSeconds = Double(stamp.disciplinedTaiNanoseconds) * 1.0e-9
+        let timestamp = max(taiSeconds - AbuClockKitBridge.taiMinusUtcSeconds, Date().timeIntervalSince1970)
+        
+        // Save file to current session folder
+        let fileManager = FileManager.default
+        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first,
+              let sessionID = activeSessionID else { return }
+        
+        let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)
+        
         let currentCounter = photoCounter
         if !photo.isRawPhoto {
             photoCounter += 1 // Increment only for processed/jpeg companion to sync RAW/companion pairs
         }
         
-        let filename = "\(datePrefix)_IMG_\(currentCounter).\(extensionStr)"
+        // Deterministic Abu Clock filename: <SensorID>_<HHMMSSFF>_<TAI_ns>_IMG_<Counter>.<ext>
+        let token = stamp.smpteTimecode.replacingOccurrences(of: ":", with: "").replacingOccurrences(of: ";", with: "")
+        let filename = "\(stamp.sensorId)_\(token)_\(stamp.disciplinedTaiNanoseconds)_IMG_\(currentCounter).\(extensionStr)"
         let fileURL = sessionFolderURL.appendingPathComponent(filename)
         
         do {
             try fileData.write(to: fileURL)
-            print("CameraManager: Successfully saved photo to: \(fileURL.path)")
+            print("CameraManager: Saved exposure-midpoint locked photo [TC \(stamp.smpteWithSubframe) | TAI \(stamp.disciplinedTaiNanoseconds)] to: \(fileURL.path)")
             
-            // Notify delegate with exact timestamp and local URL
+            // Notify delegate with exact exposure-midpoint timestamp (ms) and local URL
             delegate?.cameraManager(self, didCapturePhotoAt: fileURL, timestamp: timestamp * 1000.0, filename: filename)
         } catch {
             print("CameraManager: Failed to write photo data to disk: \(error.localizedDescription)")
