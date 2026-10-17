@@ -3,9 +3,11 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var trackingManager = MotionAndTrackingManager()
+    @ObservedObject private var clockBridge = AbuClockKitBridge.shared
     
     @State private var selectedTab = 0
     @State private var requestedPermissions = false
+    @State private var showDigitalSlate = false
     
     init() {
         // Customize tab bar colors for premium dark theme
@@ -26,48 +28,89 @@ struct ContentView: View {
     }
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            DashboardView(locationManager: locationManager, trackingManager: trackingManager)
-                .tabItem {
-                    Image(systemName: "gyroscope")
-                    Text("Dashboard")
+        VStack(spacing: 0) {
+            // Persistent Abu Clock SMPTE ST 12-1 / ST 2059-2 Timecode & Genlock HUD Bar
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(clockBridge.lockState.contains("Locked") ? Color.green : Color.orange)
+                    .frame(width: 7, height: 7)
+                Text("ABU CLOCK")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .foregroundColor(.cyan)
+                Text(clockBridge.liveSmpteTimecode)
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundColor(clockBridge.isFlashMarkerFrameZero ? .yellow : .white)
+                Spacer()
+                Text(clockBridge.lockState)
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(.gray)
+                    .lineLimit(1)
+                Button(action: {
+                    showDigitalSlate = true
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "film.stack")
+                        Text("SLATE")
+                    }
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.cyan)
+                    .cornerRadius(5)
                 }
-                .tag(0)
-            
-            SessionsView()
-                .tabItem {
-                    Image(systemName: "list.bullet.rectangle.portrait")
-                    Text("Sessions")
-                }
-                .tag(1)
-            
-            SettingsView(locationManager: locationManager, trackingManager: trackingManager)
-                .tabItem {
-                    Image(systemName: "camera.aperture")
-                    Text("Calibration")
-                }
-                .tag(2)
-            
-            UEMonitorView()
-                .tabItem {
-                    Image(systemName: "tv.and.mediabox.fill")
-                    Text("UE Monitor")
-                }
-                .tag(3)
-            
-            AcademyView()
-                .tabItem {
-                    Image(systemName: "graduationcap.fill")
-                    Text("Academy")
-                }
-                .tag(4)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color(red: 0.03, green: 0.05, blue: 0.12))
+
+            TabView(selection: $selectedTab) {
+                DashboardView(locationManager: locationManager, trackingManager: trackingManager)
+                    .tabItem {
+                        Image(systemName: "gyroscope")
+                        Text("Dashboard")
+                    }
+                    .tag(0)
+                
+                SessionsView()
+                    .tabItem {
+                        Image(systemName: "list.bullet.rectangle.portrait")
+                        Text("Sessions")
+                    }
+                    .tag(1)
+                
+                SettingsView(locationManager: locationManager, trackingManager: trackingManager)
+                    .tabItem {
+                        Image(systemName: "camera.aperture")
+                        Text("Calibration")
+                    }
+                    .tag(2)
+                
+                UEMonitorView()
+                    .tabItem {
+                        Image(systemName: "tv.and.mediabox.fill")
+                        Text("UE Monitor")
+                    }
+                    .tag(3)
+                
+                AcademyView()
+                    .tabItem {
+                        Image(systemName: "graduationcap.fill")
+                        Text("Academy")
+                    }
+                    .tag(4)
+            }
         }
         .preferredColorScheme(.dark)
+        .fullScreenCover(isPresented: $showDigitalSlate) {
+            AbuClockSlateView()
+        }
         .onAppear {
             if !requestedPermissions {
                 locationManager.requestPermissions()
                 requestedPermissions = true
             }
+            AbuClockKitBridge.shared.discoverAbuClockMaster(completion: nil)
         }
     }
 }

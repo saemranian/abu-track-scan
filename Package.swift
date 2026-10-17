@@ -13,8 +13,8 @@ let package = Package(
             targets: ["App"],
             bundleIdentifier: "com.saemranian.abutrack",
             teamIdentifier: "",
-            displayVersion: "0.0.7.1",
-            bundleVersion: "95",
+            displayVersion: "0.0.7.2",
+            bundleVersion: "96",
             appIcon: .placeholder(icon: .camera),
             accentColor: .presetColor(.cyan),
             supportedDeviceFamilies: [

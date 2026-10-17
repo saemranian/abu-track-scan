@@ -6,10 +6,10 @@
     "last_task": "Baseline release (June 3, 2026) prior to 4-part v0.1.0.2 versioning"
   },
   "ios": {
-    "version": "0.0.7.1",
-    "build": 95,
-    "last_build_time": "2026-10-18 01:18:22",
-    "last_task": "Embed AbuClockKit 2-state Kalman PLL on mach_continuous_time, UDP 50320 Stratum-1 SNTP + ABU_ECO_V1 auto-discovery, and UDP 50319 SCHEDULE_CAPTURE_AT barrier listener"
+    "version": "0.0.7.2",
+    "build": 96,
+    "last_build_time": "2026-10-18 01:20:21",
+    "last_task": "Add live SMPTE timecode HUD bar, telemetry rows, and full-screen Abu Clock Digital Clapper Slate with Frame-00 optical flash marker"
   },
   "ue_plugin": {
     "version": "0.0.0.0",
@@ -44,6 +44,15 @@
       "version": "0.0.7.1",
       "build": 95,
       "task": "Embed AbuClockKit 2-state Kalman PLL on mach_continuous_time, UDP 50320 Stratum-1 SNTP + ABU_ECO_V1 auto-discovery, and UDP 50319 SCHEDULE_CAPTURE_AT barrier listener"
+    },
+    {
+      "timestamp": "2026-10-18 01:20:21",
+      "component": "ios",
+      "component_label": "iOS App (Abu Track & Scan)",
+      "previous_version": "0.0.7.1",
+      "version": "0.0.7.2",
+      "build": 96,
+      "task": "Add live SMPTE timecode HUD bar, telemetry rows, and full-screen Abu Clock Digital Clapper Slate with Frame-00 optical flash marker"
     }
   ]
 }
