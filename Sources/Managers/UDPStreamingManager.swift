@@ -8,6 +8,7 @@ import Darwin
 enum StreamingFormat: String, CaseIterable, Identifiable {
     case liveLink = "Live Link JSON"
     case freeD = "FreeD Binary"
+    case freeDTC = "FreeD-TC (0xD2)"
     case openTrackIO = "OpenTrackIO JSON"
     
     var id: String { self.rawValue }
@@ -306,6 +307,8 @@ class UDPStreamingManager: ObservableObject {
             data = formatLiveLink(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, focalLength: focalLength, k1: k1, k2: k2, videoCodec: videoCodec, newPoints: newPoints, isMappingActive: isMappingActive)
         case .freeD:
             data = formatFreeD(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll)
+        case .freeDTC:
+            data = formatFreeDD2(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, focalLength: focalLength)
         case .openTrackIO:
             data = formatOpenTrackIO(x: tx, y: ty, z: tz, yaw: mYaw, pitch: mPitch, roll: mRoll, focalLength: focalLength, k1: k1, k2: k2, videoCodec: videoCodec, newPoints: newPoints, isMappingActive: isMappingActive)
         }
@@ -330,7 +333,8 @@ class UDPStreamingManager: ObservableObject {
     }
     
     private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, focalLength: Double = 24.0, k1: Double = 0.0, k2: Double = 0.0, videoCodec: String = "H.264", newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
-        let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
+        let stamp = AbuClockKitBridge.shared.stampMonotonicNanoseconds(AbuClockKitBridge.currentMachNanoseconds())
+        let disciplinedUtcSec = max((Double(stamp.disciplinedTaiNanoseconds) * 1.0e-9) - AbuClockKitBridge.taiMinusUtcSeconds, Date().timeIntervalSince1970)
         var json: [String: Any] = [
             "deviceName": "AbuTrack",
             "translation": [x, y, z],
@@ -339,9 +343,17 @@ class UDPStreamingManager: ObservableObject {
             "k1": k1,
             "k2": k2,
             "videoCodec": videoCodec,
-            "timestamp": Date().timeIntervalSince1970 + ntpSyncOffset,
+            "timestamp": disciplinedUtcSec,
             "isMappingActive": isMappingActive,
-            "thermalState": getThermalStateString()
+            "thermalState": getThermalStateString(),
+            "smpteTimecode": stamp.smpteWithSubframe,
+            "bcdTimecode": stamp.bcdTimecode,
+            "taiNs": stamp.disciplinedTaiNanoseconds,
+            "subframePhase": stamp.subframePhase,
+            "fpsNum": stamp.fpsNum,
+            "fpsDen": stamp.fpsDen,
+            "dropFrame": stamp.dropFrame,
+            "clockLockState": stamp.clockLockState
         ]
         if let pts = newPoints, !pts.isEmpty {
             json["new_points"] = pts.map { [$0.x, $0.y, $0.z] }
@@ -397,8 +409,7 @@ class UDPStreamingManager: ObservableObject {
         // Byte 26-27: Reserved (0x0000)
         packet.append(contentsOf: [0x00, 0x00])
         
-        // Byte 28: Checksum
-        // The checksum is calculated as: checksum = (0x40 - sum) & 0xFF
+        // Byte 28: Checksum: checksum = (0x40 - sum) & 0xFF
         var sum: Int = 0
         for byte in packet {
             sum += Int(byte)
@@ -406,27 +417,107 @@ class UDPStreamingManager: ObservableObject {
         let checksum = UInt8((0x40 - sum) & 0xFF)
         packet.append(checksum)
         
-        // Proprietary Extended FreeD: Append an 8-byte big-endian millisecond timestamp for clock sync latency calculations!
-        let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
-        let timestampMs = Int64((Date().timeIntervalSince1970 + ntpSyncOffset) * 1000.0)
+        // Extended FreeD (37B): Append 8-byte big-endian millisecond timestamp from AbuClock Kalman PLL
+        let stamp = AbuClockKitBridge.shared.stampMonotonicNanoseconds(AbuClockKitBridge.currentMachNanoseconds())
+        let disciplinedUtcSec = max((Double(stamp.disciplinedTaiNanoseconds) * 1.0e-9) - AbuClockKitBridge.taiMinusUtcSeconds, Date().timeIntervalSince1970)
+        let timestampMs = Int64(disciplinedUtcSec * 1000.0)
         var tsBig = timestampMs.bigEndian
         packet.append(contentsOf: withUnsafeBytes(of: &tsBig) { Array($0) })
         
         return Data(packet)
     }
     
+    /// 41-Byte AbuClock SMPTE FreeD-TC (`0xD2`):
+    /// Embeds 28B FreeD pose + 4B Big-Endian BCD Timecode (`0xHHMMSSFF`) + 8B Big-Endian TAI Nanoseconds + 1B XOR Checksum.
+    private func formatFreeDD2(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, focalLength: Double = 24.0) -> Data {
+        let stamp = AbuClockKitBridge.shared.stampMonotonicNanoseconds(AbuClockKitBridge.currentMachNanoseconds())
+        var packet = [UInt8]()
+        packet.reserveCapacity(41)
+        
+        // Byte 0: Message Type (0xD2 = AbuClock FreeD-TC)
+        packet.append(0xD2)
+        // Byte 1: Camera ID (0x01)
+        packet.append(0x01)
+        
+        let panVal = Int32(clamp(yaw * 32768.0, min: -8388607.0, max: 8388607.0))
+        let tiltVal = Int32(clamp(pitch * 32768.0, min: -8388607.0, max: 8388607.0))
+        let rollVal = Int32(clamp(roll * 32768.0, min: -8388607.0, max: 8388607.0))
+        packet.append(contentsOf: pack24(panVal))
+        packet.append(contentsOf: pack24(tiltVal))
+        packet.append(contentsOf: pack24(rollVal))
+        
+        let xVal = Int32(clamp(x * 1000.0 * 64.0, min: -8388607.0, max: 8388607.0))
+        let yVal = Int32(clamp(y * 1000.0 * 64.0, min: -8388607.0, max: 8388607.0))
+        let zVal = Int32(clamp(z * 1000.0 * 64.0, min: -8388607.0, max: 8388607.0))
+        packet.append(contentsOf: pack24(xVal))
+        packet.append(contentsOf: pack24(yVal))
+        packet.append(contentsOf: pack24(zVal))
+        
+        let zoomRaw = Int32(clamp(focalLength * 100.0, min: 0.0, max: 16777215.0))
+        packet.append(contentsOf: pack24(zoomRaw))
+        packet.append(contentsOf: [0x00, 0x10, 0x00]) // Default focus raw 4096
+        packet.append(contentsOf: [0x00, 0x7F])       // Reserved status word
+        
+        // Bytes 28..31: 4-byte Big-Endian BCD Timecode (0xHHMMSSFF)
+        var bcdBig = stamp.bcdTimecode.bigEndian
+        packet.append(contentsOf: withUnsafeBytes(of: &bcdBig) { Array($0) })
+        
+        // Bytes 32..39: 8-byte Big-Endian TAI Nanoseconds
+        var taiBig = stamp.disciplinedTaiNanoseconds.bigEndian
+        packet.append(contentsOf: withUnsafeBytes(of: &taiBig) { Array($0) })
+        
+        // Byte 40: XOR Checksum over bytes 0..39
+        var xorChecksum: UInt8 = 0
+        for b in packet {
+            xorChecksum ^= b
+        }
+        packet.append(xorChecksum)
+        return Data(packet)
+    }
+    
     private var openTrackSequence: UInt32 = 0
     
     private func formatOpenTrackIO(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, focalLength: Double = 24.0, k1: Double = 0.0, k2: Double = 0.0, videoCodec: String = "H.264", newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
-        let ntpSyncOffset = NTPSyncClient.shared.isSynced ? NTPSyncClient.shared.clockOffset : 0.0
-        let timestamp = Date().timeIntervalSince1970 + ntpSyncOffset
+        let stamp = AbuClockKitBridge.shared.stampMonotonicNanoseconds(AbuClockKitBridge.currentMachNanoseconds())
+        let timestamp = max((Double(stamp.disciplinedTaiNanoseconds) * 1.0e-9) - AbuClockKitBridge.taiMinusUtcSeconds, Date().timeIntervalSince1970)
+        let taiSec = stamp.disciplinedTaiNanoseconds / 1_000_000_000
+        let taiNsec = stamp.disciplinedTaiNanoseconds % 1_000_000_000
+        let bcd = stamp.bcdTimecode
+        let hh = Int(((bcd >> 28) & 0xF) * 10 + ((bcd >> 24) & 0xF))
+        let mm = Int(((bcd >> 20) & 0xF) * 10 + ((bcd >> 16) & 0xF))
+        let ss = Int(((bcd >> 12) & 0xF) * 10 + ((bcd >> 8) & 0xF))
+        let ff = Int(((bcd >> 4) & 0xF) * 10 + (bcd & 0xF))
         
+        openTrackSequence += 1
         var json: [String: Any] = [
+            "protocol_version": "1.0.0",
             "version": "1.0",
+            "sample_id": "urn:abuclock:frame:\(openTrackSequence)",
+            "source_id": "urn:abutrack:camera:1",
             "sourceId": 101,
             "timestamp": timestamp,
+            "smpteTimecode": stamp.smpteWithSubframe,
+            "bcdTimecode": stamp.bcdTimecode,
+            "taiNs": stamp.disciplinedTaiNanoseconds,
+            "subframePhase": stamp.subframePhase,
+            "clockLockState": stamp.clockLockState,
             "isMappingActive": isMappingActive,
             "thermalState": getThermalStateString(),
+            "timing": [
+                "mode": "PTP_SMPTE_ST2059_2",
+                "sample_timestamp_tai_sec": taiSec,
+                "sample_timestamp_tai_nsec": taiNsec,
+                "timecode": [
+                    "hours": hh,
+                    "minutes": mm,
+                    "seconds": ss,
+                    "frame": ff,
+                    "subframe": Int((stamp.subframePhase * 1000.0).rounded()),
+                    "drop_frame": stamp.dropFrame
+                ],
+                "frame_rate_num": stamp.fpsNum,
+                "frame_rate_denom": stamp.fpsDen
+            ],
             "transforms": [
                 [
                     "translation": ["x": x, "y": y, "z": z],
@@ -455,7 +546,6 @@ class UDPStreamingManager: ObservableObject {
         packet.append("OTrk".data(using: .ascii)!)
         
         // 2. Sequence number (4 bytes, big-endian)
-        openTrackSequence += 1
         var seqBig = openTrackSequence.bigEndian
         packet.append(contentsOf: withUnsafeBytes(of: &seqBig) { Array($0) })
         
