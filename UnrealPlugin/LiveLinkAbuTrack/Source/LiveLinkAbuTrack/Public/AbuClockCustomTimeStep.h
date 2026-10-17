@@ -18,10 +18,14 @@ class LIVELINKABUTRACK_API UAbuClockCustomTimeStep : public UEngineCustomTimeSte
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbuClock")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbuClock", meta = (
+		DisplayName = "Target Genlock Frame Rate",
+		ToolTip = "Deterministic engine tick rate paced by Abu Clock's hybrid sleep + spinlock barrier (< 5 us jitter)."))
 	FFrameRate TargetFrameRate = FFrameRate(60, 1);
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbuClock")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbuClock", meta = (
+		DisplayName = "SMPTE Drop-Frame (;)",
+		ToolTip = "Align frame boundaries to SMPTE ST 12-1 Drop-Frame cadence when using 29.97 or 59.94 fps."))
 	bool bDropFrame = false;
 
 	virtual bool Initialize(class UEngine* InEngine) override;

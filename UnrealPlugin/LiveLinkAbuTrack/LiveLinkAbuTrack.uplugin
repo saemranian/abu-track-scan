@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 2,
-	"VersionName": "0.0.0.2",
+	"Version": 3,
+	"VersionName": "0.0.0.3",
 	"FriendlyName": "Abu Track & Clock Live Link + SMPTE ST 2059 Provider",
 	"Description": "Unified Geodetic Camera Tracking, Multi-Protocol LiveLink (JSON, FreeD 0xD1/0xD2, OpenTrackIO), and Sub-Microsecond Abu Clock SMPTE ST 2059 TimecodeProvider & CustomTimeStep for Abu Track & Scan.",
 	"Category": "Virtual Production",

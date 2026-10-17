@@ -42,6 +42,17 @@ public class LiveLinkAbuTrack : ModuleRules
 				"HTTP"
 			}
 		);
+
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(
+				new string[]
+				{
+					"PropertyEditor",
+					"DetailCustomizations"
+				}
+			);
+		}
 		
 		DynamicallyLoadedModuleNames.AddRange(
 			new string[]

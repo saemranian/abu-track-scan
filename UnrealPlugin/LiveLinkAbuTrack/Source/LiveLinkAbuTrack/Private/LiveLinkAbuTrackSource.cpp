@@ -1,4 +1,7 @@
 #include "LiveLinkAbuTrackSource.h"
+#include "AbuClockTimecodeProvider.h"
+#include "AbuClockCustomTimeStep.h"
+#include "Engine/Engine.h"
 #include "Common/UdpSocketBuilder.h"
 #include "Sockets.h"
 #include "SocketSubsystem.h"
@@ -13,6 +16,34 @@
 #include "Misc/QualifiedFrameTime.h"
 #include "ILiveLinkClient.h"
 #include "Async/Async.h"
+
+void ULiveLinkAbuTrackSourceSettings::ConfigureEngineTimecodeAndGenlock()
+{
+	if (!GEngine)
+	{
+		return;
+	}
+
+	UAbuClockTimecodeProvider* TimecodeProvider = NewObject<UAbuClockTimecodeProvider>(GEngine);
+	if (TimecodeProvider)
+	{
+		TimecodeProvider->FrameRateNumerator = FMath::Max(1, FrameRateNumerator);
+		TimecodeProvider->FrameRateDenominator = FMath::Max(1, FrameRateDenominator);
+		TimecodeProvider->bDropFrame = bDropFrame;
+		GEngine->SetTimecodeProvider(TimecodeProvider);
+	}
+
+	UAbuClockCustomTimeStep* CustomTimeStep = NewObject<UAbuClockCustomTimeStep>(GEngine);
+	if (CustomTimeStep)
+	{
+		CustomTimeStep->TargetFrameRate = FFrameRate(FMath::Max(1, FrameRateNumerator), FMath::Max(1, FrameRateDenominator));
+		CustomTimeStep->bDropFrame = bDropFrame;
+		GEngine->SetCustomTimeStep(CustomTimeStep);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[AbuTrack] 1-Click Configured UE5 TimecodeProvider & CustomTimeStep (%d/%d, DF=%d)"),
+		FrameRateNumerator, FrameRateDenominator, bDropFrame ? 1 : 0);
+}
 
 FLiveLinkAbuTrackSource::FLiveLinkAbuTrackSource(int32 InPort)
 	: LiveLinkClient(nullptr)
