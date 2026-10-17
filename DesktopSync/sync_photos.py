@@ -1,40 +1,79 @@
 #!/usr/bin/env python3
 """
-CamTrack Pro - Professional DSLR/Mirrorless Telemetry Post-Processor
-Author: Antigravity Agent (DeepMind Coding Team)
+Abu Track & Scan - Professional DSLR/Mirrorless & Multi-Sensor Telemetry Post-Processor
+Powered by Abu Clock (SMPTE ST 2059-2 / ST 12-1 + 64-bit TAI Nanoseconds)
 
-Matches raw photo folders from professional DSLR/Mirrorless cameras with continuous
-telemetry logs exported from the CamTrack Pro iOS app. Performs linear spatial interpolation,
-normalized quaternion LERP for 3D attitude, and applies a rotated 3D lever-arm offset correction.
+Matches raw photo folders from professional DSLR/Mirrorless cameras and iOS cameras with
+continuous telemetry logs exported from the Abu Track & Scan iOS app.
+Performs:
+- Optical Exposure-Midpoint timestamp extraction (EXIF DateTimeOriginal + SubSecTimeOriginal + ExposureTime / 2)
+- Deterministic <SensorID>_<HHMMSSFF>_<TAI_ns> filename parsing
+- Spherical Linear Quaternion Interpolation (SLERP) for 3D attitude + linear spatial interpolation
+- Rotated 3D Lever-Arm & Boresight Offset Rig Correction
+- Multi-target export: Metashape CSV, .abuscan.json manifest, and COLMAP / Postshot 3DGS images.txt
 """
 
-import os
-import sys
 import csv
+import json
 import math
+import os
+import re
+import sys
 from datetime import datetime
 from PIL import Image
 from PIL.ExifTags import TAGS
 
+from abu_clock_bridge import AbuClockBridge, TAI_UTC_OFFSET_NS
+
+
 def print_banner():
     banner = """
 ========================================================================
-             CAMTRACK PRO - TELEMETRY POST-PROCESSOR
+         ABU TRACK & SCAN - ABU CLOCK TELEMETRY POST-PROCESSOR
 ========================================================================
-    * High-Precision Temporal Interpolation
-    * Normalized Quaternion LERP (Drift-Free Rotation)
+    * Optical Exposure-Midpoint Timestamping (T_mid = T_SOF + T_exp/2)
+    * Spherical Linear Quaternion Interpolation (SLERP)
     * Rotated 3D Lever-Arm Offset Rig Correction
+    * Unified .abuscan.json + COLMAP images.txt + Metashape CSV Export
 ========================================================================
 """
     print(banner)
 
-def load_exif_timestamp(img_path):
+
+def _rational_to_float(val) -> float:
+    if val is None:
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, tuple) and len(val) == 2 and val[1] != 0:
+        return float(val[0]) / float(val[1])
+    try:
+        return float(val)
+    except Exception:
+        return 0.0
+
+
+def load_exif_timestamp(img_path: str) -> float:
     """
-    Reads EXIF tags using Pillow to retrieve the precise capture time with sub-seconds.
-    Falls back to filename parsing or filesystem modification time to guarantee a timestamp.
-    Returns: Timestamp in milliseconds since Epoch (UTC).
+    Retrieves the precise optical exposure midpoint timestamp in milliseconds since Unix Epoch (UTC):
+    1. Deterministic AbuScan filename `<SensorID>_<HHMMSSFF>_<TAI_ns>_IMG_<N>.<ext>`
+    2. EXIF DateTimeOriginal + SubSecTimeOriginal + 0.5 * ExposureTime
+    3. Legacy filename regex (`YYYY_MM_DD_HH_MM_SS`)
+    4. Filesystem mtime fallback
     """
-    # Layer 1: EXIF Metadata
+    p_name = os.path.basename(img_path)
+
+    # Layer 0: Deterministic AbuClock TAI nanosecond filename token (18-20 digit TAI ns)
+    tai_match = re.search(r"_(\d{18,20})_", p_name)
+    if tai_match:
+        try:
+            tai_ns = int(tai_match.group(1))
+            if tai_ns > TAI_UTC_OFFSET_NS:
+                return (tai_ns - TAI_UTC_OFFSET_NS) / 1_000_000.0
+        except ValueError:
+            pass
+
+    # Layer 1: EXIF Metadata with SubSecTimeOriginal + ExposureTime/2
     try:
         with Image.open(img_path) as img:
             exif_data = img._getexif()
@@ -43,21 +82,28 @@ def load_exif_timestamp(img_path):
                 for tag_id, value in exif_data.items():
                     tag_name = TAGS.get(tag_id, tag_id)
                     tags[tag_name] = value
-                
-                date_str = tags.get('DateTimeOriginal') or tags.get('DateTime')
+
+                date_str = tags.get("DateTimeOriginal") or tags.get("DateTime")
                 if date_str:
-                    subsec_str = tags.get('SubSecTimeOriginal') or tags.get('SubSecTime') or '0'
+                    if isinstance(date_str, bytes):
+                        date_str = date_str.decode("utf-8", errors="ignore")
+                    date_str = str(date_str).strip().rstrip("\x00")
+                    subsec_raw = tags.get("SubSecTimeOriginal") or tags.get("SubSecTime") or "0"
+                    if isinstance(subsec_raw, bytes):
+                        subsec_raw = subsec_raw.decode("utf-8", errors="ignore")
+                    subsec_str = str(subsec_raw).strip().rstrip("\x00")
                     dt = datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
                     epoch_sec = dt.timestamp()
                     subsec = float("0." + subsec_str) if subsec_str.isdigit() else 0.0
-                    return (epoch_sec + subsec) * 1000.0
+                    exp_sec = _rational_to_float(tags.get("ExposureTime"))
+                    if exp_sec <= 0.0 or exp_sec > 30.0:
+                        exp_sec = 0.0
+                    return (epoch_sec + subsec + 0.5 * exp_sec) * 1000.0
     except Exception:
         pass
-        
+
     # Layer 2: Filename Regex Fallback (e.g. 2026_05_27_10_02_IMG_1255.JPG)
-    p_name = os.path.basename(img_path)
-    import re
-    match = re.search(r'(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})?', p_name)
+    match = re.search(r"(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})?", p_name)
     if match:
         parts = match.groups()
         try:
@@ -68,321 +114,369 @@ def load_exif_timestamp(img_path):
             return dt.timestamp() * 1000.0
         except ValueError:
             pass
-            
+
     # Layer 3: Filesystem modification time fallback
     return os.path.getmtime(img_path) * 1000.0
 
-def load_telemetry_csv(csv_path):
+
+def load_telemetry_csv(csv_path: str):
     """
-    Parses the CamTrack telemetry CSV and loads records sorted by timestamp.
-    Supports both legacy and upgraded header formats.
+    Parses the Abu Track & Scan telemetry CSV (supporting both legacy 19-column and
+    AbuClock 24-column formats) and returns records sorted by timestamp (ms).
     """
     records = []
+    bridge = AbuClockBridge.instance()
     try:
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
-            # Normalize fieldnames to lowercase for safe lookups
             if reader.fieldnames:
                 reader.fieldnames = [fn.strip().lower() for fn in reader.fieldnames]
             else:
                 return []
-                
+
             for rec in reader:
-                # Resolve timestamp/epoch (in milliseconds since epoch)
-                raw_time = rec.get('timestamp_ms') or rec.get('epoch')
+                raw_time = rec.get("timestamp_ms") or rec.get("epoch")
                 if raw_time is None:
                     continue
                 try:
                     t_val = float(raw_time)
                 except ValueError:
                     continue
-                
-                # Scale seconds-based timestamp up to milliseconds if needed
+
                 if t_val < 1e11:
                     t_val *= 1000.0
-                    
+
                 try:
-                    records.append({
-                        'timestamp': t_val,
-                        'local_x': float(rec.get('local_x_m') or rec.get('local_x') or 0.0),
-                        'local_y': float(rec.get('local_y_m') or rec.get('local_y') or 0.0),
-                        'local_z': float(rec.get('local_z_m') or rec.get('local_z') or 0.0),
-                        'baro_alt': float(rec.get('baro_alt_m') or rec.get('baro_altitude') or 0.0),
-                        'pressure': float(rec.get('baro_press_kpa') or rec.get('pressure') or 0.0),
-                        'pitch': float(rec.get('pitch_deg') or rec.get('pitch') or 0.0),
-                        'roll': float(rec.get('roll_deg') or rec.get('roll') or 0.0),
-                        'yaw': float(rec.get('yaw_deg') or rec.get('yaw') or 0.0),
-                        'q_w': float(rec.get('q_w') or 1.0),
-                        'q_x': float(rec.get('q_x') or 0.0),
-                        'q_y': float(rec.get('q_y') or 0.0),
-                        'q_z': float(rec.get('q_z') or 0.0),
-                        'gps_enabled': int(float(rec.get('gps_enabled') or rec.get('gps_enabled') or 0.0)) == 1,
-                        'gps_lat': float(rec.get('gps_lat') or rec.get('gps_latitude') or 0.0),
-                        'gps_lon': float(rec.get('gps_lon') or rec.get('gps_longitude') or 0.0),
-                        'gps_alt': float(rec.get('gps_alt_m') or rec.get('gps_altitude') or 0.0),
-                        'gps_acc_h': float(rec.get('gps_acc_h_m') or rec.get('gps_acc_h') or 0.0),
-                        'gps_acc_v': float(rec.get('gps_acc_v_m') or rec.get('gps_acc_v') or 0.0)
-                    })
+                    raw_tai = rec.get("tai_ns")
+                    if raw_tai and int(float(raw_tai)) > 0:
+                        tai_ns = int(float(raw_tai))
+                    else:
+                        tai_ns = int(round(t_val * 1_000_000.0)) + TAI_UTC_OFFSET_NS
+
+                    snap = bridge.synthesize_from_tai_ns(tai_ns)
+                    smpte_tc = (rec.get("smpte_timecode") or "").strip() or snap.smpte_string
+                    raw_bcd = (rec.get("bcd_timecode") or "").strip()
+                    if raw_bcd.startswith(("0x", "0X")):
+                        bcd_tc = int(raw_bcd, 16)
+                    elif raw_bcd.isdigit():
+                        bcd_tc = int(raw_bcd)
+                    else:
+                        bcd_tc = snap.bcd_timecode
+
+                    records.append(
+                        {
+                            "timestamp": t_val,
+                            "tai_ns": tai_ns,
+                            "smpte_timecode": smpte_tc,
+                            "bcd_timecode": bcd_tc,
+                            "subframe_phase": float(rec.get("subframe_phase") or snap.phase),
+                            "clock_lock_state": (rec.get("clock_lock_state") or "LOCKED").strip(),
+                            "local_x": float(rec.get("local_x_m") or rec.get("local_x") or 0.0),
+                            "local_y": float(rec.get("local_y_m") or rec.get("local_y") or 0.0),
+                            "local_z": float(rec.get("local_z_m") or rec.get("local_z") or 0.0),
+                            "baro_alt": float(rec.get("baro_alt_m") or rec.get("baro_altitude") or 0.0),
+                            "pressure": float(rec.get("baro_press_kpa") or rec.get("pressure") or 0.0),
+                            "pitch": float(rec.get("pitch_deg") or rec.get("pitch") or 0.0),
+                            "roll": float(rec.get("roll_deg") or rec.get("roll") or 0.0),
+                            "yaw": float(rec.get("yaw_deg") or rec.get("yaw") or 0.0),
+                            "q_w": float(rec.get("q_w") or 1.0),
+                            "q_x": float(rec.get("q_x") or 0.0),
+                            "q_y": float(rec.get("q_y") or 0.0),
+                            "q_z": float(rec.get("q_z") or 0.0),
+                            "gps_enabled": int(float(rec.get("gps_enabled") or 0.0)) == 1,
+                            "gps_lat": float(rec.get("gps_lat") or rec.get("gps_latitude") or 0.0),
+                            "gps_lon": float(rec.get("gps_lon") or rec.get("gps_longitude") or 0.0),
+                            "gps_alt": float(rec.get("gps_alt_m") or rec.get("gps_altitude") or 0.0),
+                            "gps_acc_h": float(rec.get("gps_acc_h_m") or rec.get("gps_acc_h") or 0.0),
+                            "gps_acc_v": float(rec.get("gps_acc_v_m") or rec.get("gps_acc_v") or 0.0),
+                        }
+                    )
                 except (ValueError, TypeError):
                     continue
-        # Sort by timestamp to ensure binary search validity
-        records.sort(key=lambda x: x['timestamp'])
+        records.sort(key=lambda x: x["timestamp"])
         return records
     except Exception as e:
         print(f"[!] Failed to parse telemetry CSV: {e}")
         return []
 
-def interpolate_telemetry(t, rec_a, rec_b):
+
+def slerp_quaternion(q1, q2, t: float):
+    """Spherical Linear Interpolation (SLERP) between unit quaternions q1 and q2."""
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+    dot = w1 * w2 + x1 * x2 + y1 * y2 + z1 * z2
+    if dot < 0.0:
+        w2, x2, y2, z2 = -w2, -x2, -y2, -z2
+        dot = -dot
+
+    if dot > 0.9995:
+        w = w1 + t * (w2 - w1)
+        x = x1 + t * (x2 - x1)
+        y = y1 + t * (y2 - y1)
+        z = z1 + t * (z2 - z1)
+        mag = math.sqrt(w * w + x * x + y * y + z * z)
+        return (w / mag, x / mag, y / mag, z / mag) if mag > 0 else (1.0, 0.0, 0.0, 0.0)
+
+    theta_0 = math.acos(max(-1.0, min(1.0, dot)))
+    sin_theta_0 = math.sin(theta_0)
+    theta_t = theta_0 * t
+    sin_theta_t = math.sin(theta_t)
+    s0 = math.cos(theta_t) - dot * sin_theta_t / sin_theta_0
+    s1 = sin_theta_t / sin_theta_0
+    return (
+        s0 * w1 + s1 * w2,
+        s0 * x1 + s1 * x2,
+        s0 * y1 + s1 * y2,
+        s0 * z1 + s1 * z2,
+    )
+
+
+def interpolate_telemetry(t: float, rec_a: dict, rec_b: dict) -> dict:
     """
-    Executes linear spatial interpolation and normalized quaternion Lerp (NLerp) 
-    to obtain telemetry estimates at precise timestamp 't' between two records.
+    Executes linear spatial interpolation and Spherical Linear Quaternion Interpolation (SLERP)
+    to obtain telemetry estimates at precise optical exposure-midpoint timestamp `t` (ms).
     """
-    t_a = rec_a['timestamp']
-    t_b = rec_b['timestamp']
-    
+    t_a = rec_a["timestamp"]
+    t_b = rec_b["timestamp"]
     if abs(t_b - t_a) < 1e-5:
         return rec_a
-        
-    f = (t - t_a) / (t_b - t_a)
-    
-    # 1. Linear interpolation of position & barometer
+
+    f = max(0.0, min(1.0, (t - t_a) / (t_b - t_a)))
+    tai_ns = int(round(rec_a["tai_ns"] + f * (rec_b["tai_ns"] - rec_a["tai_ns"])))
+    snap = AbuClockBridge.instance().synthesize_from_tai_ns(tai_ns)
+
     interp = {
-        'timestamp': t,
-        'local_x': rec_a['local_x'] + f * (rec_b['local_x'] - rec_a['local_x']),
-        'local_y': rec_a['local_y'] + f * (rec_b['local_y'] - rec_a['local_y']),
-        'local_z': rec_a['local_z'] + f * (rec_b['local_z'] - rec_a['local_z']),
-        'baro_alt': rec_a['baro_alt'] + f * (rec_b['baro_alt'] - rec_a['baro_alt']),
-        'gps_enabled': rec_a['gps_enabled'],
-        'gps_lat': rec_a['gps_lat'] + f * (rec_b['gps_lat'] - rec_a['gps_lat']),
-        'gps_lon': rec_a['gps_lon'] + f * (rec_b['gps_lon'] - rec_a['gps_lon']),
-        'gps_alt': rec_a['gps_alt'] + f * (rec_b['gps_alt'] - rec_a['gps_alt']),
-        # Copy orientations directly or calculate later
-        'pitch': rec_a['pitch'] + f * (rec_b['pitch'] - rec_a['pitch']),
-        'roll': rec_a['roll'] + f * (rec_b['roll'] - rec_a['roll']),
-        'yaw': rec_a['yaw'] + f * (rec_b['yaw'] - rec_a['yaw'])
+        "timestamp": t,
+        "tai_ns": tai_ns,
+        "smpte_timecode": snap.smpte_string,
+        "bcd_timecode": snap.bcd_timecode,
+        "subframe_phase": snap.phase,
+        "clock_lock_state": rec_a.get("clock_lock_state", "SLERP_INTERPOLATED"),
+        "local_x": rec_a["local_x"] + f * (rec_b["local_x"] - rec_a["local_x"]),
+        "local_y": rec_a["local_y"] + f * (rec_b["local_y"] - rec_a["local_y"]),
+        "local_z": rec_a["local_z"] + f * (rec_b["local_z"] - rec_a["local_z"]),
+        "baro_alt": rec_a["baro_alt"] + f * (rec_b["baro_alt"] - rec_a["baro_alt"]),
+        "gps_enabled": rec_a["gps_enabled"],
+        "gps_lat": rec_a["gps_lat"] + f * (rec_b["gps_lat"] - rec_a["gps_lat"]),
+        "gps_lon": rec_a["gps_lon"] + f * (rec_b["gps_lon"] - rec_a["gps_lon"]),
+        "gps_alt": rec_a["gps_alt"] + f * (rec_b["gps_alt"] - rec_a["gps_alt"]),
+        "pitch": rec_a["pitch"] + f * (rec_b["pitch"] - rec_a["pitch"]),
+        "roll": rec_a["roll"] + f * (rec_b["roll"] - rec_a["roll"]),
+        "yaw": rec_a["yaw"] + f * (rec_b["yaw"] - rec_a["yaw"]),
     }
-    
-    # 2. Normalized Quaternion LERP (NLerp) for 3D rotation interpolation
-    q1 = [rec_a['q_w'], rec_a['q_x'], rec_a['q_y'], rec_a['q_z']]
-    q2 = [rec_b['q_w'], rec_b['q_x'], rec_b['q_y'], rec_b['q_z']]
-    
-    # Ensure shortest path LERP (dot product check)
-    dot = sum(a * b for a, b in zip(q1, q2))
-    if dot < 0.0:
-        q2 = [-val for val in q2]
-        
-    q_interp = [a + f * (b - a) for a, b in zip(q1, q2)]
-    
-    # Normalize quaternion
-    mag = math.sqrt(sum(val * val for val in q_interp))
-    if mag > 0:
-        q_interp = [val / mag for val in q_interp]
-    else:
-        q_interp = [1.0, 0.0, 0.0, 0.0]
-        
-    interp['q_w'], interp['q_x'], interp['q_y'], interp['q_z'] = q_interp
+
+    q1 = (rec_a["q_w"], rec_a["q_x"], rec_a["q_y"], rec_a["q_z"])
+    q2 = (rec_b["q_w"], rec_b["q_x"], rec_b["q_y"], rec_b["q_z"])
+    interp["q_w"], interp["q_x"], interp["q_y"], interp["q_z"] = slerp_quaternion(q1, q2, f)
     return interp
 
-def find_telemetry_for_timestamp(t, records):
-    """
-    Performs binary search to find adjacent records and trigger interpolation.
-    """
+
+def find_telemetry_for_timestamp(t: float, records: list):
+    """Performs binary search to find bracketing telemetry samples and interpolate via SLERP."""
     if not records:
         return None
-        
-    if t <= records[0]['timestamp']:
+    if t <= records[0]["timestamp"]:
         return records[0]
-    if t >= records[-1]['timestamp']:
+    if t >= records[-1]["timestamp"]:
         return records[-1]
-        
+
     low = 0
     high = len(records) - 1
-    
     while low < high:
         mid = (low + high) // 2
-        if records[mid]['timestamp'] < t:
+        if records[mid]["timestamp"] < t:
             low = mid + 1
         else:
             high = mid
-            
-    # t is between records[low-1] and records[low]
+
     return interpolate_telemetry(t, records[low - 1], records[low])
 
+
 def rotate_vector_by_quaternion(v, q):
-    """
-    Rotates 3D vector v = (x, y, z) by unit quaternion q = (w, x, y, z).
-    Formula: v_corr = v + 2 * q_xyz x (q_xyz x v + q_w * v)
-    """
+    """Rotates 3D vector v = (x, y, z) by unit quaternion q = (w, x, y, z)."""
     vx, vy, vz = v
     qw, qx, qy, qz = q
-    
-    # Cross product: q_xyz x v
-    cx = qy * vz - qz * vy
-    cy = qz * vx - qx * vz
-    cz = qx * vy - qy * vx
-    
-    # Add q_w * v
-    cx += qw * vx
-    cy += qw * vy
-    cz += qw * vz
-    
-    # Inner cross product: q_xyz x (q_xyz x v + q_w * v)
+    cx = qy * vz - qz * vy + qw * vx
+    cy = qz * vx - qx * vz + qw * vy
+    cz = qx * vy - qy * vx + qw * vz
     rx = qy * cz - qz * cy
     ry = qz * cx - qx * cz
     rz = qx * cy - qy * cx
-    
-    # Result: v + 2 * rx_ry_rz
-    return (
-        vx + 2.0 * rx,
-        vy + 2.0 * ry,
-        vz + 2.0 * rz
-    )
+    return (vx + 2.0 * rx, vy + 2.0 * ry, vz + 2.0 * rz)
+
+
+def export_abuscan_and_colmap_manifests(photo_dir: str, matched_cameras: list, session_name: str = "AbuScanSession"):
+    """
+    Writes:
+    1. `<photo_dir>/session_manifest.abuscan.json`
+    2. `<photo_dir>/colmap_images.txt`
+    """
+    bridge = AbuClockBridge.instance()
+    entries = []
+    colmap_lines = [
+        "# Image list with two lines of data per image:",
+        "#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME",
+        "#   POINTS2D[] as (X, Y, POINT3D_ID)",
+    ]
+
+    for idx, cam in enumerate(matched_cameras, start=1):
+        tai_ns = int(cam.get("tai_ns") or (int(cam.get("epoch", 0.0) * 1e9) + TAI_UTC_OFFSET_NS))
+        snap = bridge.synthesize_from_tai_ns(tai_ns)
+        smpte_tc = cam.get("smpte_timecode") or snap.smpte_string
+        bcd_tc = int(cam.get("bcd_timecode") or snap.bcd_timecode)
+        qw = float(cam.get("q_w", 1.0))
+        qx = float(cam.get("q_x", 0.0))
+        qy = float(cam.get("q_y", 0.0))
+        qz = float(cam.get("q_z", 0.0))
+        tx = float(cam.get("x_local_m", cam.get("local_x", 0.0)))
+        ty = float(cam.get("y_local_m", cam.get("local_y", 0.0)))
+        tz = float(cam.get("z_local_m", cam.get("local_z", 0.0)))
+        label = cam["label"]
+
+        entries.append(
+            {
+                "image_id": idx,
+                "sensor_id": cam.get("sensor_id", "DSLR-External"),
+                "file_path": label,
+                "tai_ns": tai_ns,
+                "smpte_timecode": smpte_tc,
+                "bcd_timecode": f"0x{bcd_tc:08X}",
+                "subframe_phase": round(snap.phase, 6),
+                "kalman_error_ns": snap.kalman_offset_ns,
+                "pose": {
+                    "qw": round(qw, 6),
+                    "qx": round(qx, 6),
+                    "qy": round(qy, 6),
+                    "qz": round(qz, 6),
+                    "tx_m": round(tx, 5),
+                    "ty_m": round(ty, 5),
+                    "tz_m": round(tz, 5),
+                },
+                "camera_model_id": 1,
+            }
+        )
+        colmap_lines.append(f"{idx} {qw:.6f} {qx:.6f} {qy:.6f} {qz:.6f} {tx:.6f} {ty:.6f} {tz:.6f} 1 {label}")
+        colmap_lines.append("")
+
+    abuscan_path = os.path.join(photo_dir, "session_manifest.abuscan.json")
+    colmap_path = os.path.join(photo_dir, "colmap_images.txt")
+
+    manifest = {
+        "schema": "abu.trackscan.manifest.v1",
+        "session_name": session_name,
+        "clock_engine": "AbuClock-ST2059",
+        "fps_num": bridge.fps_num,
+        "fps_den": bridge.fps_den,
+        "drop_frame": bridge.drop_frame,
+        "capture_count": len(entries),
+        "captures": entries,
+    }
+    with open(abuscan_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
+
+    with open(colmap_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(colmap_lines))
+
+    return abuscan_path, colmap_path
+
 
 def main():
     print_banner()
-    
-    # 1. Interactive Inputs with defaults
-    print("[*] Configuration Setup:")
     photo_dir = input("Enter path to Mirrorless Photos folder: ").strip().strip('"')
     telemetry_csv = input("Enter path to iPhone telemetry_log.csv: ").strip().strip('"')
-    
-    # Rig Calibration Offsets (in cm)
-    print("\n[*] Rig Calibration Lever-Arm Offsets (cm):")
+
     try:
-        lx = float(input("  X Offset (Left/Right) [0.0]: ") or 0.0)
-        ly = float(input("  Y Offset (Up/Down)    [0.0]: ") or 0.0)
-        lz = float(input("  Z Offset (Depth)      [0.0]: ") or 0.0)
+        lx = float(input("  X Offset (Left/Right cm) [0.0]: ") or 0.0)
+        ly = float(input("  Y Offset (Up/Down cm)    [0.0]: ") or 0.0)
+        lz = float(input("  Z Offset (Depth cm)      [0.0]: ") or 0.0)
     except ValueError:
-        print("[!] Invalid values. Resetting offsets to 0.0 cm.")
         lx = ly = lz = 0.0
-        
-    # Convert offsets to meters
+
     offset_m = (lx / 100.0, ly / 100.0, lz / 100.0)
-    
-    # Validate Paths
-    if not os.path.isdir(photo_dir):
-        print(f"[!] Photo directory not found: {photo_dir}")
+
+    if not os.path.isdir(photo_dir) or not os.path.isfile(telemetry_csv):
+        print("[!] Invalid folder or CSV path.")
         sys.exit(1)
-    if not os.path.isfile(telemetry_csv):
-        print(f"[!] Telemetry CSV file not found: {telemetry_csv}")
-        sys.exit(1)
-        
-    # 2. Parse Telemetry CSV
-    print(f"\n[*] Parsing telemetry CSV logs...")
+
     records = load_telemetry_csv(telemetry_csv)
     if not records:
         print("[!] No records parsed. Exiting.")
         sys.exit(1)
-    print(f"  [+] Loaded {len(records)} continuous tracking points.")
-    print(f"  [+] Session Range: {datetime.fromtimestamp(records[0]['timestamp']/1000.0)} to {datetime.fromtimestamp(records[-1]['timestamp']/1000.0)}")
-    
-    # 3. Scan Photos
-    print(f"\n[*] Scanning EXIF dates from image folder...")
-    valid_extensions = ('.jpg', '.jpeg', '.tif', '.tiff', '.dng', '.heic', '.png')
+
+    valid_extensions = (".jpg", ".jpeg", ".tif", ".tiff", ".dng", ".heic", ".png")
     images = [os.path.join(photo_dir, f) for f in os.listdir(photo_dir) if f.lower().endswith(valid_extensions)]
-    
     if not images:
         print(f"[!] No valid images found in: {photo_dir}")
         sys.exit(1)
-        
-    print(f"  [+] Found {len(images)} photos. Matching timestamps...")
-    
-    # Dynamic Hour Offset Alignment calculation
+
     first_p_time_ms = load_exif_timestamp(images[0])
-    tel_start_ms = records[0]['timestamp']
+    tel_start_ms = records[0]["timestamp"]
     time_diff_hours = round((first_p_time_ms - tel_start_ms) / 3600000.0)
-    auto_tz_offset_ms = time_diff_hours * 3600000.0
-    
-    if abs(time_diff_hours) >= 1.0:
-        print(f"  [!] Large timezone/clock difference of {time_diff_hours:+.1f} hours detected.")
-        print(f"  [!] Auto-aligning clocks by subtracting {time_diff_hours:+.1f} hours ({auto_tz_offset_ms/1000.0:+.0f}s).")
-    else:
-        auto_tz_offset_ms = 0.0
-        
-    # 4. Process matches
+    auto_tz_offset_ms = time_diff_hours * 3600000.0 if abs(time_diff_hours) >= 1.0 else 0.0
+
     matched_cameras = []
-    missed_count = 0
-    
     for img_path in images:
         filename = os.path.basename(img_path)
         raw_time_ms = load_exif_timestamp(img_path)
         img_time_ms = raw_time_ms - auto_tz_offset_ms
-        
-        # Find spatial marker
         closest = find_telemetry_for_timestamp(img_time_ms, records)
-        
-        # Calculate rotated lever-arm translation offset
-        q = (closest['q_w'], closest['q_x'], closest['q_y'], closest['q_z'])
+        q = (closest["q_w"], closest["q_x"], closest["q_y"], closest["q_z"])
         rot_offset = rotate_vector_by_quaternion(offset_m, q)
-        
-        # Correct local positioning
-        corr_x = closest['local_x'] + rot_offset[0]
-        corr_y = closest['local_y'] + rot_offset[1]
-        corr_z = closest['local_z'] + rot_offset[2]
-        
-        # Correct GPS coordinates if active
-        corr_lat = closest['gps_lat']
-        corr_lon = closest['gps_lon']
-        corr_gps_alt = closest['gps_alt'] + rot_offset[2]
-        
-        if closest['gps_enabled'] and closest['gps_lat'] != 0.0:
-            lat_offset_deg = rot_offset[1] / 111111.0
-            lon_offset_deg = rot_offset[0] / (111111.0 * math.cos(closest['gps_lat'] * math.pi / 180.0))
-            corr_lat += lat_offset_deg
-            corr_lon += lon_offset_deg
-            
-        time_diff = (img_time_ms - closest['timestamp']) / 1000.0
-        
-        matched_cameras.append({
-            'label': filename,
-            'x_local_m': corr_x,
-            'y_local_m': corr_y,
-            'z_local_m': corr_z,
-            'baro_alt_m': closest['baro_alt'] + rot_offset[2],
-            'latitude': corr_lat,
-            'longitude': corr_lon,
-            'gps_alt_m': corr_gps_alt,
-            'yaw': closest['yaw'],
-            'pitch': closest['pitch'],
-            'roll': closest['roll'],
-            'time_diff_sec': time_diff
-        })
-        
-    if not matched_cameras:
-        print("[!] No cameras could be matched. Check camera clock sync settings.")
-        sys.exit(1)
-        
-    # Sort matched cameras alphabetically for Metashape organization
-    matched_cameras.sort(key=lambda x: x['label'])
-    
-    # 5. Output Matched CSV
+
+        corr_x = closest["local_x"] + rot_offset[0]
+        corr_y = closest["local_y"] + rot_offset[1]
+        corr_z = closest["local_z"] + rot_offset[2]
+
+        corr_lat = closest["gps_lat"]
+        corr_lon = closest["gps_lon"]
+        corr_gps_alt = closest["gps_alt"] + rot_offset[2]
+        if closest["gps_enabled"] and closest["gps_lat"] != 0.0:
+            corr_lat += rot_offset[1] / 111111.0
+            corr_lon += rot_offset[0] / (111111.0 * math.cos(closest["gps_lat"] * math.pi / 180.0))
+
+        time_diff = (img_time_ms - closest["timestamp"]) / 1000.0
+        matched_cameras.append(
+            {
+                "label": filename,
+                "x_local_m": corr_x,
+                "y_local_m": corr_y,
+                "z_local_m": corr_z,
+                "baro_alt_m": closest["baro_alt"] + rot_offset[2],
+                "latitude": corr_lat,
+                "longitude": corr_lon,
+                "gps_alt_m": corr_gps_alt,
+                "yaw": closest["yaw"],
+                "pitch": closest["pitch"],
+                "roll": closest["roll"],
+                "q_w": closest["q_w"],
+                "q_x": closest["q_x"],
+                "q_y": closest["q_y"],
+                "q_z": closest["q_z"],
+                "time_diff_sec": time_diff,
+                "tai_ns": closest["tai_ns"],
+                "smpte_timecode": closest["smpte_timecode"],
+                "bcd_timecode": closest["bcd_timecode"],
+            }
+        )
+
+    matched_cameras.sort(key=lambda x: x["label"])
     output_csv = os.path.join(photo_dir, "dslr_metashape_cameras.csv")
-    print(f"\n[*] Writing results spreadsheet to: {output_csv}")
-    
-    header = "label,x_local_m,y_local_m,z_local_m,baro_alt_m,latitude,longitude,gps_alt_m,yaw,pitch,roll,time_diff_sec\n"
-    try:
-        with open(output_csv, 'w', encoding='utf-8') as f:
-            f.write(header)
-            for cam in matched_cameras:
-                row = f"{cam['label']},{cam['x_local_m']:.6f},{cam['y_local_m']:.6f},{cam['z_local_m']:.6f}," \
-                      f"{cam['baro_alt_m']:.6f},{cam['latitude']:.8f},{cam['longitude']:.8f},{cam['gps_alt_m']:.6f}," \
-                      f"{cam['yaw']:.4f},{cam['pitch']:.4f},{cam['roll']:.4f},{cam['time_diff_sec']:.3f}\n"
-                f.write(row)
-        
-        print("\n========================================================================")
-        print(f" SUCCESS: Processed {len(matched_cameras)} images successfully!")
-        if missed_count > 0:
-            print(f" WARNING: Skipped {missed_count} images due to EXIF timestamp errors.")
-        print(f" Saved: {output_csv}")
-        print("========================================================================")
-        print("Import steps for Metashape:")
-        print(" 1. Import your DSLR photos into Metashape.")
-        print(" 2. Open Reference Pane, tap Import, select 'dslr_metashape_cameras.csv'.")
-        print(" 3. Choose 'Local Coordinates (m)' if GPS was disabled (Indoor Mode).")
-        print(" 4. Map columns accordingly (Label=1, X=2, Y=3, Z=4, Yaw=9, Pitch=10, Roll=11).")
-        print("========================================================================")
-    except Exception as e:
-        print(f"[!] Failed to write Metashape output file: {e}")
+    header = "label,x_local_m,y_local_m,z_local_m,baro_alt_m,latitude,longitude,gps_alt_m,yaw,pitch,roll,time_diff_sec,tai_ns,smpte_timecode,bcd_timecode\n"
+    with open(output_csv, "w", encoding="utf-8") as f:
+        f.write(header)
+        for cam in matched_cameras:
+            f.write(
+                f"{cam['label']},{cam['x_local_m']:.6f},{cam['y_local_m']:.6f},{cam['z_local_m']:.6f},"
+                f"{cam['baro_alt_m']:.6f},{cam['latitude']:.8f},{cam['longitude']:.8f},{cam['gps_alt_m']:.6f},"
+                f"{cam['yaw']:.4f},{cam['pitch']:.4f},{cam['roll']:.4f},{cam['time_diff_sec']:.4f},"
+                f"{cam['tai_ns']},{cam['smpte_timecode']},0x{cam['bcd_timecode']:08X}\n"
+            )
+
+    abuscan_path, colmap_path = export_abuscan_and_colmap_manifests(photo_dir, matched_cameras)
+    print(f"Saved Metashape CSV: {output_csv}")
+    print(f"Saved AbuScan Manifest: {abuscan_path}")
+    print(f"Saved COLMAP Poses: {colmap_path}")
+
 
 if __name__ == "__main__":
     main()

@@ -455,11 +455,7 @@ class CamTrackDesktopApp:
         self.clock_nodes_lbl.pack(side="left", padx=(0, 10))
         
         # Right: FPS Selector + Barrier Trigger & Digital Clapper Slate Buttons
-        if hasattr(self, "open_clapper_slate_window"):
-            slate_cmd = self.open_clapper_slate_window
-        else:
-            slate_cmd = lambda: None
-        self.slate_top_btn = ttk.Button(self.clock_bar, text="CLAPPER SLATE", command=slate_cmd)
+        self.slate_top_btn = ttk.Button(self.clock_bar, text="CLAPPER SLATE", command=self.open_clapper_slate_window)
         self.slate_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
         
         self.barrier_top_btn = ttk.Button(self.clock_bar, text="TRIGGER BARRIER (+50ms)", style="Action.TButton", command=self.trigger_global_capture_barrier)
@@ -496,13 +492,13 @@ class CamTrackDesktopApp:
         # Title
         title_frame = ttk.Frame(left_panel)
         title_frame.grid(row=0, column=0, sticky="w", pady=(0, 15))
-        ttk.Label(title_frame, text="ABU TRACK // DESKTOP CORE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
+        ttk.Label(title_frame, text="ABU TRACK & SCAN // DESKTOP CORE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
         
         try:
             from version_info import VERSION, BUILD
-            version_text = f"Version {VERSION} // Build {BUILD} // 3DGS & Metashape Workstation Ready"
+            version_text = f"Version {VERSION} // Build {BUILD} // 3DGS, Metashape & AbuClock ST 2059 Ready"
         except ImportError:
-            version_text = "Version 1.0.1 // Build 90 // 3DGS & Metashape Workstation Ready"
+            version_text = "Version 0.1.0.3 // Build 96 // 3DGS, Metashape & AbuClock ST 2059 Ready"
             
         ttk.Label(title_frame, text=version_text, font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
@@ -554,13 +550,13 @@ class CamTrackDesktopApp:
         action_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
         action_card.grid(row=3, column=0, sticky="nsew")
         action_card.columnconfigure(0, weight=1)
-        action_card.rowconfigure(3, weight=1)
+        action_card.rowconfigure(4, weight=1)
         
-        ttk.Label(action_card, text="03 // CLOCK OFFSET CORRECTION", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 2))
-        ttk.Label(action_card, text="Slide to synchronize DSLR shutter time with iPhone Epoch millisecond log.", style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 8))
+        ttk.Label(action_card, text="03 // ABU CLOCK OFFSET & SLATE CALIBRATION", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 2))
+        ttk.Label(action_card, text="Slide or use Frame-00 Optical Flash Slate to lock DSLR shutter to TAI/SMPTE log.", style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 8))
         
         slider_frame = ttk.Frame(action_card)
-        slider_frame.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        slider_frame.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         slider_frame.columnconfigure(0, weight=1)
         
         slider = ttk.Scale(slider_frame, from_=-300.0, to=300.0, variable=self.time_offset, orient="horizontal")
@@ -570,11 +566,14 @@ class CamTrackDesktopApp:
         self.time_entry.grid(row=0, column=1, padx=(8, 2))
         ttk.Label(slider_frame, text="sec", style="Muted.TLabel").grid(row=0, column=2, sticky="w")
         
-        self.sync_btn = ttk.Button(action_card, text="INJECT EXIF & EXPORT REFERENCE METADATA", style="Action.TButton", command=self.run_synchronization)
-        self.sync_btn.grid(row=3, column=0, sticky="ew", ipady=10, pady=(10, 0))
+        self.slate_solve_btn = ttk.Button(action_card, text="AUTO-SOLVE FRAME-00 SLATE FLASH OFFSET", command=self.solve_slate_flash_offset)
+        self.slate_solve_btn.grid(row=3, column=0, sticky="ew", ipady=5, pady=(2, 4))
+        
+        self.sync_btn = ttk.Button(action_card, text="INJECT EXIF & EXPORT METASHAPE / ABUSCAN / COLMAP", style="Action.TButton", command=self.run_synchronization)
+        self.sync_btn.grid(row=4, column=0, sticky="ew", ipady=10, pady=(4, 0))
         
         self.progress = ttk.Progressbar(action_card, orient="horizontal", mode="determinate")
-        self.progress.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+        self.progress.grid(row=5, column=0, sticky="ew", pady=(10, 0))
         
         # Right Terminal Logs
         right_panel = ttk.Frame(self.tab_sync, padding=10)
@@ -1809,18 +1808,18 @@ class CamTrackDesktopApp:
             self.photo_listbox.delete(0, tk.END)
             
             csv_lines = [
-                "label,x,y,z,yaw,pitch,roll,latitude,longitude,altitude,time_diff"
+                "label,x,y,z,yaw,pitch,roll,latitude,longitude,altitude,time_diff,tai_ns,smpte_timecode,bcd_timecode"
             ]
             
             total = len(photo_files)
             for i, p_name in enumerate(photo_files):
                 p_path = os.path.join(photo_dir, p_name)
                 
-                # Dynamic photo timestamp (EXIF -> Filename -> mtime)
+                # Dynamic photo timestamp (AbuScan TAI filename -> EXIF Exposure Midpoint -> Filename -> mtime)
                 raw_time = self.get_photo_timestamp(p_path)
                 p_epoch = raw_time - auto_tz_offset + dt
                 
-                # Locate nearest spatial odometry packet
+                # Locate nearest spatial odometry packet with Quaternion SLERP
                 record = self.match_epoch(p_epoch, telemetry)
                 
                 if record:
@@ -1845,6 +1844,10 @@ class CamTrackDesktopApp:
                         self.write_exif(p_path, lat, lon, alt + corrected[1])
                     
                     time_diff = p_epoch - record["epoch"]
+                    snap = self.abu_clock.synthesize_from_utc_seconds(p_epoch)
+                    tai_ns = int(record.get("tai_ns") or snap.tai_ns)
+                    smpte_tc = record.get("smpte_timecode") or snap.smpte_string
+                    bcd_tc = int(record.get("bcd_timecode") or snap.bcd_timecode)
                     
                     # Standard Z-up ENU coordinates for georeferenced_metashape.csv
                     pos_x = corrected[0]
@@ -1872,7 +1875,10 @@ class CamTrackDesktopApp:
                     pitch_val = pitch_rad * 180.0 / math.pi
                     roll_val = roll_rad * 180.0 / math.pi
                     
-                    csv_lines.append(f"{p_name},{pos_x:.5f},{pos_y:.5f},{pos_z:.5f},{yaw_val:.6f},{pitch_val:.6f},{roll_val:.6f},{lat:.8f},{lon:.8f},{alt + corrected[1]:.3f},{time_diff:.3f}")
+                    csv_lines.append(
+                        f"{p_name},{pos_x:.5f},{pos_y:.5f},{pos_z:.5f},{yaw_val:.6f},{pitch_val:.6f},{roll_val:.6f},"
+                        f"{lat:.8f},{lon:.8f},{alt + corrected[1]:.3f},{time_diff:.4f},{tai_ns},{smpte_tc},0x{bcd_tc:08X}"
+                    )
                     
                     # Log to trajectories array for 3D graphics rendering
                     traj_pt = {
@@ -1881,6 +1887,9 @@ class CamTrackDesktopApp:
                         "local_y": corrected[1],
                         "local_z": corrected[2],
                         "epoch": p_epoch,
+                        "tai_ns": tai_ns,
+                        "smpte_timecode": smpte_tc,
+                        "bcd_timecode": bcd_tc,
                         "time_diff": time_diff,
                         "baro_alt": record["baro_alt"],
                         "gps_lat": lat,
@@ -1895,10 +1904,10 @@ class CamTrackDesktopApp:
                         "q_z": q_dslr[3]
                     }
                     self.trajectory_points.append(traj_pt)
-                    self.photo_listbox.insert(tk.END, f"[{matched:03d}] // {p_name}")
+                    self.photo_listbox.insert(tk.END, f"[{matched:03d}] {smpte_tc} // {p_name}")
                     
                     if matched % 15 == 0 or matched == total:
-                        self.log(f"Sync Match // {p_name} -> Lat: {lat:.6f}, Lon: {lon:.6f}, Alt: {alt:.2f}m (dt: {time_diff:+.3f}s)")
+                        self.log(f"Sync Match // {p_name} [TC {smpte_tc}] -> Lat: {lat:.6f}, Lon: {lon:.6f}, Alt: {alt:.2f}m (dt: {time_diff:+.4f}s)")
                 else:
                     if i < 3 or i == total - 1:
                         p_time_str = self.format_epoch(p_epoch)
@@ -1911,18 +1920,33 @@ class CamTrackDesktopApp:
                 self.progress["value"] = int(((i + 1) / total) * 100)
                 
             out_csv = os.path.join(photo_dir, "georeferenced_metashape.csv")
-            with open(out_csv, "w") as f:
+            with open(out_csv, "w", encoding="utf-8") as f:
                 f.write("\n".join(csv_lines))
+
+            # Also export unified .abuscan.json and COLMAP images.txt manifests
+            from sync_photos import export_abuscan_and_colmap_manifests
+            abuscan_path, colmap_path = export_abuscan_and_colmap_manifests(
+                photo_dir,
+                self.trajectory_points,
+                session_name=os.path.basename(os.path.normpath(photo_dir)) or "AbuScanSession"
+            )
                 
             self.log("\n----------------------------------------------------------------------")
             self.log(f"GEOREFERENCE SYNC SUCCESSFUL // {matched} / {total} photos synchronized.")
             self.log(f"High-Accuracy telemetry injected into image EXIF binary blocks.")
-            self.log(f"CSV reference manifest written to: {out_csv}")
+            self.log(f"Metashape CSV manifest written to: {out_csv}")
+            self.log(f"AbuScan JSON manifest written to:  {abuscan_path}")
+            self.log(f"COLMAP / 3DGS poses written to:    {colmap_path}")
             
             # Redraw view with visual wireframe camera pyramids
             self.render_3d_scene()
             
-            messagebox.showinfo("Complete", f"Synchronizer completed successfully.\nSynchronized photos: {matched}")
+            messagebox.showinfo(
+                "Complete",
+                f"Synchronizer completed successfully.\n"
+                f"Synchronized photos: {matched}\n\n"
+                f"Exported:\n• georeferenced_metashape.csv\n• session_manifest.abuscan.json\n• colmap_images.txt"
+            )
             
         except Exception as e:
             self.log(f"CRITICAL PIPELINE ERROR // {str(e)}")
@@ -2403,8 +2427,30 @@ class CamTrackDesktopApp:
                 if epoch > 1e11:
                     epoch = epoch / 1000.0
                     
+                raw_tai = rec.get("tai_ns", 0)
+                try:
+                    tai_ns = int(float(raw_tai)) if raw_tai else 0
+                except Exception:
+                    tai_ns = 0
+                if tai_ns <= 0:
+                    tai_ns = int(round(epoch * 1_000_000_000.0)) + 37_000_000_000
+                snap = self.abu_clock.synthesize_from_tai_ns(tai_ns)
+                smpte_tc = str(rec.get("smpte_timecode", "")).strip() or snap.smpte_string
+                raw_bcd = str(rec.get("bcd_timecode", "")).strip()
+                if raw_bcd.startswith(("0x", "0X")):
+                    try:
+                        bcd_tc = int(raw_bcd, 16)
+                    except Exception:
+                        bcd_tc = snap.bcd_timecode
+                else:
+                    bcd_tc = snap.bcd_timecode
+
                 records.append({
                     "epoch": epoch,
+                    "tai_ns": tai_ns,
+                    "smpte_timecode": smpte_tc,
+                    "bcd_timecode": bcd_tc,
+                    "subframe_phase": float(rec.get("subframe_phase", snap.phase) or snap.phase),
                     "local_x": rec.get("local_x_m", rec.get("local_x", 0.0)),
                     "local_y": rec.get("local_y_m", rec.get("local_y", 0.0)),
                     "local_z": rec.get("local_z_m", rec.get("local_z", 0.0)),
@@ -2525,8 +2571,15 @@ class CamTrackDesktopApp:
         pitch = pitch_rad * 180.0 / math.pi
         roll = roll_rad * 180.0 / math.pi
         
+        tai_ns = int(round(target_epoch * 1_000_000_000.0)) + 37_000_000_000
+        snap = self.abu_clock.synthesize_from_tai_ns(tai_ns)
+        
         return {
             "epoch": target_epoch,
+            "tai_ns": tai_ns,
+            "smpte_timecode": snap.smpte_string,
+            "bcd_timecode": snap.bcd_timecode,
+            "subframe_phase": snap.phase,
             "local_x": x,
             "local_y": y,
             "local_z": z,
@@ -2927,13 +2980,26 @@ class CamTrackDesktopApp:
         return (px - rx, py - ry, pz - rz), q_dslr
         
     def get_photo_timestamp(self, p_path):
+        import re
+        p_name = os.path.basename(p_path)
+        # 1. Deterministic AbuScan TAI nanosecond filename token (<SensorID>_<HHMMSSFF>_<TAI_ns>_IMG_<N>.<ext>)
+        tai_match = re.search(r'_(\d{18,20})_', p_name)
+        if tai_match:
+            try:
+                tai_ns = int(tai_match.group(1))
+                if tai_ns > 37_000_000_000:
+                    return (tai_ns - 37_000_000_000) / 1_000_000_000.0
+            except Exception:
+                pass
+
+        # 2. EXIF DateTimeOriginal + SubSecTimeOriginal + 0.5 * ExposureTime (Optical Exposure Midpoint)
         try:
             exif_dict = piexif.load(p_path)
             date_str = None
             if "Exif" in exif_dict and 36867 in exif_dict["Exif"]:
-                date_str = exif_dict["Exif"][36867].decode("utf-8")
+                date_str = exif_dict["Exif"][36867].decode("utf-8", errors="ignore").strip().rstrip("\x00")
             elif "0th" in exif_dict and 306 in exif_dict["0th"]:
-                date_str = exif_dict["0th"][306].decode("utf-8")
+                date_str = exif_dict["0th"][306].decode("utf-8", errors="ignore").strip().rstrip("\x00")
                 
             if date_str:
                 from datetime import datetime
@@ -2942,15 +3008,20 @@ class CamTrackDesktopApp:
                 
                 subsec = 0.0
                 if "Exif" in exif_dict and 37521 in exif_dict["Exif"]:
-                    sub_str = exif_dict["Exif"][37521].decode("utf-8")
+                    sub_str = exif_dict["Exif"][37521].decode("utf-8", errors="ignore").strip().rstrip("\x00")
                     if sub_str.isdigit():
                         subsec = float("0." + sub_str)
-                return epoch_sec + subsec
+                exp_sec = 0.0
+                if "Exif" in exif_dict and 33434 in exif_dict["Exif"]:
+                    exp_val = exif_dict["Exif"][33434]
+                    if isinstance(exp_val, tuple) and len(exp_val) == 2 and exp_val[1] != 0:
+                        exp_sec = float(exp_val[0]) / float(exp_val[1])
+                if exp_sec < 0.0 or exp_sec > 30.0:
+                    exp_sec = 0.0
+                return epoch_sec + subsec + 0.5 * exp_sec
         except Exception:
             pass
             
-        p_name = os.path.basename(p_path)
-        import re
         match = re.search(r'(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})?', p_name)
         if match:
             parts = match.groups()
@@ -2965,6 +3036,180 @@ class CamTrackDesktopApp:
                 pass
                 
         return os.path.getmtime(p_path)
+
+    def solve_slate_flash_offset(self):
+        """
+        Auto-detects the Frame-00 Optical Flash Slate image (brightest center luminance burst)
+        in the selected photo folder and solves the exact sub-millisecond clock offset between
+        the DSLR's EXIF clock and the AbuClock / iOS telemetry log.
+        """
+        photo_dir = self.photo_dir.get()
+        csv_path = self.csv_path.get()
+        if not photo_dir or not os.path.exists(photo_dir):
+            messagebox.showwarning("Slate Calibration", "Please select a valid Image Folder first.")
+            return
+
+        photo_files = sorted([
+            f for f in os.listdir(photo_dir)
+            if f.lower().endswith(('.jpg', '.jpeg', '.tiff', '.png'))
+        ])
+        if not photo_files:
+            messagebox.showwarning("Slate Calibration", "No JPEG/TIFF/PNG images found in folder.")
+            return
+
+        # Scan up to first 25 images to find the brightest Frame-00 Optical Flash Slate image
+        best_file = photo_files[0]
+        best_luma = -1.0
+        for fname in photo_files[:25]:
+            fpath = os.path.join(photo_dir, fname)
+            try:
+                with Image.open(fpath) as im:
+                    thumb = im.convert("L").resize((64, 64))
+                    pixels = list(thumb.getdata())
+                    avg_luma = sum(pixels) / float(len(pixels))
+                    if avg_luma > best_luma:
+                        best_luma = avg_luma
+                        best_file = fname
+            except Exception:
+                continue
+
+        slate_path = os.path.join(photo_dir, best_file)
+        exif_epoch = self.get_photo_timestamp(slate_path)
+
+        # Find nearest Frame-00 boundary in telemetry log (or current session start)
+        target_epoch = exif_epoch
+        if csv_path and os.path.exists(csv_path):
+            telemetry = self.parse_csv(csv_path)
+            if telemetry:
+                # Look for the telemetry sample with frames == 00 nearest to session start
+                frame00_candidates = []
+                for rec in telemetry:
+                    tc = str(rec.get("smpte_timecode", ""))
+                    if tc.endswith(":00") or tc.endswith(";00"):
+                        frame00_candidates.append(rec["epoch"])
+                if frame00_candidates:
+                    target_epoch = min(frame00_candidates, key=lambda e: abs(e - telemetry[0]["epoch"]))
+                else:
+                    target_epoch = round(telemetry[0]["epoch"])
+        else:
+            target_epoch = round(exif_epoch)
+
+        time_diff_hours = round((exif_epoch - target_epoch) / 3600.0)
+        auto_tz_offset = time_diff_hours * 3600.0 if abs(time_diff_hours) >= 1.0 else 0.0
+        residual_offset = target_epoch - (exif_epoch - auto_tz_offset)
+        residual_offset = max(-300.0, min(300.0, residual_offset))
+
+        self.time_offset.set(round(residual_offset, 4))
+        self.time_entry_var.set(f"{residual_offset:+.4f}")
+        self.log(
+            f"[SLATE FLASH CALIBRATION] Detected Frame-00 Slate image '{best_file}' "
+            f"(Luma={best_luma:.1f}/255) -> Solved DSLR Clock Offset: {residual_offset:+.4f}s"
+        )
+        messagebox.showinfo(
+            "Frame-00 Slate Calibration",
+            f"Detected Frame-00 Slate Photo:\n{best_file}\n\n"
+            f"Solved Sub-Millisecond Clock Offset:\n{residual_offset:+.4f} seconds"
+        )
+
+    def open_clapper_slate_window(self):
+        """
+        Opens a high-contrast Abu Clock Digital Clapper Slate window with:
+        - Live SMPTE ST 12-1 / ST 2059-2 Timecode & 32-bit BCD Hex
+        - 64-bit TAI Nanoseconds readout
+        - Frame-00 Optical Flash Marker (entire slate flashes pure white at FF == 00)
+        - 10-segment + continuous sub-frame phase sweep bar (phi in [0.0, 1.0))
+        """
+        slate_win = tk.Toplevel(self.root)
+        slate_win.title("ABU CLOCK // DIGITAL CLAPPER SLATE (SMPTE ST 2059-2)")
+        slate_win.geometry("860x480")
+        slate_win.configure(bg="#05070B")
+
+        header_lbl = tk.Label(
+            slate_win,
+            text="ABU TRACK & SCAN // OPTICAL SYNC CLAPPER SLATE",
+            font=("Consolas", 13, "bold"),
+            bg="#05070B",
+            fg=ACCENT_CYAN,
+        )
+        header_lbl.pack(pady=(18, 4))
+
+        sub_lbl = tk.Label(
+            slate_win,
+            text="FRAME-00 OPTICAL FLASH MARKER ACTIVE (SHUTTER CALIBRATION TARGET)",
+            font=("Consolas", 9, "bold"),
+            bg="#05070B",
+            fg=ACCENT_AMBER,
+        )
+        sub_lbl.pack(pady=(0, 14))
+
+        tc_lbl = tk.Label(
+            slate_win,
+            text="00:00:00;00.00",
+            font=("Consolas", 54, "bold"),
+            bg="#0A101D",
+            fg="#00F0FF",
+            padx=24,
+            pady=14,
+        )
+        tc_lbl.pack(pady=8)
+
+        phase_canvas = tk.Canvas(slate_win, width=720, height=28, bg="#111827", highlightthickness=1, highlightbackground="#1E293B")
+        phase_canvas.pack(pady=12)
+        phase_rect = phase_canvas.create_rectangle(0, 0, 0, 28, fill=ACCENT_CYAN, outline="")
+        for seg in range(1, 10):
+            sx = seg * 72
+            phase_canvas.create_line(sx, 0, sx, 28, fill="#05070B", width=2)
+
+        meta_lbl = tk.Label(
+            slate_win,
+            text="TAI: 0 ns   |   BCD: 0x00000000   |   LOCK: WORKSTATION_MASTER",
+            font=("Consolas", 11, "bold"),
+            bg="#05070B",
+            fg=TEXT_PRIMARY,
+        )
+        meta_lbl.pack(pady=10)
+
+        btn_row = tk.Frame(slate_win, bg="#05070B")
+        btn_row.pack(pady=14)
+        ttk.Button(
+            btn_row,
+            text="DISPATCH SCHEDULE_CAPTURE_AT (+50ms)",
+            style="Action.TButton",
+            command=self.trigger_global_capture_barrier,
+        ).pack(side="left", padx=8, ipadx=10, ipady=6)
+        ttk.Button(
+            btn_row,
+            text="CLOSE SLATE",
+            command=slate_win.destroy,
+        ).pack(side="left", padx=8, ipadx=10, ipady=6)
+
+        def refresh_slate():
+            if not slate_win.winfo_exists():
+                return
+            snap = self.abu_clock.now()
+            is_flash = (snap.frames == 0)
+            bg_col = "#FFFFFF" if is_flash else "#05070B"
+            tc_bg = "#FFFFFF" if is_flash else "#0A101D"
+            tc_fg = "#000000" if is_flash else "#00F0FF"
+            txt_fg = "#000000" if is_flash else TEXT_PRIMARY
+
+            slate_win.configure(bg=bg_col)
+            header_lbl.configure(bg=bg_col, fg="#000000" if is_flash else ACCENT_CYAN)
+            sub_lbl.configure(
+                bg=bg_col,
+                fg="#FF0033" if is_flash else ACCENT_AMBER,
+                text=">>> FRAME-00 OPTICAL SYNC FLASH <<<" if is_flash else "FRAME-00 OPTICAL FLASH MARKER ACTIVE (SHUTTER CALIBRATION TARGET)",
+            )
+            tc_lbl.configure(text=snap.smpte_subframe_string, bg=tc_bg, fg=tc_fg)
+            meta_lbl.configure(
+                bg=bg_col,
+                fg=txt_fg,
+                text=f"TAI: {snap.tai_ns} ns   |   BCD: {snap.bcd_hex}   |   φ={snap.phase:.3f}   |   LOCK: {snap.lock_state}",
+            )
+            phase_canvas.coords(phase_rect, 0, 0, int(snap.phase * 720.0), 28)
+            slate_win.after(16, refresh_slate)
+
+        refresh_slate()
 
     def to_gps_coords(self, base_lat, base_lon, base_alt, dx, dy):
         if base_lat == 0.0 or base_lon == 0.0:
