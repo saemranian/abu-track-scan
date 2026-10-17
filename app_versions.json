@@ -2,11 +2,39 @@
   "desktop": {
     "version": "1.0.1",
     "build": 94,
-    "last_build_time": "2026-06-03 22:39:23"
+    "last_build_time": "2026-06-03 22:39:23",
+    "last_task": "Baseline release (June 3, 2026) prior to 4-part v0.1.0.2 versioning"
   },
   "ios": {
     "version": "0.0.7",
     "build": 94,
-    "last_build_time": "2026-06-03 22:39:23"
-  }
+    "last_build_time": "2026-06-03 22:39:23",
+    "last_task": "Baseline release (June 3, 2026) prior to 4-part v0.0.7.1 versioning"
+  },
+  "ue_plugin": {
+    "version": "0.0.0.0",
+    "build": 0,
+    "last_build_time": "2026-06-03 22:39:23",
+    "last_task": "Untracked baseline (1.0.0) prior to v0.0.0.1 versioning"
+  },
+  "history": [
+    {
+      "timestamp": "2026-06-03 22:39:23",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "1.0.1",
+      "version": "1.0.1",
+      "build": 94,
+      "task": "Baseline Build #94 (Commit e1795b0)"
+    },
+    {
+      "timestamp": "2026-06-03 22:39:23",
+      "component": "ios",
+      "component_label": "iOS App (Abu Track & Scan)",
+      "previous_version": "0.0.7",
+      "version": "0.0.7",
+      "build": 94,
+      "task": "Baseline Build #94 (Commit e1795b0)"
+    }
+  ]
 }
