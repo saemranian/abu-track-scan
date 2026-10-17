@@ -12,10 +12,10 @@
     "last_task": "Phase 3 Step 3.2: Lock 4K RTP H.264/HEVC timestamps to disciplined AbuClock TAI optical exposure midpoint and embed RFC 5285 (0xBEDE) RTP header extension carrying 32-bit BCD timecode and 64-bit TAI nanoseconds"
   },
   "ue_plugin": {
-    "version": "0.0.0.1",
-    "build": 1,
-    "last_build_time": "2026-10-18 01:34:33",
-    "last_task": "Phase 4 Step 4.1: Initialize UE5 Plugin version control (v0.0.0.1) and merge AbuClockUE (UAbuClockTimecodeProvider, UAbuClockCustomTimeStep, FAbuClockRuntimeBridge, AbuClockFFI.h) into LiveLinkAbuTrack"
+    "version": "0.0.0.2",
+    "build": 2,
+    "last_build_time": "2026-10-18 01:36:31",
+    "last_task": "Phase 4 Step 4.2: Upgrade FLiveLinkAbuTrackSource to decode Enriched LiveLink JSON, 29B/37B FreeD (0xD1), 41B SMPTE FreeD-TC (0xD2), and OpenTrackIO (OTrk), stamp CameraFrameData.MetaData.SceneTime with FQualifiedFrameTime + sub-frame phase, and register UE5 node with Abu Clock"
   },
   "history": [
     {
@@ -98,6 +98,15 @@
       "version": "0.0.0.1",
       "build": 1,
       "task": "Phase 4 Step 4.1: Initialize UE5 Plugin version control (v0.0.0.1) and merge AbuClockUE (UAbuClockTimecodeProvider, UAbuClockCustomTimeStep, FAbuClockRuntimeBridge, AbuClockFFI.h) into LiveLinkAbuTrack"
+    },
+    {
+      "timestamp": "2026-10-18 01:36:31",
+      "component": "ue_plugin",
+      "component_label": "UE5 Plugin (LiveLinkAbuTrack)",
+      "previous_version": "0.0.0.1",
+      "version": "0.0.0.2",
+      "build": 2,
+      "task": "Phase 4 Step 4.2: Upgrade FLiveLinkAbuTrackSource to decode Enriched LiveLink JSON, 29B/37B FreeD (0xD1), 41B SMPTE FreeD-TC (0xD2), and OpenTrackIO (OTrk), stamp CameraFrameData.MetaData.SceneTime with FQualifiedFrameTime + sub-frame phase, and register UE5 node with Abu Clock"
     }
   ]
 }
