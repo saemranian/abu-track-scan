@@ -6,10 +6,10 @@
     "last_task": "Step 5.3: Upgrade UDP receiver/forwarder with 41B 0xD2 FreeD-TC, OpenTrackIO timing block, and Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer"
   },
   "ios": {
-    "version": "0.0.7.8",
-    "build": 102,
-    "last_build_time": "2026-10-18 02:35:12",
-    "last_task": "Phase 1 Step 1.2: Redesign ContentView and DashboardView with SF Symbol floating viewport toolbar, Single-Device Viewport Switcher, Horizontal Pro Camera Dial Ribbon, and 3-Card Telemetry Summary Strip"
+    "version": "0.0.7.9",
+    "build": 103,
+    "last_build_time": "2026-10-18 02:39:04",
+    "last_task": "Phase 1 Step 1.3: Redesign SettingsView with 3-way segmented categories (Rig & Optics, Stream & Clock, Space & System), InfoHelpButtons, collapsible drawers, and add WorkflowStepBanners to SessionsView and UEMonitorView"
   },
   "ue_plugin": {
     "version": "0.0.0.2",
@@ -152,6 +152,15 @@
       "version": "0.0.7.8",
       "build": 102,
       "task": "Phase 1 Step 1.2: Redesign ContentView and DashboardView with SF Symbol floating viewport toolbar, Single-Device Viewport Switcher, Horizontal Pro Camera Dial Ribbon, and 3-Card Telemetry Summary Strip"
+    },
+    {
+      "timestamp": "2026-10-18 02:39:04",
+      "component": "ios",
+      "component_label": "iOS App (Abu Track & Scan)",
+      "previous_version": "0.0.7.8",
+      "version": "0.0.7.9",
+      "build": 103,
+      "task": "Phase 1 Step 1.3: Redesign SettingsView with 3-way segmented categories (Rig & Optics, Stream & Clock, Space & System), InfoHelpButtons, collapsible drawers, and add WorkflowStepBanners to SessionsView and UEMonitorView"
     }
   ]
 }

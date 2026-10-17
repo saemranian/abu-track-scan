@@ -7,35 +7,46 @@ struct UEMonitorView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header Title
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("UNREAL ENGINE MONITOR")
-                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                        .foregroundColor(.cyan)
-                    Text("ULTRA-LOW LATENCY WEBRTC PIXEL STREAMING")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.gray)
+            // Header Title + Contextual Help
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "tv.and.mediabox.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(ProTheme.accentCyan)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("UNREAL ENGINE & AR MONITOR")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(ProTheme.textPrimary)
+                        Text("Wireless Director's Return Feed & Pixel Streaming")
+                            .font(.system(size: 9.5, weight: .medium))
+                            .foregroundColor(ProTheme.textSecondary)
+                    }
+                    Spacer()
+                    
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(ProTheme.statusNominal)
+                            .frame(width: 6, height: 6)
+                        Text("READY")
+                            .font(.system(size: 8.5, weight: .black, design: .monospaced))
+                            .foregroundColor(ProTheme.statusNominal)
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(ProTheme.statusNominal.opacity(0.12))
+                    .cornerRadius(5)
+
+                    InfoHelpButton(topic: .ueMonitor)
                 }
-                Spacer()
-                
-                // Status Beacon
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
-                        .shadow(color: .green, radius: 3)
-                    Text("READY")
-                        .font(.system(size: 8, weight: .black, design: .monospaced))
-                        .foregroundColor(.green)
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(4)
+
+                WorkflowStepBanner(
+                    stepsText: "① Start UE5 Pixel Streaming or PC Return Feed  →  ② Enter URL  →  ③ Tap Load",
+                    helpTopic: .ueMonitor
+                )
             }
-            .padding()
-            .background(Color(red: 0.02, green: 0.03, blue: 0.08))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(ProTheme.background)
             
             // Connection panel
             HStack(spacing: 8) {

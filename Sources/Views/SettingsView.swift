@@ -29,854 +29,72 @@ struct SettingsView: View {
     @State private var lensDistortionK1: Double = 0.0
     @State private var lensDistortionK2: Double = 0.0
     
+    // Minimalist Segmented Navigation & Progressive Disclosure State
+    @State private var settingsCategory: Int = 0 // 0 = Rig & Optics, 1 = Stream & Clock, 2 = Space & System
+    @State private var showLidarAlignment: Bool = false
+    @State private var showOriginOverrides: Bool = false
+    
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.02, green: 0.03, blue: 0.08)
+                ProTheme.background
                     .ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: 20) {
-                        
-                        // Section 1: Core System Logs Settings
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Logging Parameters")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                                .padding(.top, 10)
-                            
-                            VStack(spacing: 12) {
-                                Toggle(isOn: $isGPSEnabled) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Enable Absolute GPS")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Text("Toggle off for indoor drift avoidance")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                .onChange(of: isGPSEnabled) { newValue in
-                                    RigSettings.isGPSEnabled = newValue
-                                    locationManager.isGPSEnabled = newValue
-                                }
-                                .tint(.green)
-                                
-                                Divider().background(Color.gray.opacity(0.3))
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text("IMU Sampling Rate")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Spacer()
-                                        Text(String(format: "%.0f Hz", captureRate))
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.cyan)
-                                    }
-                                    
-                                    Slider(value: $captureRate, in: 10...60, step: 1)
-                                        .tint(.cyan)
-                                        .onChange(of: captureRate) { newValue in
-                                            RigSettings.captureRate = newValue
-                                        }
-                                    
-                                    Text("Higher frequencies capture rapid shifts but consume more storage.")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
+                VStack(spacing: 0) {
+                    // Segmented Category Bar (Eliminates 1,000-line scroll fatigue)
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(ProTheme.accentCyan)
+                            Text("SYSTEM SETUP & CALIBRATION")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(ProTheme.textPrimary)
+                            Spacer()
+                            Text(VersionInfo.version)
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundColor(ProTheme.accentCyan)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(ProTheme.cardBackground)
+                                .cornerRadius(6)
                         }
-                        
-                        // Section 2: Pro DSLR / Mirrorless Hot-Shoe Mode Offset
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("DSLR/Mirrorless Rig Calibration")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                            
-                            VStack(alignment: .leading, spacing: 15) {
-                                Text("Set the physical offset between the center of your iPhone's camera sensor and your DSLR's optical CMOS sensor.")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                
-                                HStack(spacing: 12) {
-                                    // X Offset
-                                    OffsetInputField(label: "X Offset (Left/Right)", value: $leverArmX, placeholder: "0.0") {
-                                        saveOffsets()
-                                    }
-                                    
-                                    // Y Offset
-                                    OffsetInputField(label: "Y Offset (Up/Down)", value: $leverArmY, placeholder: "+5.0") {
-                                        saveOffsets()
-                                    }
-                                    
-                                    // Z Offset
-                                    OffsetInputField(label: "Z Offset (Depth)", value: $leverArmZ, placeholder: "+12.0") {
-                                        saveOffsets()
-                                    }
-                                }
-                                
-                                // Mini Graphical Guide
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Image(systemName: "info.circle")
-                                            .foregroundColor(.cyan)
-                                        Text("Measuring Your Rig Guide")
-                                            .font(.caption2)
-                                            .fontWeight(.black)
-                                    }
-                                    .padding(.top, 5)
-                                    
-                                    Text("• X: Positive if phone is offset to the right of lens axis.\n• Y: Positive if phone is mounted higher than lens center.\n• Z: Positive if phone is mounted further forward than DSLR sensor plane.\n• Set to 0.0, 0.0, 0.0 if using the default iPhone camera.")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                        .lineSpacing(4)
-                                }
-                                .padding(.top, 5)
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
+                        .padding(.horizontal, 16)
+
+                        Picker("Setup Category", selection: $settingsCategory) {
+                            Text("🎥 Rig & Optics").tag(0)
+                            Text("📡 Stream & Clock").tag(1)
+                            Text("⚙️ Space & System").tag(2)
                         }
-                        
-                        // Section 2.1: Custom Initial Origin Offset Overrides
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Initial Origin Overrides")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                            
-                            VStack(alignment: .leading, spacing: 15) {
-                                Text("Manually offset or re-orient the tracking origin relative to your physical studio coordinates.")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                
-                                HStack(spacing: 12) {
-                                    // X Origin Offset
-                                    OffsetInputFieldMeters(label: "Origin X (m)", value: $originOffsetX, placeholder: "0.0") {
-                                        saveOffsets()
-                                    }
-                                    
-                                    // Y Origin Offset
-                                    OffsetInputFieldMeters(label: "Origin Y (m)", value: $originOffsetY, placeholder: "0.0") {
-                                        saveOffsets()
-                                    }
-                                    
-                                    // Z Origin Offset
-                                    OffsetInputFieldMeters(label: "Origin Z (m)", value: $originOffsetZ, placeholder: "0.0") {
-                                        saveOffsets()
-                                    }
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Origin Yaw (degrees)")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                    
-                                    HStack {
-                                        TextField("0.0", text: $originOffsetYaw, onCommit: {
-                                            saveOffsets()
-                                        })
-                                        .font(.caption)
-                                        .keyboardType(.numbersAndPunctuation)
-                                        .foregroundColor(.white)
-                                        .multilineTextAlignment(.center)
-                                        
-                                        Text("°")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
-                                    .padding(10)
-                                    .background(Color.black.opacity(0.4))
-                                    .cornerRadius(8)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                                    )
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Image(systemName: "arrow.triangle.branch")
-                                            .foregroundColor(.cyan)
-                                        Text("Coordinate Guidance")
-                                            .font(.caption2)
-                                            .fontWeight(.black)
-                                    }
-                                    .padding(.top, 5)
-                                    
-                                    Text("• X: Shifts the entire tracking trajectory left/right in meters.\n• Y: Shifts the tracking altitude up/down in meters.\n• Z: Shifts the tracking forward/backward in meters.\n• Yaw: Rotates the coordinate system orientation around gravity (Y-axis).")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                        .lineSpacing(4)
-                                }
-                                .padding(.top, 5)
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
-                        }
-                        
-                        // Camera Lens & Distortion Calibration Section
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Camera Lens & Distortion Calibration")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                            
-                            VStack(alignment: .leading, spacing: 15) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Active Camera Lens Selection")
-                                        .font(.footnote)
-                                        .fontWeight(.bold)
-                                    Picker("Lens", selection: $selectedLens) {
-                                        Text("Wide (Main)").tag("Wide")
-                                        Text("Ultra Wide").tag("UltraWide")
-                                        Text("Telephoto").tag("Telephoto")
-                                        Text("Front").tag("Front")
-                                    }
-                                    .pickerStyle(SegmentedPickerStyle())
-                                    Text("Wide Angle is default. Front camera uses TrueDepth sensor where available.")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                Divider().background(Color.gray.opacity(0.3))
-                                
-                                Toggle(isOn: $is4KEnabled) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Enable 4K Recording/Streaming")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Text("Captures native 3840x2160 video (iOS 16+ on Wide lens)")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                .tint(.cyan)
-                                
-                                Divider().background(Color.gray.opacity(0.3))
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Video Encoder Stream Codec")
-                                        .font(.footnote)
-                                        .fontWeight(.bold)
-                                    Picker("Codec", selection: $videoCodec) {
-                                        Text("H.264 (Compatible)").tag("H.264")
-                                        Text("H.265 / HEVC (Light Size)").tag("H.265")
-                                    }
-                                    .pickerStyle(SegmentedPickerStyle())
-                                    Text("H.265 HEVC compresses up to 50% more efficiently, saving network bandwidth.")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                Divider().background(Color.gray.opacity(0.3))
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text("Radial Distortion K1")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Spacer()
-                                        Text(String(format: "%.3f", lensDistortionK1))
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.cyan)
-                                    }
-                                    Slider(value: $lensDistortionK1, in: -0.5...0.5, step: 0.001)
-                                        .tint(.cyan)
-                                    
-                                    HStack {
-                                        Text("Radial Distortion K2")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Spacer()
-                                        Text(String(format: "%.3f", lensDistortionK2))
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.cyan)
-                                    }
-                                    Slider(value: $lensDistortionK2, in: -0.5...0.5, step: 0.001)
-                                        .tint(.cyan)
-                                        
-                                    Text("Adjust coefficients to align point cloud overlays on barrel/pincushion lenses (e.g. Ultra Wide).")
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
-                        }
-                        
-                        // Section 2.2: LiDAR Point Cloud Custom Mapping
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("LiDAR Point Cloud Alignment")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                            
-                            VStack(alignment: .leading, spacing: 15) {
-                                Text("Remap or flip point cloud axes in the 3D viewer to align spatial scans manually.")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                
-                                // X Mapping
-                                HStack {
-                                    Text("LiDAR X Axis:")
-                                        .font(.footnote)
-                                        .fontWeight(.bold)
-                                    Spacer()
-                                    Picker("X Sign", selection: $lidarXSign) {
-                                        Text("+").tag(1.0)
-                                        Text("-").tag(-1.0)
-                                    }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                    Picker("X Source", selection: $lidarXSource) {
-                                        Text("X").tag("X")
-                                        Text("Y").tag("Y")
-                                        Text("Z").tag("Z")
-                                    }.pickerStyle(MenuPickerStyle()).frame(width: 85)
-                                }
-                                
-                                // Y Mapping
-                                HStack {
-                                    Text("LiDAR Y Axis:")
-                                        .font(.footnote)
-                                        .fontWeight(.bold)
-                                    Spacer()
-                                    Picker("Y Sign", selection: $lidarYSign) {
-                                        Text("+").tag(1.0)
-                                        Text("-").tag(-1.0)
-                                    }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                    Picker("Y Source", selection: $lidarYSource) {
-                                        Text("X").tag("X")
-                                        Text("Y").tag("Y")
-                                        Text("Z").tag("Z")
-                                    }.pickerStyle(MenuPickerStyle()).frame(width: 85)
-                                }
-                                
-                                // Z Mapping
-                                HStack {
-                                    Text("LiDAR Z Axis:")
-                                        .font(.footnote)
-                                        .fontWeight(.bold)
-                                    Spacer()
-                                    Picker("Z Sign", selection: $lidarZSign) {
-                                        Text("+").tag(1.0)
-                                        Text("-").tag(-1.0)
-                                    }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                    Picker("Z Source", selection: $lidarZSource) {
-                                        Text("X").tag("X")
-                                        Text("Y").tag("Y")
-                                        Text("Z").tag("Z")
-                                    }.pickerStyle(MenuPickerStyle()).frame(width: 85)
-                                }
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
-                        }
-                        
-                        // Section 2.5: UDP Network Live Streaming
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("UDP Network Live Streaming")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                            
-                            VStack(alignment: .leading, spacing: 15) {
-                                Text("Broadcast real-time positional and rotational tracker metrics directly to your Unreal Engine or FreeD device receiver.")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                
-                                Toggle(isOn: $streamManager.isStreamingEnabled) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Enable UDP Broadcast")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Text("Stream live tracking poses at \(String(format: "%.0f Hz", captureRate))")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                                
-                                Divider()
-                                    .background(Color.gray.opacity(0.3))
-                                
-                                Toggle(isOn: $trackingManager.isLiveVideoStreamingEnabled) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Enable H.264 Video Stream")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Text("Stream live camera frames concurrently over UDP/RTP")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                .toggleStyle(SwitchToggleStyle(tint: .red))
-                                
-                                if trackingManager.isLiveVideoStreamingEnabled {
-                                    HStack {
-                                        Text("Video Stream Port")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Spacer()
-                                        TextField("Port", value: $trackingManager.videoStreamPort, format: .number)
-                                            .keyboardType(.numberPad)
-                                            .multilineTextAlignment(.trailing)
-                                            .font(.footnote)
-                                            .foregroundColor(.cyan)
-                                            .frame(width: 80)
-                                    }
-                                    
-                                    Divider()
-                                        .background(Color.gray.opacity(0.3))
-                                    
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Video Stream Quality")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        
-                                        Picker("Quality", selection: $trackingManager.videoStreamQuality) {
-                                            Text("Low").tag("Low (480p @ 800Kbps)")
-                                            Text("Medium").tag("Medium (540p @ 1.5Mbps)")
-                                            Text("High").tag("High (720p @ 3.0Mbps)")
-                                            Text("Max").tag("Cinematic (1080p @ 8.0Mbps)")
-                                        }
-                                        .pickerStyle(.segmented)
-                                        
-                                        Text("Lower resolutions (Low/Medium) eliminate Wi-Fi congestion. Select High/Max only for fast, direct connections.")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
-                                    
-                                    Divider()
-                                        .background(Color.gray.opacity(0.3))
-                                    
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Diagnostic H.264 Mode")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.orange)
-                                        
-                                        Picker("Diag Level", selection: $trackingManager.videoStreamDiagLevel) {
-                                            Text("Lvl 1").tag(1)
-                                            Text("Lvl 2").tag(2)
-                                            Text("Lvl 3").tag(3)
-                                            Text("Lvl 4").tag(4)
-                                        }
-                                        .pickerStyle(.segmented)
-                                        
-                                        Text(trackingManager.diagLevelDescription(for: trackingManager.videoStreamDiagLevel))
-                                            .font(.caption2)
-                                            .foregroundColor(.orange)
-                                    }
-                                }
-                                
-                                if streamManager.isStreamingEnabled {
-                                    Divider()
-                                        .background(Color.gray.opacity(0.3))
-                                    
-                                    HStack {
-                                        Text("Mobile Device IP")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                        Spacer()
-                                        Text(UDPStreamingManager.getLocalIPAddress())
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.cyan)
-                                    }
-                                    .padding(.vertical, 4)
-                                    
-                                    Toggle(isOn: $streamManager.isBroadcastEnabled) {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Subnet Broadcast Mode")
-                                                .font(.footnote)
-                                                .fontWeight(.bold)
-                                            Text("Broadcasts to all devices (255.255.255.255)")
-                                                .font(.caption2)
-                                                .foregroundColor(.gray)
-                                        }
-                                    }
-                                    .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                                    
-                                    if !streamManager.isBroadcastEnabled {
-                                        VStack(alignment: .leading, spacing: 6) {
-                                            Text("Target IP Address(es)")
-                                                .font(.caption2)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(.gray)
-                                            
-                                            TextField("e.g. 192.168.1.100 or 192.168.1.100, 192.168.1.101", text: $streamManager.streamIP)
-                                                .font(.footnote)
-                                                .padding(10)
-                                                .background(Color(red: 0.08, green: 0.12, blue: 0.22))
-                                                .cornerRadius(8)
-                                                .foregroundColor(.white)
-                                                .keyboardType(.numbersAndPunctuation)
-                                                .autocapitalization(.none)
-                                                .disableAutocorrection(true)
-                                                .onSubmit {
-                                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                                                }
-                                        }
-                                    } else {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Target IP Address")
-                                                .font(.caption2)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(.gray)
-                                            Text("255.255.255.255 (Automatic Broadcast)")
-                                                .font(.footnote)
-                                                .foregroundColor(.cyan)
-                                                .padding(10)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .background(Color(red: 0.08, green: 0.12, blue: 0.22))
-                                                .cornerRadius(8)
-                                        }
-                                    }
-                                    
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Target Port")
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.gray)
-                                        
-                                        TextField("e.g. 8080", text: Binding(
-                                            get: { String(streamManager.streamPort) },
-                                            set: { streamManager.streamPort = Int($0) ?? 8080 }
-                                        ))
-                                        .font(.footnote)
-                                        .padding(10)
-                                        .background(Color(red: 0.08, green: 0.12, blue: 0.22))
-                                        .cornerRadius(8)
-                                        .foregroundColor(.white)
-                                        .keyboardType(.numberPad)
-                                        .onSubmit {
-                                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                                        }
-                                    }
-                                    
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Streaming Protocol")
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.gray)
-                                        
-                                        Picker("Protocol", selection: $streamManager.format) {
-                                            ForEach(StreamingFormat.allCases) { fmt in
-                                                Text(fmt.rawValue).tag(fmt)
-                                            }
-                                        }
-                                        .pickerStyle(SegmentedPickerStyle())
-                                        .padding(.top, 4)
-                                    }
-                                }
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
-                        }
-                        
-                        // Section 2.5: Coordinate Alignment Profile
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Coordinate System Alignment")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                            
-                            VStack(alignment: .leading, spacing: 15) {
-                                Text("Align your iOS motion coordinate axes with your virtual production pipeline (e.g. Unreal Engine, Metashape).")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Pipeline Profile Preset")
-                                        .font(.caption2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.gray)
-                                    
-                                    Picker("Alignment Profile", selection: $streamManager.coordinatePreset) {
-                                        Text("Default (ARKit)").tag("Default (ARKit)")
-                                        Text("Unreal Engine").tag("Unreal Engine")
-                                        Text("Metashape").tag("Metashape")
-                                        Text("Custom").tag("Custom")
-                                    }
-                                    .pickerStyle(SegmentedPickerStyle())
-                                }
-                                
-                                if streamManager.coordinatePreset == "Custom" {
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("Custom Translation Axes Mapping")
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.cyan)
-                                            .padding(.top, 4)
-                                        
-                                        // X Mapping
-                                        HStack {
-                                            Text("Output X Axis:")
-                                                .font(.footnote)
-                                                .fontWeight(.bold)
-                                            Spacer()
-                                            Picker("X Sign", selection: $streamManager.xMapSign) {
-                                                Text("+").tag(1.0)
-                                                Text("-").tag(-1.0)
-                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                            Picker("X Source", selection: $streamManager.xMapSource) {
-                                                Text("X").tag("X")
-                                                Text("Y").tag("Y")
-                                                Text("Z").tag("Z")
-                                            }.pickerStyle(MenuPickerStyle()).frame(width: 85)
-                                        }
-                                        
-                                        // Y Mapping
-                                        HStack {
-                                            Text("Output Y Axis:")
-                                                .font(.footnote)
-                                                .fontWeight(.bold)
-                                            Spacer()
-                                            Picker("Y Sign", selection: $streamManager.yMapSign) {
-                                                Text("+").tag(1.0)
-                                                Text("-").tag(-1.0)
-                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                            Picker("Y Source", selection: $streamManager.yMapSource) {
-                                                Text("X").tag("X")
-                                                Text("Y").tag("Y")
-                                                Text("Z").tag("Z")
-                                            }.pickerStyle(MenuPickerStyle()).frame(width: 85)
-                                        }
-                                        
-                                        // Z Mapping
-                                        HStack {
-                                            Text("Output Z Axis:")
-                                                .font(.footnote)
-                                                .fontWeight(.bold)
-                                            Spacer()
-                                            Picker("Z Sign", selection: $streamManager.zMapSign) {
-                                                Text("+").tag(1.0)
-                                                Text("-").tag(-1.0)
-                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                            Picker("Z Source", selection: $streamManager.zMapSource) {
-                                                Text("X").tag("X")
-                                                Text("Y").tag("Y")
-                                                Text("Z").tag("Z")
-                                            }.pickerStyle(MenuPickerStyle()).frame(width: 85)
-                                        }
-                                        
-                                        Divider().background(Color.gray.opacity(0.3))
-                                        
-                                        Text("Custom Rotation Axes Mapping")
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.cyan)
-                                        
-                                        // Rotation Pitch Mapping
-                                        HStack {
-                                            Text("Output Pitch:")
-                                                .font(.footnote)
-                                                .fontWeight(.bold)
-                                            Spacer()
-                                            Picker("Pitch Sign", selection: $streamManager.pitchMapSign) {
-                                                Text("+").tag(1.0)
-                                                Text("-").tag(-1.0)
-                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                            Picker("Pitch Source", selection: $streamManager.pitchMapSource) {
-                                                Text("Roll").tag("Roll")
-                                                Text("Pitch").tag("Pitch")
-                                                Text("Yaw").tag("Yaw")
-                                            }.pickerStyle(MenuPickerStyle()).frame(width: 95)
-                                        }
-                                        
-                                        // Rotation Yaw Mapping
-                                        HStack {
-                                            Text("Output Yaw:")
-                                                .font(.footnote)
-                                                .fontWeight(.bold)
-                                            Spacer()
-                                            Picker("Yaw Sign", selection: $streamManager.yawMapSign) {
-                                                Text("+").tag(1.0)
-                                                Text("-").tag(-1.0)
-                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                            Picker("Yaw Source", selection: $streamManager.yawMapSource) {
-                                                Text("Roll").tag("Roll")
-                                                Text("Pitch").tag("Pitch")
-                                                Text("Yaw").tag("Yaw")
-                                            }.pickerStyle(MenuPickerStyle()).frame(width: 95)
-                                        }
-                                        
-                                        // Rotation Roll Mapping
-                                        HStack {
-                                            Text("Output Roll:")
-                                                .font(.footnote)
-                                                .fontWeight(.bold)
-                                            Spacer()
-                                            Picker("Roll Sign", selection: $streamManager.rollMapSign) {
-                                                Text("+").tag(1.0)
-                                                Text("-").tag(-1.0)
-                                            }.pickerStyle(SegmentedPickerStyle()).frame(width: 80)
-                                            Picker("Roll Source", selection: $streamManager.rollMapSource) {
-                                                Text("Roll").tag("Roll")
-                                                Text("Pitch").tag("Pitch")
-                                                Text("Yaw").tag("Yaw")
-                                            }.pickerStyle(MenuPickerStyle()).frame(width: 95)
-                                        }
-                                    }
-                                    .padding(.top, 5)
-                                }
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
-                        }
-                        
-                        // Section 3: Hardware Diagnostics info
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Platform Diagnostics")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                            
-                            VStack(alignment: .leading, spacing: 8) {
-                                DiagnosticRow(label: "Device Model", value: "iPhone 16 Pro Max")
-                                DiagnosticRow(label: "Device Local IP", value: UDPStreamingManager.getLocalIPAddress())
-                                DiagnosticRow(label: "LiDAR Hardware", value: "Available")
-                                DiagnosticRow(label: "Barometer Sensor", value: "Supported")
-                                DiagnosticRow(label: "RTK GNSS Provider", value: locationManager.horizontalAccuracy < 1.0 && locationManager.horizontalAccuracy > 0 ? "Bluetooth Sub-Centimeter (RTK)" : "iOS Native (Dual-Frequency)")
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
-                        }
-                        
-                        // Section 4: About Abu Track
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("About Abu Track")
-                                .font(.caption)
-                                .fontWeight(.black)
-                                .foregroundColor(.cyan)
-                                .padding(.horizontal)
-                            
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "info.circle.fill")
-                                        .foregroundColor(.cyan)
-                                        .font(.title3)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Abu Track")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.white)
-                                        Text("Industrial Reality Capture Sync Engine")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
-                                    Spacer()
-                                }
-                                .padding(.bottom, 4)
-                                
-                                Divider().background(Color.gray.opacity(0.3))
-                                
-                                DiagnosticRow(label: "App Version", value: VersionInfo.version)
-                                DiagnosticRow(label: "Build Number", value: VersionInfo.build)
-                                DiagnosticRow(label: "Compile Date", value: VersionInfo.buildTime)
-                                DiagnosticRow(label: "Release State", value: "Active Development")
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
-                            .padding(.bottom, 12)
-                            
-                            // Diagnostics & Troubleshooting Logs Card
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Image(systemName: "doc.text.fill")
-                                        .foregroundColor(.cyan)
-                                        .font(.title3)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("PERSISTENT SYSTEM LOGS")
-                                            .font(.footnote)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.white)
-                                        Text("Enterprise-grade diagnostic logging")
-                                            .font(.caption2)
-                                            .foregroundColor(.gray)
-                                    }
-                                    Spacer()
-                                }
-                                
-                                Divider().background(Color.gray.opacity(0.3))
-                                
-                                Text("If you run into stream connectivity issues or raw hardware scan irregularities, export the persistent local log file for quick troubleshooting.")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                    .padding(.vertical, 2)
-                                
-                                Button(action: {
-                                    // Trigger sharing of the persistent log file
-                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                                       let rootVC = windowScene.windows.first?.rootViewController {
-                                        AppLogger.shared.shareLogFile(from: rootVC, sender: nil)
-                                    }
-                                }) {
-                                    HStack {
-                                        Spacer()
-                                        Image(systemName: "square.and.arrow.up")
-                                        Text("EXPORT LOCAL APP LOGS")
-                                            .fontWeight(.bold)
-                                        Spacer()
-                                    }
-                                    .font(.caption)
-                                    .padding()
-                                    .foregroundColor(.black)
-                                    .background(Color.cyan)
-                                    .cornerRadius(10)
-                                }
-                            }
-                            .padding()
-                            .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .cornerRadius(14)
-                            .padding(.horizontal)
-                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 16)
                     }
-                    .padding(.bottom, 20)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    .padding(.vertical, 10)
+                    .background(Color(red: 0.03, green: 0.04, blue: 0.10))
+
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 16) {
+                            if settingsCategory == 0 {
+                                rigAndOpticsSection
+                            } else if settingsCategory == 1 {
+                                streamAndClockSection
+                            } else {
+                                spaceAndSystemSection
+                            }
+                        }
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        }
                     }
                 }
             }
             .onTapGesture {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
-            .navigationTitle("RIG CALIBRATION")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarHidden(true)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -925,6 +143,571 @@ struct SettingsView: View {
             }
             .onChange(of: lensDistortionK2) { newValue in
                 RigSettings.lensDistortionK2 = newValue
+            }
+        }
+    }
+
+    private func sectionHeader(icon: String, title: String, topic: HelpTopic?) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(ProTheme.accentCyan)
+            Text(title)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundColor(ProTheme.textPrimary)
+            Spacer()
+            if let topic = topic {
+                InfoHelpButton(topic: topic)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Tab 0: Rig & Optics
+
+    private var rigAndOpticsSection: some View {
+        VStack(spacing: 16) {
+            // Card 1: Logging & Sampling
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(icon: "waveform.path.ecg", title: "Sampling & Geolocation", topic: .loggingParams)
+
+                VStack(spacing: 12) {
+                    Toggle(isOn: $isGPSEnabled) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Absolute GNSS / GPS Georeferencing")
+                                .font(.footnote)
+                                .fontWeight(.bold)
+                            Text("Disable indoors to prevent multipath GPS drift")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .onChange(of: isGPSEnabled) { newValue in
+                        RigSettings.isGPSEnabled = newValue
+                        locationManager.isGPSEnabled = newValue
+                    }
+                    .tint(ProTheme.statusNominal)
+
+                    Divider().background(ProTheme.borderSubtle)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Telemetry Capture Rate")
+                                .font(.footnote)
+                                .fontWeight(.bold)
+                            Spacer()
+                            Text(String(format: "%.0f Hz", captureRate))
+                                .font(.system(size: 12, weight: .black, design: .monospaced))
+                                .foregroundColor(ProTheme.accentCyan)
+                        }
+
+                        Slider(value: $captureRate, in: 10...60, step: 1)
+                            .tint(ProTheme.accentCyan)
+                            .onChange(of: captureRate) { newValue in
+                                RigSettings.captureRate = newValue
+                            }
+
+                        HStack(spacing: 8) {
+                            ForEach([15.0, 24.0, 30.0, 60.0], id: \.self) { presetHz in
+                                Button(action: {
+                                    captureRate = presetHz
+                                    RigSettings.captureRate = presetHz
+                                }) {
+                                    Text("\(Int(presetHz)) Hz")
+                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .foregroundColor(captureRate == presetHz ? .black : .white)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(captureRate == presetHz ? ProTheme.accentCyan : Color.white.opacity(0.08))
+                                        .cornerRadius(6)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(14)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
+                .padding(.horizontal)
+            }
+
+            // Card 2: DSLR / Mirrorless Lever-Arm Offsets
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(icon: "ruler.fill", title: "DSLR / Cinema Rig Lever-Arm (cm)", topic: .dslrRigOffsets)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Physical distance from the iPhone Rear Main (1x) lens to your external camera's sensor plane mark (⌀). Leave at 0, 0, 0 for Single-Device mode.")
+                        .font(.caption2)
+                        .foregroundColor(ProTheme.textSecondary)
+
+                    HStack(spacing: 10) {
+                        OffsetInputField(label: "Right (+X)", value: $leverArmX, placeholder: "0.0") { saveOffsets() }
+                        OffsetInputField(label: "Up (+Y)", value: $leverArmY, placeholder: "+5.0") { saveOffsets() }
+                        OffsetInputField(label: "Forward (-Z)", value: $leverArmZ, placeholder: "+12.0") { saveOffsets() }
+                    }
+                }
+                .padding(14)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
+                .padding(.horizontal)
+            }
+
+            // Card 3: Camera Lens & Distortion Calibration
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(icon: "camera.aperture", title: "Camera Lens & Optical Distortion", topic: .cameraOptics)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Active Optical Lens")
+                            .font(.footnote)
+                            .fontWeight(.bold)
+                        Picker("Lens", selection: $selectedLens) {
+                            Text("Wide (1x)").tag("Wide")
+                            Text("Ultra Wide").tag("UltraWide")
+                            Text("Telephoto").tag("Telephoto")
+                            Text("Front (180°)").tag("Front")
+                        }
+                        .pickerStyle(.segmented)
+                        Text("Factory nodal offsets & 180° Front TrueDepth rotation are applied automatically.")
+                            .font(.caption2)
+                            .foregroundColor(ProTheme.textSecondary)
+                    }
+
+                    Divider().background(ProTheme.borderSubtle)
+
+                    Toggle(isOn: $is4KEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("4K UHD Video Capture (3840×2160)")
+                                .font(.footnote)
+                                .fontWeight(.bold)
+                            Text("Hardware-encoded RTP stream with RFC 5285 timecode")
+                                .font(.caption2)
+                                .foregroundColor(ProTheme.textSecondary)
+                        }
+                    }
+                    .tint(ProTheme.accentCyan)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Hardware Video Encoder")
+                            .font(.footnote)
+                            .fontWeight(.bold)
+                        Picker("Codec", selection: $videoCodec) {
+                            Text("H.264 (Universal)").tag("H.264")
+                            Text("H.265 / HEVC (50% Smaller)").tag("H.265")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    Divider().background(ProTheme.borderSubtle)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Radial Distortion K1 / K2")
+                                .font(.footnote)
+                                .fontWeight(.bold)
+                            Spacer()
+                            Text(String(format: "K1: %+.3f  K2: %+.3f", lensDistortionK1, lensDistortionK2))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(ProTheme.accentCyan)
+                        }
+                        Slider(value: $lensDistortionK1, in: -0.5...0.5, step: 0.001)
+                            .tint(ProTheme.accentCyan)
+                        Slider(value: $lensDistortionK2, in: -0.5...0.5, step: 0.001)
+                            .tint(ProTheme.accentCyan)
+                    }
+                }
+                .padding(14)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
+                .padding(.horizontal)
+            }
+        }
+    }
+
+    // MARK: - Tab 1: Stream & Clock
+
+    private var streamAndClockSection: some View {
+        VStack(spacing: 16) {
+            // Card 1: UDP LiveLink / FreeD-TC / OpenTrackIO Streaming
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(icon: "antenna.radiowaves.left.and.right", title: "Live Telemetry & 4K RTP Stream", topic: .udpLiveStream)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Toggle(isOn: $streamManager.isStreamingEnabled) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Enable Live Telemetry Stream")
+                                .font(.footnote)
+                                .fontWeight(.bold)
+                            Text("Streams 6-DOF pose + SMPTE ST 2059-2 timecode at \(Int(captureRate)) Hz")
+                                .font(.caption2)
+                                .foregroundColor(ProTheme.textSecondary)
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: ProTheme.accentCyan))
+
+                    if streamManager.isStreamingEnabled {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Wire Protocol")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(ProTheme.textSecondary)
+
+                            Picker("Protocol", selection: $streamManager.format) {
+                                ForEach(StreamingFormat.allCases) { fmt in
+                                    Text(fmt.rawValue).tag(fmt)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+
+                        Toggle(isOn: $streamManager.isBroadcastEnabled) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("LAN Subnet Broadcast (255.255.255.255)")
+                                    .font(.footnote)
+                                    .fontWeight(.bold)
+                                Text("Disable to target specific PC / UE5 IP addresses")
+                                    .font(.caption2)
+                                    .foregroundColor(ProTheme.textSecondary)
+                            }
+                        }
+                        .toggleStyle(SwitchToggleStyle(tint: ProTheme.accentCyan))
+
+                        HStack(spacing: 10) {
+                            if !streamManager.isBroadcastEnabled {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Target IP")
+                                        .font(.caption2)
+                                        .foregroundColor(ProTheme.textSecondary)
+                                    TextField("192.168.1.100", text: $streamManager.streamIP)
+                                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                        .padding(9)
+                                        .background(ProTheme.surfaceElevated)
+                                        .cornerRadius(8)
+                                        .foregroundColor(.white)
+                                        .keyboardType(.numbersAndPunctuation)
+                                        .autocapitalization(.none)
+                                        .disableAutocorrection(true)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("UDP Port")
+                                    .font(.caption2)
+                                    .foregroundColor(ProTheme.textSecondary)
+                                TextField("8080", text: Binding(
+                                    get: { String(streamManager.streamPort) },
+                                    set: { streamManager.streamPort = Int($0) ?? 8080 }
+                                ))
+                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                .padding(9)
+                                .frame(width: 90)
+                                .background(ProTheme.surfaceElevated)
+                                .cornerRadius(8)
+                                .foregroundColor(ProTheme.accentCyan)
+                                .keyboardType(.numberPad)
+                            }
+                        }
+                    }
+
+                    Divider().background(ProTheme.borderSubtle)
+
+                    Toggle(isOn: $trackingManager.isLiveVideoStreamingEnabled) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Stream RTP Video to PC / UE5")
+                                .font(.footnote)
+                                .fontWeight(.bold)
+                            Text("Carries RFC 5285 (0xBEDE) BCD Timecode & TAI Nanoseconds")
+                                .font(.caption2)
+                                .foregroundColor(ProTheme.textSecondary)
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: ProTheme.statusCritical))
+
+                    if trackingManager.isLiveVideoStreamingEnabled {
+                        HStack {
+                            Text("RTP Video Port")
+                                .font(.footnote)
+                                .fontWeight(.bold)
+                            Spacer()
+                            TextField("5004", value: $trackingManager.videoStreamPort, format: .number)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.trailing)
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundColor(ProTheme.accentCyan)
+                                .frame(width: 80)
+                        }
+
+                        Picker("Quality", selection: $trackingManager.videoStreamQuality) {
+                            Text("Low").tag("Low (480p @ 800Kbps)")
+                            Text("Med").tag("Medium (540p @ 1.5Mbps)")
+                            Text("High").tag("High (720p @ 3.0Mbps)")
+                            Text("1080p").tag("Cinematic (1080p @ 8.0Mbps)")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                }
+                .padding(14)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
+                .padding(.horizontal)
+            }
+
+            // Card 2: Abu Clock Master Synchronization
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(icon: "clock.badge.checkmark.fill", title: "Abu Clock & SMPTE Timecode", topic: .abuClockHud)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    DiagnosticRow(label: "Live SMPTE Timecode", value: AbuClockKitBridge.shared.liveSmpteTimecode)
+                    DiagnosticRow(label: "32-Bit BCD Word", value: AbuClockKitBridge.shared.liveBcdHex)
+                    DiagnosticRow(label: "Kalman PLL Status", value: AbuClockKitBridge.shared.lockState)
+                    DiagnosticRow(label: "Local Device IP", value: UDPStreamingManager.getLocalIPAddress())
+
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        AbuClockKitBridge.shared.discoverAbuClockMaster(completion: nil)
+                    }) {
+                        HStack {
+                            Spacer()
+                            Image(systemName: "dot.radiowaves.left.and.right")
+                            Text("RE-DISCOVER ABU CLOCK MASTER (UDP 50320)")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                            Spacer()
+                        }
+                        .padding(.vertical, 10)
+                        .foregroundColor(.black)
+                        .background(ProTheme.accentCyan)
+                        .cornerRadius(8)
+                    }
+                }
+                .padding(14)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
+                .padding(.horizontal)
+            }
+        }
+    }
+
+    // MARK: - Tab 2: Space & System
+
+    private var spaceAndSystemSection: some View {
+        VStack(spacing: 16) {
+            // Card 1: Coordinate System Preset + Auto-Collapsed Custom Remapping
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(icon: "move.3d", title: "Coordinate System & Axis Alignment", topic: .coordinateSpace)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Select your target 3D pipeline preset. Custom axis remapping opens automatically only when 'Custom' is selected.")
+                        .font(.caption2)
+                        .foregroundColor(ProTheme.textSecondary)
+
+                    Picker("Alignment Profile", selection: $streamManager.coordinatePreset) {
+                        Text("ARKit").tag("Default (ARKit)")
+                        Text("Unreal").tag("Unreal Engine")
+                        Text("Metashape").tag("Metashape")
+                        Text("Custom").tag("Custom")
+                    }
+                    .pickerStyle(.segmented)
+
+                    if streamManager.coordinatePreset == "Custom" {
+                        Divider().background(ProTheme.borderSubtle)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Custom Pose Axis Remapping")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(ProTheme.accentCyan)
+
+                            HStack {
+                                Text("Output X:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("X Sign", selection: $streamManager.xMapSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("X Source", selection: $streamManager.xMapSource) {
+                                    Text("X").tag("X"); Text("Y").tag("Y"); Text("Z").tag("Z")
+                                }.pickerStyle(.menu).frame(width: 80)
+                            }
+                            HStack {
+                                Text("Output Y:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("Y Sign", selection: $streamManager.yMapSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("Y Source", selection: $streamManager.yMapSource) {
+                                    Text("X").tag("X"); Text("Y").tag("Y"); Text("Z").tag("Z")
+                                }.pickerStyle(.menu).frame(width: 80)
+                            }
+                            HStack {
+                                Text("Output Z:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("Z Sign", selection: $streamManager.zMapSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("Z Source", selection: $streamManager.zMapSource) {
+                                    Text("X").tag("X"); Text("Y").tag("Y"); Text("Z").tag("Z")
+                                }.pickerStyle(.menu).frame(width: 80)
+                            }
+                            HStack {
+                                Text("Output Pitch:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("Pitch Sign", selection: $streamManager.pitchMapSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("Pitch Source", selection: $streamManager.pitchMapSource) {
+                                    Text("Roll").tag("Roll"); Text("Pitch").tag("Pitch"); Text("Yaw").tag("Yaw")
+                                }.pickerStyle(.menu).frame(width: 90)
+                            }
+                            HStack {
+                                Text("Output Yaw:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("Yaw Sign", selection: $streamManager.yawMapSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("Yaw Source", selection: $streamManager.yawMapSource) {
+                                    Text("Roll").tag("Roll"); Text("Pitch").tag("Pitch"); Text("Yaw").tag("Yaw")
+                                }.pickerStyle(.menu).frame(width: 90)
+                            }
+                            HStack {
+                                Text("Output Roll:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("Roll Sign", selection: $streamManager.rollMapSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("Roll Source", selection: $streamManager.rollMapSource) {
+                                    Text("Roll").tag("Roll"); Text("Pitch").tag("Pitch"); Text("Yaw").tag("Yaw")
+                                }.pickerStyle(.menu).frame(width: 90)
+                            }
+                        }
+                    }
+
+                    Divider().background(ProTheme.borderSubtle)
+
+                    // Collapsible LiDAR Point Cloud Axis Remap
+                    DisclosureGroup("Advanced LiDAR Point Cloud Axis Remap", isExpanded: $showLidarAlignment) {
+                        VStack(spacing: 10) {
+                            HStack {
+                                Text("LiDAR X:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("X Sign", selection: $lidarXSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("X Source", selection: $lidarXSource) {
+                                    Text("X").tag("X"); Text("Y").tag("Y"); Text("Z").tag("Z")
+                                }.pickerStyle(.menu).frame(width: 80)
+                            }
+                            HStack {
+                                Text("LiDAR Y:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("Y Sign", selection: $lidarYSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("Y Source", selection: $lidarYSource) {
+                                    Text("X").tag("X"); Text("Y").tag("Y"); Text("Z").tag("Z")
+                                }.pickerStyle(.menu).frame(width: 80)
+                            }
+                            HStack {
+                                Text("LiDAR Z:").font(.footnote).fontWeight(.bold)
+                                Spacer()
+                                Picker("Z Sign", selection: $lidarZSign) {
+                                    Text("+").tag(1.0); Text("-").tag(-1.0)
+                                }.pickerStyle(.segmented).frame(width: 75)
+                                Picker("Z Source", selection: $lidarZSource) {
+                                    Text("X").tag("X"); Text("Y").tag("Y"); Text("Z").tag("Z")
+                                }.pickerStyle(.menu).frame(width: 80)
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(ProTheme.textPrimary)
+                    .tint(ProTheme.accentCyan)
+                }
+                .padding(14)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
+                .padding(.horizontal)
+            }
+
+            // Card 2: Collapsible World Origin (0,0,0) Overrides
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(icon: "scope", title: "Stage World Origin Overrides", topic: .originOverrides)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    DisclosureGroup("Configure Stage Survey Origin (X, Y, Z, Yaw)", isExpanded: $showOriginOverrides) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 10) {
+                                OffsetInputFieldMeters(label: "Origin X", value: $originOffsetX, placeholder: "0.0") { saveOffsets() }
+                                OffsetInputFieldMeters(label: "Origin Y", value: $originOffsetY, placeholder: "0.0") { saveOffsets() }
+                                OffsetInputFieldMeters(label: "Origin Z", value: $originOffsetZ, placeholder: "0.0") { saveOffsets() }
+                            }
+                            HStack {
+                                Text("Origin Yaw Offset (°)")
+                                    .font(.caption2)
+                                    .foregroundColor(ProTheme.textSecondary)
+                                Spacer()
+                                TextField("0.0", text: $originOffsetYaw, onCommit: { saveOffsets() })
+                                    .font(.caption)
+                                    .keyboardType(.numbersAndPunctuation)
+                                    .multilineTextAlignment(.trailing)
+                                    .frame(width: 90)
+                                    .padding(8)
+                                    .background(Color.black.opacity(0.4))
+                                    .cornerRadius(6)
+                            }
+                        }
+                        .padding(.top, 10)
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(ProTheme.textPrimary)
+                    .tint(ProTheme.accentCyan)
+                }
+                .padding(14)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
+                .padding(.horizontal)
+            }
+
+            // Card 3: About, Version & Log Export
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(icon: "info.circle.fill", title: "About Abu Track & Scan", topic: nil)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    DiagnosticRow(label: "iOS App Version", value: "\(VersionInfo.version) (Build #\(VersionInfo.build))")
+                    DiagnosticRow(label: "Compiled Timestamp", value: VersionInfo.buildTime)
+                    DiagnosticRow(label: "Local IPv4 Address", value: UDPStreamingManager.getLocalIPAddress())
+                    DiagnosticRow(label: "GNSS Provider", value: locationManager.horizontalAccuracy < 1.0 && locationManager.horizontalAccuracy > 0 ? "RTK Sub-cm" : "Dual-Freq GPS")
+
+                    Button(action: {
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let rootVC = windowScene.windows.first?.rootViewController {
+                            AppLogger.shared.shareLogFile(from: rootVC, sender: nil)
+                        }
+                    }) {
+                        HStack {
+                            Spacer()
+                            Image(systemName: "square.and.arrow.up")
+                            Text("EXPORT DIAGNOSTIC LOGS")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                            Spacer()
+                        }
+                        .padding(.vertical, 10)
+                        .foregroundColor(.black)
+                        .background(ProTheme.accentCyan)
+                        .cornerRadius(8)
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(14)
+                .background(ProTheme.cardBackground)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
+                .padding(.horizontal)
             }
         }
     }

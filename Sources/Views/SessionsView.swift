@@ -30,78 +30,112 @@ struct SessionsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.02, green: 0.03, blue: 0.08)
+                ProTheme.background
                     .ignoresSafeArea()
                 
-                if sessions.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "folder.badge.minus")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray.opacity(0.5))
-                        Text("No capture sessions found")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "folder.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(ProTheme.accentCyan)
+                        Text("RECORDED SESSIONS & EXPORTS")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(ProTheme.textPrimary)
+                        Spacer()
+                        Text("\(sessions.count) Takes")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(ProTheme.accentCyan)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(ProTheme.cardBackground)
+                            .cornerRadius(6)
                     }
-                } else {
-                    List {
-                        ForEach(sessionListItems) { item in
-                            Button(action: {
-                                self.selectedSession = item.rawSession
-                                self.selectedSessionItem = IdentifiableSession(id: item.id, session: item.rawSession)
-                            }) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("Session \(item.id)")
-                                            .font(.footnote)
-                                            .fontWeight(.black)
-                                            .foregroundColor(.white)
-                                        
-                                        HStack(spacing: 12) {
-                                            Label("\(item.entries) pts", systemImage: "circle.grid.3x3.fill")
-                                            Label(item.isGPS ? "GPS+IMU" : "Pure VIO", systemImage: item.isGPS ? "location.fill" : "location.slash")
-                                        }
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                    }
-                                    Spacer()
-                                    
-                                    VStack(alignment: .trailing, spacing: 6) {
-                                        Text(formatDate(item.startTime))
-                                            .font(.caption2)
-                                            .foregroundColor(.cyan)
-                                        Image(systemName: "chevron.right")
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
+                    WorkflowStepBanner(
+                        stepsText: "① Tap a take  →  ② Sync DSLR Photos (SLERP + Slate)  →  ③ Export .abuscan.json / COLMAP",
+                        helpTopic: .sessionsSync
+                    )
+                    .padding(.horizontal, 16)
+
+                    if sessions.isEmpty {
+                        Spacer()
+                        VStack(spacing: 12) {
+                            Image(systemName: "photo.stack")
+                                .font(.system(size: 42))
+                                .foregroundColor(ProTheme.accentCyan.opacity(0.6))
+                            Text("No Recorded Takes Yet")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(ProTheme.textPrimary)
+                            Text("Go to 'Track & Scan' and tap 'START CAPTURE' to record 60Hz VIO poses, LiDAR depth (.PLY/.PTS), and timecode-synced photos.")
+                                .font(.system(size: 12))
+                                .foregroundColor(ProTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 36)
+                        }
+                        Spacer()
+                    } else {
+                        List {
+                            ForEach(sessionListItems) { item in
+                                Button(action: {
+                                    self.selectedSession = item.rawSession
+                                    self.selectedSessionItem = IdentifiableSession(id: item.id, session: item.rawSession)
+                                }) {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text("Session \(item.id)")
+                                                .font(.footnote)
+                                                .fontWeight(.black)
+                                                .foregroundColor(.white)
+                                            
+                                            HStack(spacing: 12) {
+                                                Label("\(item.entries) pts", systemImage: "circle.grid.3x3.fill")
+                                                Label(item.isGPS ? "GPS+IMU" : "Pure VIO", systemImage: item.isGPS ? "location.fill" : "location.slash")
+                                            }
                                             .font(.caption2)
                                             .foregroundColor(.gray)
+                                        }
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing, spacing: 6) {
+                                            Text(formatDate(item.startTime))
+                                                .font(.caption2)
+                                                .foregroundColor(.cyan)
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption2)
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                                .listRowBackground(ProTheme.cardBackground)
+                                .contextMenu {
+                                    Button {
+                                        self.sessionToRename = item.id
+                                        self.renameInputText = item.id
+                                        self.showRenameAlert = true
+                                    } label: {
+                                        Label("Rename Session", systemImage: "pencil")
+                                    }
+                                    
+                                    Button(role: .destructive) {
+                                        if let idx = sessions.firstIndex(where: { ($0["id"] as? String) == item.id }) {
+                                            deleteSession(at: IndexSet(integer: idx))
+                                        }
+                                    } label: {
+                                        Label("Delete Session", systemImage: "trash")
                                     }
                                 }
-                                .padding(.vertical, 4)
                             }
-                            .listRowBackground(Color(red: 0.05, green: 0.08, blue: 0.16))
-                            .contextMenu {
-                                Button {
-                                    self.sessionToRename = item.id
-                                    self.renameInputText = item.id
-                                    self.showRenameAlert = true
-                                } label: {
-                                    Label("Rename Session", systemImage: "pencil")
-                                }
-                                
-                                Button(role: .destructive) {
-                                    if let idx = sessions.firstIndex(where: { ($0["id"] as? String) == item.id }) {
-                                        deleteSession(at: IndexSet(integer: idx))
-                                    }
-                                } label: {
-                                    Label("Delete Session", systemImage: "trash")
-                                }
-                            }
+                            .onDelete(perform: deleteSession)
                         }
-                        .onDelete(perform: deleteSession)
+                        .background(Color.clear)
+                        .scrollContentBackground(.hidden)
                     }
-                    .background(Color.clear)
-                    .scrollContentBackground(.hidden)
                 }
             }
-            .navigationTitle("SESSION LOGS")
+            .navigationBarHidden(true)
             .sheet(item: $selectedSessionItem, onDismiss: {
                 self.selectedSession = nil
             }) { item in
