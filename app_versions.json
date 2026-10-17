@@ -1,9 +1,9 @@
 {
   "desktop": {
-    "version": "0.1.0.5",
-    "build": 98,
-    "last_build_time": "2026-10-18 02:47:58",
-    "last_task": "Phase 2 Step 2.1: Add HoverTooltip, CollapsibleCard, ScrollableSidebarFrame, Segoe UI typography, workflow banners, and reordered icon-driven workspace tabs"
+    "version": "0.1.0.6",
+    "build": 99,
+    "last_build_time": "2026-10-18 02:53:53",
+    "last_task": "Phase 2 Step 2.2: Declutter Live Track and Scan & Sync tabs with ScrollableSidebarFrame, CollapsibleCard drawers, 3D icon toolbar, and hover tooltips on all controls"
   },
   "ios": {
     "version": "0.0.7.9",
@@ -170,6 +170,15 @@
       "version": "0.1.0.5",
       "build": 98,
       "task": "Phase 2 Step 2.1: Add HoverTooltip, CollapsibleCard, ScrollableSidebarFrame, Segoe UI typography, workflow banners, and reordered icon-driven workspace tabs"
+    },
+    {
+      "timestamp": "2026-10-18 02:53:53",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.5",
+      "version": "0.1.0.6",
+      "build": 99,
+      "task": "Phase 2 Step 2.2: Declutter Live Track and Scan & Sync tabs with ScrollableSidebarFrame, CollapsibleCard drawers, 3D icon toolbar, and hover tooltips on all controls"
     }
   ]
 }

@@ -879,78 +879,122 @@ class CamTrackDesktopApp:
         # ----------------- TAB 1: SYNCHRONIZATION INTERFACE -----------------
         self.tab_sync.columnconfigure(0, weight=4) # Left Panel
         self.tab_sync.columnconfigure(1, weight=5) # Right Logs Panel
-        self.tab_sync.rowconfigure(0, weight=1)
+        self.tab_sync.rowconfigure(1, weight=1)
         
-        left_panel = ttk.Frame(self.tab_sync, padding=10)
-        left_panel.grid(row=0, column=0, sticky="nsew")
+        self.create_workflow_banner(
+            self.tab_sync,
+            "① Select DSLR Image Folder & iOS CSV Log   →   ② Set Rig Lever-Arm or Auto-Solve Frame-00 Slate   →   ③ Click Inject EXIF & Export",
+            "Scan & Photo Sync — Georeferencing & 3DGS Workflow",
+            "Interpolates 60Hz–240Hz iOS VIO + GPS + Abu Clock TAI telemetry into external DSLR/Mirrorless photos, applies 6-axis lever-arm/boresight offsets, and exports ready-to-train datasets for Metashape, Postshot (3DGS), COLMAP, and AbuScan.",
+        )
+        
+        self.sync_left_scroll = ScrollableSidebarFrame(self.tab_sync)
+        self.sync_left_scroll.grid(row=1, column=0, sticky="nsew", padx=(0, 6))
+        left_panel = self.sync_left_scroll.inner
         left_panel.columnconfigure(0, weight=1)
-        left_panel.rowconfigure(3, weight=1)
         
         # Title
         title_frame = ttk.Frame(left_panel)
-        title_frame.grid(row=0, column=0, sticky="w", pady=(0, 15))
-        ttk.Label(title_frame, text="ABU TRACK & SCAN // DESKTOP CORE", font=("Consolas", 13, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
+        title_frame.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        ttk.Label(title_frame, text="ABU TRACK & SCAN // DESKTOP WORKSTATION", font=("Segoe UI", 12, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
         
         try:
             from version_info import VERSION, BUILD
-            version_text = f"Version {VERSION} // Build {BUILD} // 3DGS, Metashape & AbuClock ST 2059 Ready"
+            version_text = f"Version {VERSION} (Build #{BUILD}) • 3DGS, Metashape & Abu Clock ST 2059-2 Ready"
         except ImportError:
-            version_text = "Version 0.1.0.3 // Build 96 // 3DGS, Metashape & AbuClock ST 2059 Ready"
+            version_text = "Version 0.1.0.5 • 3DGS, Metashape & Abu Clock ST 2059-2 Ready"
             
-        ttk.Label(title_frame, text=version_text, font=("Consolas", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(title_frame, text=version_text, font=("Segoe UI", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
         
         # Card 1: Data Directories
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
-        io_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        io_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         io_card.columnconfigure(1, weight=1)
         
-        ttk.Label(io_card, text="01 // FILE SYSTEM INTERFACE", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        ttk.Label(io_card, text="📂 01 // SESSION DIRECTORIES & LENS PROFILE", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
         
-        ttk.Label(io_card, text="Image Folder:").grid(row=1, column=0, sticky="w", pady=4)
+        img_lbl = ttk.Label(io_card, text="Image Folder:")
+        img_lbl.grid(row=1, column=0, sticky="w", pady=4)
         photo_entry = ttk.Entry(io_card, textvariable=self.photo_dir)
         photo_entry.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
-        ttk.Button(io_card, text="Browse", command=self.browse_photos).grid(row=1, column=2, pady=4, ipady=2, ipadx=6)
+        photo_btn = ttk.Button(io_card, text="📂 Browse", command=self.browse_photos)
+        photo_btn.grid(row=1, column=2, pady=4, ipady=2, ipadx=6)
+        HoverTooltip(photo_entry, "DSLR / Cinema / iOS Image Folder", "Directory containing JPEG, HEIC, TIFF, or DNG frames to be georeferenced and pose-matched against the Abu Track CSV log.")
         
-        ttk.Label(io_card, text="Telemetry Log:").grid(row=2, column=0, sticky="w", pady=4)
+        csv_lbl = ttk.Label(io_card, text="Telemetry Log:")
+        csv_lbl.grid(row=2, column=0, sticky="w", pady=4)
         csv_entry = ttk.Entry(io_card, textvariable=self.csv_path)
         csv_entry.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
-        ttk.Button(io_card, text="Browse", command=self.browse_csv).grid(row=2, column=2, pady=4, ipady=2, ipadx=6)
+        csv_btn = ttk.Button(io_card, text="📄 Browse", command=self.browse_csv)
+        csv_btn.grid(row=2, column=2, pady=4, ipady=2, ipadx=6)
+        HoverTooltip(csv_entry, "iOS Session Telemetry CSV", "High-rate tracking log recorded by the Abu Track & Scan iOS app (includes TAI nanosecond timestamps, SMPTE timecode, 6DoF pose, and GNSS).")
         
-        ttk.Label(io_card, text="3rd-Party PLY:").grid(row=3, column=0, sticky="w", pady=4)
+        ply_lbl = ttk.Label(io_card, text="Point Cloud PLY:")
+        ply_lbl.grid(row=3, column=0, sticky="w", pady=4)
         ply_entry = ttk.Entry(io_card, textvariable=self.ply_path)
         ply_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
-        ttk.Button(io_card, text="Browse", command=self.browse_ply).grid(row=3, column=2, pady=4, ipady=2, ipadx=6)
+        ply_btn = ttk.Button(io_card, text="🧊 Browse", command=self.browse_ply)
+        ply_btn.grid(row=3, column=2, pady=4, ipady=2, ipadx=6)
+        HoverTooltip(ply_entry, "Optional LiDAR / 3rd-Party PLY Cloud", "Optional external .ply point cloud to merge or auto-discover alongside session LiDAR depth maps.")
         
-        ttk.Label(io_card, text="Lens Profile:").grid(row=4, column=0, sticky="w", pady=4)
+        atlp_lbl = ttk.Label(io_card, text="Lens Profile:")
+        atlp_lbl.grid(row=4, column=0, sticky="w", pady=4)
         atlp_entry = ttk.Entry(io_card, textvariable=self.atlp_path)
         atlp_entry.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
-        ttk.Button(io_card, text="Browse", command=self.browse_atlp).grid(row=4, column=2, pady=4, ipady=2, ipadx=6)
+        atlp_btn = ttk.Button(io_card, text="🎯 Browse", command=self.browse_atlp)
+        atlp_btn.grid(row=4, column=2, pady=4, ipady=2, ipadx=6)
+        HoverTooltip(atlp_entry, "Custom Optical Calibration (.ATLP)", "Optional Brown-Conrady lens calibration profile exported from the 🎯 Lens Lab tab.")
         
-        # Card 2: DSLR Calibrations
-        rig_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
-        rig_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        # Card 2: Collapsible DSLR Rig Lever-Arm & Boresight Offsets
+        self.sync_rig_drawer = CollapsibleCard(
+            left_panel,
+            title="📐 02 // RIG LEVER-ARM & BORESIGHT OFFSETS",
+            badge_text="cm / deg",
+            expanded=True,
+            tooltip_title="Physical Camera Rig Offset Compensation",
+            tooltip_body="Compensates for the physical 3D translation (cm) and angular boresight difference (°) between the iPhone tracker lens and your main DSLR/cinema sensor.",
+        )
+        self.sync_rig_drawer.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        rig_card = self.sync_rig_drawer.body
         rig_card.columnconfigure(0, weight=1)
         rig_card.columnconfigure(1, weight=1)
         rig_card.columnconfigure(2, weight=1)
         
-        ttk.Label(rig_card, text="02 // RIG LEVER-ARM OFFSET (cm)", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
-        self.add_offset_input(rig_card, "dx (Lateral)", self.dx, 0)
-        self.add_offset_input(rig_card, "dy (Vertical)", self.dy, 1)
-        self.add_offset_input(rig_card, "dz (Depth)", self.dz, 2)
+        rig_hdr_row = ttk.Frame(rig_card)
+        rig_hdr_row.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 6))
+        ttk.Label(rig_hdr_row, text="LEVER-ARM TRANSLATION (cm)", style="Muted.TLabel").pack(side="left")
+        diag_btn = tk.Button(
+            rig_hdr_row,
+            text="📐 View Rig Diagram",
+            bg="#13223D",
+            fg=ACCENT_CYAN,
+            activebackground=ACCENT_CYAN,
+            activeforeground=BG_COLOR,
+            font=("Segoe UI", 8, "bold"),
+            bd=0,
+            padx=6,
+            pady=1,
+            cursor="hand2",
+            command=lambda: self.show_quick_guide_modal("Rig Lever-Arm & Boresight Coordinate Guide"),
+        )
+        diag_btn.pack(side="right")
         
-        ttk.Label(rig_card, text="02b // RIG ROTATIONAL BORESIGHT (°)", style="Header.TLabel").grid(row=2, column=0, columnspan=3, sticky="w", pady=(10, 10))
-        self.add_offset_input(rig_card, "rx (Roll)", self.rot_roll, 0, row=3)
-        self.add_offset_input(rig_card, "ry (Pitch)", self.rot_pitch, 1, row=3)
-        self.add_offset_input(rig_card, "rz (Yaw)", self.rot_yaw, 2, row=3)
+        self.add_offset_input(rig_card, "dx (Lateral cm)", self.dx, 0, row=1, tooltip_title="dx — Lateral Rig Offset (cm)", tooltip_body="Horizontal distance from iPhone lens to DSLR sensor (+Right / -Left).")
+        self.add_offset_input(rig_card, "dy (Vertical cm)", self.dy, 1, row=1, tooltip_title="dy — Vertical Rig Offset (cm)", tooltip_body="Vertical height from iPhone lens to DSLR sensor (+Up / -Down).")
+        self.add_offset_input(rig_card, "dz (Depth cm)", self.dz, 2, row=1, tooltip_title="dz — Optical Axis Depth Offset (cm)", tooltip_body="Forward/backward distance along the optical axis (+Forward / -Behind).")
+        
+        ttk.Label(rig_card, text="ROTATIONAL BORESIGHT (°)", style="Muted.TLabel").grid(row=2, column=0, columnspan=3, sticky="w", pady=(8, 4))
+        self.add_offset_input(rig_card, "rx (Roll °)", self.rot_roll, 0, row=3, tooltip_title="rx — Roll Boresight (°)", tooltip_body="Mechanical roll angle difference around the forward optical axis.")
+        self.add_offset_input(rig_card, "ry (Pitch °)", self.rot_pitch, 1, row=3, tooltip_title="ry — Pitch Boresight (°)", tooltip_body="Mechanical tilt/pitch difference between the iPhone mount and DSLR lens.")
+        self.add_offset_input(rig_card, "rz (Yaw °)", self.rot_yaw, 2, row=3, tooltip_title="rz — Yaw Boresight (°)", tooltip_body="Mechanical pan/yaw difference (use 180° when tracking with Rear Main while filming with Front camera).")
         
         # Card 3: Clock Sync + Sync Button
         action_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
         action_card.grid(row=3, column=0, sticky="nsew")
         action_card.columnconfigure(0, weight=1)
-        action_card.rowconfigure(4, weight=1)
         
-        ttk.Label(action_card, text="03 // ABU CLOCK OFFSET & SLATE CALIBRATION", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 2))
-        ttk.Label(action_card, text="Slide or use Frame-00 Optical Flash Slate to lock DSLR shutter to TAI/SMPTE log.", style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 8))
+        ttk.Label(action_card, text="⏱ 03 // ABU CLOCK OFFSET & EXIF INJECTION", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 2))
+        ttk.Label(action_card, text="Align DSLR clock drift manually or auto-solve from Frame-00 Clapper Slate flash.", style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 8))
         
         slider_frame = ttk.Frame(action_card)
         slider_frame.grid(row=2, column=0, sticky="ew", pady=(0, 8))
@@ -958,27 +1002,38 @@ class CamTrackDesktopApp:
         
         slider = ttk.Scale(slider_frame, from_=-300.0, to=300.0, variable=self.time_offset, orient="horizontal")
         slider.grid(row=0, column=0, sticky="ew", padx=(0, 12))
+        HoverTooltip(slider, "Shutter Time Offset (seconds)", "Fine-tune the time difference between DSLR internal EXIF clock and Abu Clock TAI telemetry.")
         
         self.time_entry = ttk.Entry(slider_frame, textvariable=self.time_entry_var, font=("Consolas", 10), justify="center", width=8)
         self.time_entry.grid(row=0, column=1, padx=(8, 2))
         ttk.Label(slider_frame, text="sec", style="Muted.TLabel").grid(row=0, column=2, sticky="w")
         
-        self.slate_solve_btn = ttk.Button(action_card, text="AUTO-SOLVE FRAME-00 SLATE FLASH OFFSET", command=self.solve_slate_flash_offset)
-        self.slate_solve_btn.grid(row=3, column=0, sticky="ew", ipady=5, pady=(2, 4))
+        self.slate_solve_btn = ttk.Button(action_card, text="⚡ Auto-Solve Frame-00 Slate Flash Offset", command=self.solve_slate_flash_offset)
+        self.slate_solve_btn.grid(row=3, column=0, sticky="ew", ipady=5, pady=(2, 6))
+        HoverTooltip(
+            self.slate_solve_btn,
+            "Automatic Frame-00 Optical Slate Solver",
+            "Scans the image folder for the Frame-00 Clapper Slate flash photo and automatically computes the sub-frame time offset against the CSV log.",
+        )
         
-        self.sync_btn = ttk.Button(action_card, text="INJECT EXIF & EXPORT METASHAPE / ABUSCAN / COLMAP", style="Action.TButton", command=self.run_synchronization)
-        self.sync_btn.grid(row=4, column=0, sticky="ew", ipady=10, pady=(4, 0))
+        self.sync_btn = ttk.Button(action_card, text="🚀 INJECT EXIF & EXPORT METASHAPE / ABUSCAN / COLMAP", style="Action.TButton", command=self.run_synchronization)
+        self.sync_btn.grid(row=4, column=0, sticky="ew", ipady=10, pady=(2, 0))
+        HoverTooltip(
+            self.sync_btn,
+            "Run Geodetic EXIF Injection & Multi-Format Export",
+            "Interpolates exact camera pose for every photo, writes GPS/XMP EXIF metadata, loads the 3D Spatial Map, and generates Metashape, COLMAP, and AbuScan manifests.",
+        )
         
         self.progress = ttk.Progressbar(action_card, orient="horizontal", mode="determinate")
         self.progress.grid(row=5, column=0, sticky="ew", pady=(10, 0))
         
         # Right Terminal Logs
-        right_panel = ttk.Frame(self.tab_sync, padding=10)
-        right_panel.grid(row=0, column=1, sticky="nsew")
+        right_panel = ttk.Frame(self.tab_sync, padding=4)
+        right_panel.grid(row=1, column=1, sticky="nsew")
         right_panel.columnconfigure(0, weight=1)
         right_panel.rowconfigure(1, weight=1)
         
-        ttk.Label(right_panel, text="ABU TRACK LOGS & MULTI-INTEGRITY ANALYSIS", font=("Consolas", 11, "bold"), background=BG_COLOR, foreground=ACCENT_CYAN).grid(row=0, column=0, sticky="w", pady=(0, 10))
+        ttk.Label(right_panel, text="🖥 PIPELINE TELEMETRY LOGS & INTEGRITY ANALYSIS", font=("Segoe UI", 10, "bold"), background=BG_COLOR, foreground=ACCENT_CYAN).grid(row=0, column=0, sticky="w", pady=(0, 8))
         
         self.log_box = tk.Text(right_panel, wrap="word", bg=CARD_BG, fg=TEXT_PRIMARY, insertbackground=ACCENT_CYAN, font=("Consolas", 9), bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=ACCENT_CYAN, padx=12, pady=12)
         self.log_box.grid(row=1, column=0, sticky="nsew")
@@ -987,9 +1042,9 @@ class CamTrackDesktopApp:
         scroll.grid(row=1, column=1, sticky="ns")
         self.log_box.configure(yscrollcommand=scroll.set)
         
-        self.log("SYSTEM ACTIVE // ABU TRACK GEODETIC DATA SYNCHRONIZER")
-        self.log("Version: 0.1.0 // OS Platform: Windows")
-        self.log("3DGS & Metashape Processing Workstation integrated...\n")
+        self.log("SYSTEM ACTIVE // ABU TRACK & SCAN GEODETIC SYNCHRONIZER")
+        self.log(f"{version_text}")
+        self.log("Ready for 3DGS, Metashape, RealityScan & Abu Clock ST 2059-2 workflows.\n")
         
         # ----------------- TAB 2: 3D SPATIAL WORKSTATION -----------------
         self.tab_visualizer.columnconfigure(0, weight=5) # 3D Plot Canvas
@@ -1233,233 +1288,297 @@ class CamTrackDesktopApp:
         # ----------------- TAB 4: LIVE TELEMETRY CHECKER -----------------
         self.tab_receiver.columnconfigure(0, weight=4) # Left Controls Panel
         self.tab_receiver.columnconfigure(1, weight=6) # Right Panel
-        # Left Panel
-        rx_left = ttk.Frame(self.tab_receiver, padding=10)
-        rx_left.grid(row=0, column=0, sticky="nsew")
-        rx_left.columnconfigure(0, weight=1)
-        rx_left.rowconfigure(4, weight=1)
+        self.tab_receiver.rowconfigure(1, weight=1)
         
-        # Card 1: Receiver Configuration
+        self.create_workflow_banner(
+            self.tab_receiver,
+            "① Enter PC Local IP on iOS & Click Start Listening   →   ② Optional: Enable UDP Forwarding to UE5   →   ③ Monitor 6DoF Pose, Timecode & 3D Frustum",
+            "Live Track & Stream — Real-Time 6DoF & Virtual Production Hub",
+            "Receives 60Hz–120Hz UDP telemetry & H.264 video from iOS, buffers and smooths network jitter, applies workstation origin & lever-arm overrides, and re-broadcasts Live Link JSON, 41B SMPTE FreeD-TC (0xD2), 29B FreeD, or OpenTrackIO to Unreal Engine 5.",
+        )
+        
+        # Scrollable Left Sidebar so all 5 cards fit on 13"–15" laptop screens without clipping
+        self.rx_left_scroll = ScrollableSidebarFrame(self.tab_receiver)
+        self.rx_left_scroll.grid(row=1, column=0, sticky="nsew", padx=(0, 6))
+        rx_left = self.rx_left_scroll.inner
+        rx_left.columnconfigure(0, weight=1)
+        
+        # Card 1: Receiver Configuration (Always Visible)
         rx_config_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_config_card.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        rx_config_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         rx_config_card.columnconfigure(1, weight=1)
         
-        ttk.Label(rx_config_card, text="01 // UDP LISTENER OPTIONS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        ttk.Label(rx_config_card, text="📡 01 // UDP LISTENER & VIDEO STREAM", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
         
-        ttk.Label(rx_config_card, text="UDP Port Number:").grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Label(rx_config_card, text="UDP Telemetry Port:").grid(row=1, column=0, sticky="w", pady=4)
         port_entry = ttk.Entry(rx_config_card, textvariable=self.receiver_port, width=10)
         port_entry.grid(row=1, column=1, sticky="w", pady=4)
+        HoverTooltip(port_entry, "UDP Telemetry Listener Port", "Local UDP port to receive 6DoF tracking packets from iOS (default: 8080). Must match the Target Port set in the iOS app.")
         
         ttk.Label(rx_config_card, text="H.264 Video Port:").grid(row=2, column=0, sticky="w", pady=4)
         video_port_entry = ttk.Entry(rx_config_card, textvariable=self.video_stream_port, width=10)
         video_port_entry.grid(row=2, column=1, sticky="w", pady=4)
+        HoverTooltip(video_port_entry, "H.264 Live Video Stream Port", "UDP port for receiving low-latency H.264 camera video packets from iOS (default: 8081).")
         
         video_chk = ttk.Checkbutton(rx_config_card, text="Enable H.264 Video Stream", variable=self.is_video_stream_enabled)
-        video_chk.grid(row=3, column=0, columnspan=2, sticky="w", pady=4)
+        video_chk.grid(row=3, column=0, columnspan=2, sticky="w", pady=3)
+        HoverTooltip(video_chk, "Decode Incoming H.264 Camera Feed", "When enabled, decodes the live iOS camera video stream for preview or Spout GPU sharing.")
         
-        spout_chk = ttk.Checkbutton(rx_config_card, text="Enable Spout Sharing", variable=self.is_spout_enabled)
-        spout_chk.grid(row=4, column=0, columnspan=2, sticky="w", pady=4)
+        spout_chk = ttk.Checkbutton(rx_config_card, text="Enable DirectX Spout GPU Sharing", variable=self.is_spout_enabled)
+        spout_chk.grid(row=4, column=0, columnspan=2, sticky="w", pady=3)
+        HoverTooltip(spout_chk, "Zero-Copy Spout Texture Sender", "Shares the decoded iOS camera feed directly to Unreal Engine, TouchDesigner, or OBS via DirectX Spout.")
         
         # Action Buttons
-        self.start_rx_btn = ttk.Button(rx_config_card, text="START LISTENING", command=self.start_receiver)
-        self.start_rx_btn.grid(row=5, column=0, sticky="ew", padx=(0, 2), pady=(8, 0), ipady=4)
+        self.start_rx_btn = ttk.Button(rx_config_card, text="▶ START LISTENING", style="Action.TButton", command=self.start_receiver)
+        self.start_rx_btn.grid(row=5, column=0, sticky="ew", padx=(0, 3), pady=(8, 0), ipady=5)
         
-        self.stop_rx_btn = ttk.Button(rx_config_card, text="STOP", state="disabled", command=self.stop_receiver)
-        self.stop_rx_btn.grid(row=5, column=1, sticky="ew", padx=(2, 0), pady=(8, 0), ipady=4)
+        self.stop_rx_btn = ttk.Button(rx_config_card, text="■ STOP", state="disabled", command=self.stop_receiver)
+        self.stop_rx_btn.grid(row=5, column=1, sticky="ew", padx=(3, 0), pady=(8, 0), ipady=5)
         
-        # Card 1.5: Dynamic UDP Forwarder Server Settings
+        # Card 2: Dynamic UDP Forwarder Server Settings (Always Visible)
         rx_forward_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_forward_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        rx_forward_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         rx_forward_card.columnconfigure(1, weight=1)
         
-        ttk.Label(rx_forward_card, text="02 // DYNAMIC UDP FORWARDER SERVER", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(rx_forward_card, text="🔀 02 // UNREAL / FREED / OPENTRACKIO FORWARDER", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
         
-        forward_chk = ttk.Checkbutton(rx_forward_card, text="Enable Target Forwarding", variable=self.forward_enabled, command=self.toggle_forwarding)
-        forward_chk.grid(row=1, column=0, columnspan=2, sticky="w", pady=4)
+        forward_chk = ttk.Checkbutton(rx_forward_card, text="Enable Target UDP Forwarding", variable=self.forward_enabled, command=self.toggle_forwarding)
+        forward_chk.grid(row=1, column=0, columnspan=2, sticky="w", pady=3)
+        HoverTooltip(forward_chk, "Re-Broadcast Calibrated Telemetry", "Forwards buffered, coordinate-aligned, and lever-arm compensated poses + Abu Clock timecode to Unreal Engine or disguise/vizrt.")
         
         ttk.Label(rx_forward_card, text="Target IP / Host:").grid(row=2, column=0, sticky="w", pady=4)
         host_entry = ttk.Entry(rx_forward_card, textvariable=self.forward_host, width=15)
         host_entry.grid(row=2, column=1, sticky="w", pady=4)
+        HoverTooltip(host_entry, "Destination IP Address", "IP address of the Unreal Engine workstation (use 127.0.0.1 if Unreal Engine is running on this same PC).")
         
         ttk.Label(rx_forward_card, text="Target Port:").grid(row=3, column=0, sticky="w", pady=4)
         tgt_port_entry = ttk.Entry(rx_forward_card, textvariable=self.forward_port, width=10)
         tgt_port_entry.grid(row=3, column=1, sticky="w", pady=4)
+        HoverTooltip(tgt_port_entry, "Destination UDP Port", "UDP port configured in the Unreal Engine Live Link Abu Track Source (default: 8082 when forwarding on same PC, or 8080 on remote PC).")
         
         ttk.Label(rx_forward_card, text="Protocol Format:").grid(row=4, column=0, sticky="w", pady=4)
         proto_combo = ttk.Combobox(rx_forward_card, textvariable=self.forward_protocol, values=["Live Link JSON", "SMPTE FreeD-TC (0xD2 - 41B)", "FreeD Binary", "OpenTrackIO JSON"], state="readonly", width=24)
         proto_combo.grid(row=4, column=1, sticky="w", pady=4)
+        HoverTooltip(
+            proto_combo,
+            "Output Telemetry Protocol",
+            "• Live Link JSON: Full 6DoF + intrinsics + LiDAR + Abu Clock ST 2059 metadata\n"
+            "• SMPTE FreeD-TC (0xD2 - 41B): Extended 41-byte FreeD with 32-bit BCD Timecode & TAI ns\n"
+            "• FreeD Binary: Standard 29-byte 0xD1 broadcast FreeD\n"
+            "• OpenTrackIO JSON: SMPTE RIS OpenTrackIO virtual production payload",
+        )
         
-        # Card 1.7: Workstation Calibration & Offsets
-        rx_offset_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_offset_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        # Card 3: Collapsible Workstation Calibration & Offsets (Collapsed by default to reduce clutter)
+        self.rx_offset_drawer = CollapsibleCard(
+            rx_left,
+            title="📐 03 // WORKSTATION ORIGIN & LEVER-ARM",
+            badge_text="6-Axis + Lever",
+            expanded=False,
+            tooltip_title="Workstation Stage Origin & Lever-Arm Overrides",
+            tooltip_body="Click to expand 6-axis studio floor origin offsets (X, Y, Z, Yaw, Pitch, Roll) and real-time camera lever-arm translation (cm).",
+        )
+        self.rx_offset_drawer.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        rx_offset_card = self.rx_offset_drawer.body
         rx_offset_card.columnconfigure(1, weight=1)
         rx_offset_card.columnconfigure(3, weight=1)
         
-        ttk.Label(rx_offset_card, text="03 // WORKSTATION CALIBRATION & OFFSETS", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
-        
         # Section A: Initial Origin Offsets (6-Axis)
+        ttk.Label(rx_offset_card, text="STAGE ORIGIN OFFSETS (m / deg)", style="Muted.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 4))
+        
         ttk.Label(rx_offset_card, text="Origin X (m):").grid(row=1, column=0, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_x, width=8).grid(row=1, column=1, sticky="w", pady=2)
+        ox_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_x, width=8)
+        ox_ent.grid(row=1, column=1, sticky="w", pady=2)
+        HoverTooltip(ox_ent, "Stage Origin X Offset (m)", "Shifts the world origin along the X axis in meters.")
         
         ttk.Label(rx_offset_card, text="Origin Y (m):").grid(row=1, column=2, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_y, width=8).grid(row=1, column=3, sticky="w", pady=2)
+        oy_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_y, width=8)
+        oy_ent.grid(row=1, column=3, sticky="w", pady=2)
+        HoverTooltip(oy_ent, "Stage Origin Y Offset (m)", "Shifts the world origin along the Y axis in meters.")
         
         ttk.Label(rx_offset_card, text="Origin Z (m):").grid(row=2, column=0, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_z, width=8).grid(row=2, column=1, sticky="w", pady=2)
+        oz_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_z, width=8)
+        oz_ent.grid(row=2, column=1, sticky="w", pady=2)
+        HoverTooltip(oz_ent, "Stage Origin Z Offset (m)", "Shifts the world origin height/depth along the Z axis in meters.")
         
         ttk.Label(rx_offset_card, text="Origin Yaw (°):").grid(row=2, column=2, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_yaw, width=8).grid(row=2, column=3, sticky="w", pady=2)
+        oyaw_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_yaw, width=8)
+        oyaw_ent.grid(row=2, column=3, sticky="w", pady=2)
+        HoverTooltip(oyaw_ent, "Stage Origin Yaw Rotation (°)", "Rotates the entire tracking coordinate system around the vertical axis.")
         
         ttk.Label(rx_offset_card, text="Origin Pitch(°):").grid(row=3, column=0, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_pitch, width=8).grid(row=3, column=1, sticky="w", pady=2)
+        opitch_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_pitch, width=8)
+        opitch_ent.grid(row=3, column=1, sticky="w", pady=2)
         
         ttk.Label(rx_offset_card, text="Origin Roll (°):").grid(row=3, column=2, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_origin_roll, width=8).grid(row=3, column=3, sticky="w", pady=2)
+        oroll_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_roll, width=8)
+        oroll_ent.grid(row=3, column=3, sticky="w", pady=2)
         
         # Separator line
         ttk.Separator(rx_offset_card, orient="horizontal").grid(row=4, column=0, columnspan=4, sticky="ew", pady=6)
         
         # Section B: Camera Lever Arm Offsets
-        ttk.Label(rx_offset_card, text="Lever X (cm):").grid(row=5, column=0, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_x, width=8).grid(row=5, column=1, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="RIG LEVER-ARM OVERRIDE (cm)", style="Muted.TLabel").grid(row=5, column=0, columnspan=4, sticky="w", pady=(0, 4))
         
-        ttk.Label(rx_offset_card, text="Lever Y (cm):").grid(row=5, column=2, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_y, width=8).grid(row=5, column=3, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Lever X (cm):").grid(row=6, column=0, sticky="w", pady=2)
+        lx_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_x, width=8)
+        lx_ent.grid(row=6, column=1, sticky="w", pady=2)
+        HoverTooltip(lx_ent, "Workstation Lever-Arm X (cm)", "Lateral offset from iPhone tracker to main cinema sensor (+Right / -Left).")
         
-        ttk.Label(rx_offset_card, text="Lever Z (cm):").grid(row=6, column=0, sticky="w", pady=2)
-        ttk.Entry(rx_offset_card, textvariable=self.ws_lever_z, width=8).grid(row=6, column=1, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Lever Y (cm):").grid(row=6, column=2, sticky="w", pady=2)
+        ly_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_y, width=8)
+        ly_ent.grid(row=6, column=3, sticky="w", pady=2)
+        HoverTooltip(ly_ent, "Workstation Lever-Arm Y (cm)", "Vertical offset from iPhone tracker to main cinema sensor (+Up / -Down).")
         
-        # Card 1.8: Workstation Coordinate Alignment & Point Cloud Remapping
-        rx_alignment_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_alignment_card.grid(row=3, column=0, sticky="ew", pady=(0, 12))
+        ttk.Label(rx_offset_card, text="Lever Z (cm):").grid(row=7, column=0, sticky="w", pady=2)
+        lz_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_z, width=8)
+        lz_ent.grid(row=7, column=1, sticky="w", pady=2)
+        HoverTooltip(lz_ent, "Workstation Lever-Arm Z (cm)", "Forward/depth offset from iPhone tracker to main cinema nodal point (+Forward / -Behind).")
+        
+        # Card 4: Collapsible Coordinate System & LiDAR Alignment (Collapsed by default with active Preset Badge)
+        self.rx_align_drawer = CollapsibleCard(
+            rx_left,
+            title="🧭 04 // COORDINATE & LIDAR AXIS REMAP",
+            badge_text=f"Preset: {self.pc_align_preset.get()}",
+            expanded=False,
+            tooltip_title="Coordinate Handedness & LiDAR Axis Remapping",
+            tooltip_body="Remaps incoming ARKit (Right-Handed Y-Up) axes to Unreal Engine (Left-Handed Z-Up), Metashape, or custom studio conventions.",
+        )
+        self.rx_align_drawer.grid(row=3, column=0, sticky="ew", pady=(0, 10))
+        rx_alignment_card = self.rx_align_drawer.body
         rx_alignment_card.columnconfigure(1, weight=1)
         rx_alignment_card.columnconfigure(3, weight=1)
         
-        ttk.Label(rx_alignment_card, text="04 // COORDINATE SYSTEM & LIDAR ALIGNMENT", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
-        
         # Preset dropdown
-        ttk.Label(rx_alignment_card, text="Preset Profile:").grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Label(rx_alignment_card, text="Preset Profile:").grid(row=0, column=0, sticky="w", pady=4)
         preset_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_align_preset, values=["Default", "Unreal Engine", "Metashape", "Custom"], state="readonly", width=15)
-        preset_combo.grid(row=1, column=1, columnspan=3, sticky="ew", pady=4)
+        preset_combo.grid(row=0, column=1, columnspan=3, sticky="ew", pady=4)
         preset_combo.bind("<<ComboboxSelected>>", self.on_align_preset_changed)
         
         # Custom position mapping
-        ttk.Label(rx_alignment_card, text="PC Pos X:").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Label(rx_alignment_card, text="PC Pos X:").grid(row=1, column=0, sticky="w", pady=2)
         x_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_x_sign, values=[1, -1], state="readonly", width=3)
-        x_sign_combo.grid(row=2, column=1, sticky="w", pady=2)
+        x_sign_combo.grid(row=1, column=1, sticky="w", pady=2)
         x_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_x_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        x_src_combo.grid(row=2, column=2, sticky="w", pady=2)
+        x_src_combo.grid(row=1, column=2, sticky="w", pady=2)
         
-        ttk.Label(rx_alignment_card, text="PC Pos Y:").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Label(rx_alignment_card, text="PC Pos Y:").grid(row=2, column=0, sticky="w", pady=2)
         y_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_y_sign, values=[1, -1], state="readonly", width=3)
-        y_sign_combo.grid(row=3, column=1, sticky="w", pady=2)
+        y_sign_combo.grid(row=2, column=1, sticky="w", pady=2)
         y_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_y_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        y_src_combo.grid(row=3, column=2, sticky="w", pady=2)
+        y_src_combo.grid(row=2, column=2, sticky="w", pady=2)
         
-        ttk.Label(rx_alignment_card, text="PC Pos Z:").grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Label(rx_alignment_card, text="PC Pos Z:").grid(row=3, column=0, sticky="w", pady=2)
         z_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_z_sign, values=[1, -1], state="readonly", width=3)
-        z_sign_combo.grid(row=4, column=1, sticky="w", pady=2)
+        z_sign_combo.grid(row=3, column=1, sticky="w", pady=2)
         z_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_z_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        z_src_combo.grid(row=4, column=2, sticky="w", pady=2)
+        z_src_combo.grid(row=3, column=2, sticky="w", pady=2)
         
-        ttk.Separator(rx_alignment_card, orient="horizontal").grid(row=5, column=0, columnspan=4, sticky="ew", pady=6)
+        ttk.Separator(rx_alignment_card, orient="horizontal").grid(row=4, column=0, columnspan=4, sticky="ew", pady=6)
         
         # LiDAR Cloud Custom Translation Mapping Heading
-        ttk.Label(rx_alignment_card, text="LiDAR point cloud custom mapping:", font=("Consolas", 8, "bold"), foreground=ACCENT_CYAN).grid(row=6, column=0, columnspan=4, sticky="w", pady=(0, 4))
+        ttk.Label(rx_alignment_card, text="LiDAR Point Cloud Axis Mapping:", style="Muted.TLabel").grid(row=5, column=0, columnspan=4, sticky="w", pady=(0, 4))
         
         # LiDAR X Mapping
-        ttk.Label(rx_alignment_card, text="LiDAR X:").grid(row=7, column=0, sticky="w", pady=2)
+        ttk.Label(rx_alignment_card, text="LiDAR X:").grid(row=6, column=0, sticky="w", pady=2)
         lx_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_x_sign, values=[1, -1], state="readonly", width=3)
-        lx_sign_combo.grid(row=7, column=1, sticky="w", pady=2)
+        lx_sign_combo.grid(row=6, column=1, sticky="w", pady=2)
         lx_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_x_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        lx_src_combo.grid(row=7, column=2, sticky="w", pady=2)
+        lx_src_combo.grid(row=6, column=2, sticky="w", pady=2)
         
         # LiDAR Y Mapping
-        ttk.Label(rx_alignment_card, text="LiDAR Y:").grid(row=8, column=0, sticky="w", pady=2)
+        ttk.Label(rx_alignment_card, text="LiDAR Y:").grid(row=7, column=0, sticky="w", pady=2)
         ly_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_y_sign, values=[1, -1], state="readonly", width=3)
-        ly_sign_combo.grid(row=8, column=1, sticky="w", pady=2)
+        ly_sign_combo.grid(row=7, column=1, sticky="w", pady=2)
         ly_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_y_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        ly_src_combo.grid(row=8, column=2, sticky="w", pady=2)
+        ly_src_combo.grid(row=7, column=2, sticky="w", pady=2)
         
         # LiDAR Z Mapping
-        ttk.Label(rx_alignment_card, text="LiDAR Z:").grid(row=9, column=0, sticky="w", pady=2)
+        ttk.Label(rx_alignment_card, text="LiDAR Z:").grid(row=8, column=0, sticky="w", pady=2)
         lz_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_z_sign, values=[1, -1], state="readonly", width=3)
-        lz_sign_combo.grid(row=9, column=1, sticky="w", pady=2)
+        lz_sign_combo.grid(row=8, column=1, sticky="w", pady=2)
         lz_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_z_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        lz_src_combo.grid(row=9, column=2, sticky="w", pady=2)
+        lz_src_combo.grid(row=8, column=2, sticky="w", pady=2)
         
-        # Card 2: PC Network & Stream Diagnostics
-        rx_diag_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_diag_card.grid(row=4, column=0, sticky="nsew")
+        # Card 5: Collapsible PC Network & Stream Diagnostics (Expanded by default so IP & Hz are visible)
+        local_ips_str = ", ".join(self.get_local_ips())
+        self.rx_diag_drawer = CollapsibleCard(
+            rx_left,
+            title="📊 05 // NETWORK, BUFFER & CLOCK DIAGNOSTICS",
+            badge_text=local_ips_str.split(",")[0] if local_ips_str else "Localhost",
+            expanded=True,
+            tooltip_title="Network Telemetry, Jitter Buffer & Thermal Diagnostics",
+            tooltip_body="Monitors incoming packet rate (Hz), playout buffer smoothing, Abu Clock latency shift, and iPhone thermal state.",
+        )
+        self.rx_diag_drawer.grid(row=4, column=0, sticky="ew", pady=(0, 6))
+        rx_diag_card = self.rx_diag_drawer.body
         rx_diag_card.columnconfigure(1, weight=1)
         
-        ttk.Label(rx_diag_card, text="05 // PC NETWORK DIAGNOSTICS", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
-        
         # Local IP List
-        ttk.Label(rx_diag_card, text="PC Local IP(s):").grid(row=1, column=0, sticky="w", pady=4)
-        ip_label = ttk.Label(rx_diag_card, text=", ".join(self.get_local_ips()), foreground=ACCENT_CYAN, font=("Consolas", 8, "bold"))
-        ip_label.grid(row=1, column=1, sticky="e", pady=4)
+        ttk.Label(rx_diag_card, text="PC Local IP(s):").grid(row=1, column=0, sticky="w", pady=3)
+        ip_label = ttk.Label(rx_diag_card, text=local_ips_str, foreground=ACCENT_CYAN, font=("Consolas", 8, "bold"))
+        ip_label.grid(row=1, column=1, sticky="e", pady=3)
+        HoverTooltip(ip_label, "Workstation Local IPv4 Address(es)", "Enter this IP address inside the iOS app under Setup → Stream & Clock → Target IP.")
         
         # PC System Time
-        ttk.Label(rx_diag_card, text="PC Epoch Time:").grid(row=2, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="PC Epoch Time:").grid(row=2, column=0, sticky="w", pady=3)
         pc_time_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_pc_time_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        pc_time_lbl.grid(row=2, column=1, sticky="e", pady=4)
+        pc_time_lbl.grid(row=2, column=1, sticky="e", pady=3)
         
         # Status
-        ttk.Label(rx_diag_card, text="Receiver State:").grid(row=3, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Receiver State:").grid(row=3, column=0, sticky="w", pady=3)
         self.rx_status_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_status_var, font=("Consolas", 9, "bold"), foreground=TEXT_MUTED)
-        self.rx_status_lbl.grid(row=3, column=1, sticky="e", pady=4)
+        self.rx_status_lbl.grid(row=3, column=1, sticky="e", pady=3)
         
         # Detected Protocol
-        ttk.Label(rx_diag_card, text="Detected Format:").grid(row=4, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Detected Format:").grid(row=4, column=0, sticky="w", pady=3)
         fmt_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_format_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        fmt_lbl.grid(row=4, column=1, sticky="e", pady=4)
+        fmt_lbl.grid(row=4, column=1, sticky="e", pady=3)
         
         # Total Frames
-        ttk.Label(rx_diag_card, text="Frames Received:").grid(row=5, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Frames Received:").grid(row=5, column=0, sticky="w", pady=3)
         frames_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_frames_var, font=("Consolas", 9, "bold"))
-        frames_lbl.grid(row=5, column=1, sticky="e", pady=4)
+        frames_lbl.grid(row=5, column=1, sticky="e", pady=3)
         
         # Real iOS Source Frequency
-        ttk.Label(rx_diag_card, text="Real Source Hz (iOS Lock):").grid(row=6, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Real Source Hz (iOS Lock):").grid(row=6, column=0, sticky="w", pady=3)
         real_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_real_hz_var, foreground=ACCENT_GREEN, font=("Consolas", 9, "bold"))
-        real_hz_lbl.grid(row=6, column=1, sticky="e", pady=4)
+        real_hz_lbl.grid(row=6, column=1, sticky="e", pady=3)
         
         # Buffered Delivery Stable Frequency
-        ttk.Label(rx_diag_card, text="Buffered Delivery (Stable):").grid(row=7, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Buffered Delivery (Stable):").grid(row=7, column=0, sticky="w", pady=3)
         hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_hz_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
-        hz_lbl.grid(row=7, column=1, sticky="e", pady=4)
+        hz_lbl.grid(row=7, column=1, sticky="e", pady=3)
         
         # Raw Network Frequency
-        ttk.Label(rx_diag_card, text="Network Delivery (Raw):").grid(row=8, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Network Delivery (Raw):").grid(row=8, column=0, sticky="w", pady=3)
         raw_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_raw_hz_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        raw_hz_lbl.grid(row=8, column=1, sticky="e", pady=4)
+        raw_hz_lbl.grid(row=8, column=1, sticky="e", pady=3)
         
         # Latency / Time Shift
-        ttk.Label(rx_diag_card, text="Clock Latency Shift:").grid(row=9, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Clock Latency Shift:").grid(row=9, column=0, sticky="w", pady=3)
         latency_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_latency_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
-        latency_lbl.grid(row=9, column=1, sticky="e", pady=4)
+        latency_lbl.grid(row=9, column=1, sticky="e", pady=3)
         
         # Forwarded Hz
-        ttk.Label(rx_diag_card, text="Forwarded Hz:").grid(row=10, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Forwarded Hz:").grid(row=10, column=0, sticky="w", pady=3)
         forward_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.forward_delivery_hz_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        forward_hz_lbl.grid(row=10, column=1, sticky="e", pady=4)
+        forward_hz_lbl.grid(row=10, column=1, sticky="e", pady=3)
         
         # Forwarded Timecode
-        ttk.Label(rx_diag_card, text="Forwarded Timecode:").grid(row=11, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Forwarded Timecode:").grid(row=11, column=0, sticky="w", pady=3)
         forward_tc_lbl = ttk.Label(rx_diag_card, textvariable=self.forward_timecode_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        forward_tc_lbl.grid(row=11, column=1, sticky="e", pady=4)
+        forward_tc_lbl.grid(row=11, column=1, sticky="e", pady=3)
         
         # iPhone Thermal State
-        ttk.Label(rx_diag_card, text="iPhone Thermal State:").grid(row=12, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="iPhone Thermal State:").grid(row=12, column=0, sticky="w", pady=3)
         self.thermal_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_thermal_var, foreground=TEXT_MUTED, font=("Consolas", 9, "bold"))
-        self.thermal_lbl.grid(row=12, column=1, sticky="e", pady=4)
+        self.thermal_lbl.grid(row=12, column=1, sticky="e", pady=3)
         
         # Smoothing Window Slider
-        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=13, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=13, column=0, sticky="w", pady=3)
         
         smoothing_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        smoothing_frame.grid(row=13, column=1, sticky="e", pady=4)
+        smoothing_frame.grid(row=13, column=1, sticky="e", pady=3)
         
         smooth_slider = ttk.Scale(smoothing_frame, from_=0.1, to=5.0, value=1.0, variable=self.receiver_smoothing_sec, command=lambda v: self._update_smoothing_label())
         smooth_slider.pack(side="left", padx=(0, 4))
@@ -1468,114 +1587,123 @@ class CamTrackDesktopApp:
         self.smooth_lbl.pack(side="left")
         
         # Playout Buffer Slider
-        ttk.Label(rx_diag_card, text="Playout Buffer Delay (ms):").grid(row=14, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Playout Buffer Delay (ms):").grid(row=14, column=0, sticky="w", pady=3)
         
         buffer_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        buffer_frame.grid(row=14, column=1, sticky="e", pady=4)
+        buffer_frame.grid(row=14, column=1, sticky="e", pady=3)
         
         buffer_slider = ttk.Scale(buffer_frame, from_=0, to=1000, value=100, variable=self.receiver_buffer_ms, command=lambda v: self._update_buffer_label())
         buffer_slider.pack(side="left", padx=(0, 4))
+        HoverTooltip(buffer_slider, "Jitter Playout Buffer Delay (ms)", "Buffers incoming Wi-Fi packets and releases them at a rock-solid cadence synced to camera shutter timestamps.")
         
         self.buffer_lbl = ttk.Label(buffer_frame, text="100ms", font=("Consolas", 8, "bold"))
         self.buffer_lbl.pack(side="left")
         
         auto_chk = ttk.Checkbutton(buffer_frame, text="Auto-Profile", variable=self.receiver_auto_calibrate)
         auto_chk.pack(side="left", padx=(8, 0))
+        HoverTooltip(auto_chk, "Automatic Network Jitter Profiler", "Automatically adjusts the playout buffer delay based on measured Wi-Fi packet arrival variance.")
         
         # Visual Ping indicator (Canvas)
-        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=15, column=0, sticky="w", pady=4)
+        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=15, column=0, sticky="w", pady=3)
         self.ping_canvas = tk.Canvas(rx_diag_card, width=16, height=16, bg=CARD_BG, highlightthickness=0)
-        self.ping_canvas.grid(row=15, column=1, sticky="e", pady=4)
+        self.ping_canvas.grid(row=15, column=1, sticky="e", pady=3)
         self.ping_light = self.ping_canvas.create_oval(2, 2, 14, 14, fill=FIELD_BG, outline=BORDER_COLOR)
         
         # Right Panel
-        rx_right = ttk.Frame(self.tab_receiver, padding=10)
-        rx_right.grid(row=0, column=1, sticky="nsew")
-        rx_right.rowconfigure(0, weight=3) # Large numerical indicators
-        rx_right.rowconfigure(1, weight=5) # Live 3D Projected Canvas
+        rx_right = ttk.Frame(self.tab_receiver, padding=4)
+        rx_right.grid(row=1, column=1, sticky="nsew")
+        rx_right.columnconfigure(0, weight=1)
+        rx_right.rowconfigure(0, weight=2) # Large numerical indicators
+        rx_right.rowconfigure(1, weight=6) # Live 3D Projected Canvas
         rx_right.rowconfigure(2, weight=2) # Log console
         
         # Card 3: Large Pose Display
-        rx_pose_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
-        rx_pose_card.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+        rx_pose_card = ttk.Frame(rx_right, style="Card.TFrame", padding=10)
+        rx_pose_card.grid(row=0, column=0, sticky="nsew", pady=(0, 8))
         rx_pose_card.columnconfigure(0, weight=1)
         rx_pose_card.columnconfigure(1, weight=1)
         rx_pose_card.rowconfigure(1, weight=1)
         rx_pose_card.rowconfigure(2, weight=1)
-        rx_pose_card.rowconfigure(3, weight=1)
         
-        ttk.Label(rx_pose_card, text="04 // LIVE CAMERA TRACKING POSITION & ORIENTATION", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(rx_pose_card, text="🎯 LIVE 6DoF CAMERA POSE (POSITION & ORIENTATION)", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
         
         # X / Y / Z Positions
-        pos_frame = ttk.LabelFrame(rx_pose_card, text=" POSITION (METERS) ", padding=10)
-        pos_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=6)
+        pos_frame = ttk.LabelFrame(rx_pose_card, text=" POSITION (METERS) ", padding=8)
+        pos_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 4), pady=2)
         pos_frame.columnconfigure(0, weight=1)
         pos_frame.columnconfigure(1, weight=1)
         pos_frame.columnconfigure(2, weight=1)
         
-        ttk.Label(pos_frame, text="X (EAST/LENGTH)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=0, pady=2)
-        self.pos_x_lbl = ttk.Label(pos_frame, textvariable=self.pose_x_var, font=("Consolas", 15, "bold"), foreground=ACCENT_CYAN)
-        self.pos_x_lbl.grid(row=1, column=0, pady=4)
+        ttk.Label(pos_frame, text="X (EAST)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=0, pady=1)
+        self.pos_x_lbl = ttk.Label(pos_frame, textvariable=self.pose_x_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
+        self.pos_x_lbl.grid(row=1, column=0, pady=2)
         
-        ttk.Label(pos_frame, text="Y (NORTH/DEPTH)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=1, pady=2)
-        self.pos_y_lbl = ttk.Label(pos_frame, textvariable=self.pose_y_var, font=("Consolas", 15, "bold"), foreground=ACCENT_CYAN)
-        self.pos_y_lbl.grid(row=1, column=1, pady=4)
+        ttk.Label(pos_frame, text="Y (NORTH)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=1, pady=1)
+        self.pos_y_lbl = ttk.Label(pos_frame, textvariable=self.pose_y_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
+        self.pos_y_lbl.grid(row=1, column=1, pady=2)
         
-        ttk.Label(pos_frame, text="Z (UP/HEIGHT)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=2, pady=2)
-        self.pos_z_lbl = ttk.Label(pos_frame, textvariable=self.pose_z_var, font=("Consolas", 15, "bold"), foreground=ACCENT_CYAN)
-        self.pos_z_lbl.grid(row=1, column=2, pady=4)
+        ttk.Label(pos_frame, text="Z (HEIGHT)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=2, pady=1)
+        self.pos_z_lbl = ttk.Label(pos_frame, textvariable=self.pose_z_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
+        self.pos_z_lbl.grid(row=1, column=2, pady=2)
         
         # Roll / Pitch / Yaw Rotations
-        rot_frame = ttk.LabelFrame(rx_pose_card, text=" ROTATION (EULER DEGREES) ", padding=10)
-        rot_frame.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=6)
+        rot_frame = ttk.LabelFrame(rx_pose_card, text=" ROTATION (EULER DEGREES) ", padding=8)
+        rot_frame.grid(row=1, column=1, sticky="nsew", padx=(4, 0), pady=2)
         rot_frame.columnconfigure(0, weight=1)
         rot_frame.columnconfigure(1, weight=1)
         rot_frame.columnconfigure(2, weight=1)
         
-        ttk.Label(rot_frame, text="ROLL (X AXIS)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=0, pady=2)
-        self.rot_roll_lbl = ttk.Label(rot_frame, textvariable=self.pose_roll_var, font=("Consolas", 15, "bold"), foreground=ACCENT_AMBER)
-        self.rot_roll_lbl.grid(row=1, column=0, pady=4)
+        ttk.Label(rot_frame, text="ROLL (X°)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=0, pady=1)
+        self.rot_roll_lbl = ttk.Label(rot_frame, textvariable=self.pose_roll_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
+        self.rot_roll_lbl.grid(row=1, column=0, pady=2)
         
-        ttk.Label(rot_frame, text="PITCH (Y AXIS)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=1, pady=2)
-        self.rot_pitch_lbl = ttk.Label(rot_frame, textvariable=self.pose_pitch_var, font=("Consolas", 15, "bold"), foreground=ACCENT_AMBER)
-        self.rot_pitch_lbl.grid(row=1, column=1, pady=4)
+        ttk.Label(rot_frame, text="PITCH (Y°)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=1, pady=1)
+        self.rot_pitch_lbl = ttk.Label(rot_frame, textvariable=self.pose_pitch_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
+        self.rot_pitch_lbl.grid(row=1, column=1, pady=2)
         
-        ttk.Label(rot_frame, text="YAW (Z AXIS)", font=("Consolas", 8), foreground=TEXT_MUTED).grid(row=0, column=2, pady=2)
-        self.rot_yaw_lbl = ttk.Label(rot_frame, textvariable=self.pose_yaw_var, font=("Consolas", 15, "bold"), foreground=ACCENT_AMBER)
-        self.rot_yaw_lbl.grid(row=1, column=2, pady=4)
+        ttk.Label(rot_frame, text="YAW (Z°)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=2, pady=1)
+        self.rot_yaw_lbl = ttk.Label(rot_frame, textvariable=self.pose_yaw_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
+        self.rot_yaw_lbl.grid(row=1, column=2, pady=2)
         
         # Card 3.5: Workstation Live 3D Projected Canvas
-        rx_canvas_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
-        rx_canvas_card.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+        rx_canvas_card = ttk.Frame(rx_right, style="Card.TFrame", padding=10)
+        rx_canvas_card.grid(row=1, column=0, sticky="nsew", pady=(0, 8))
         rx_canvas_card.columnconfigure(0, weight=1)
         rx_canvas_card.rowconfigure(1, weight=1)
         
         toolbar = ttk.Frame(rx_canvas_card, style="Card.TFrame")
         toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 6))
         
-        ttk.Label(toolbar, text="05 // LIVE 3D CANVAS MONITOR", style="Header.TLabel").pack(side="left")
+        ttk.Label(toolbar, text="🕸 LIVE 3D STAGE VIEWPORT", style="Header.TLabel").pack(side="left")
         
-        clear_btn = ttk.Button(toolbar, text="CLEAR", command=self.clear_live_data, width=7)
+        clear_btn = ttk.Button(toolbar, text="🗑 Clear", command=self.clear_live_data, width=8)
         clear_btn.pack(side="right", padx=(4, 0))
+        HoverTooltip(clear_btn, "Clear Trajectory & Point Cloud", "Clears the accumulated 3D camera path and LiDAR point cloud from the viewport.")
         
-        reset_btn = ttk.Button(toolbar, text="RESET", command=self.reset_live_view, width=7)
+        reset_btn = ttk.Button(toolbar, text="🎯 Reset", command=self.reset_live_view, width=8)
         reset_btn.pack(side="right", padx=(4, 0))
+        HoverTooltip(reset_btn, "Reset 3D Camera View", "Resets orbit angles, pan offset, and zoom level (or double-left-click anywhere on the 3D canvas).")
         
-        points_chk = ttk.Checkbutton(toolbar, text="LiDAR", variable=self.live_show_points, command=self.redraw_live_3d_canvas)
-        points_chk.pack(side="right", padx=(4, 0))
+        points_chk = ttk.Checkbutton(toolbar, text="🧊 LiDAR", variable=self.live_show_points, command=self.redraw_live_3d_canvas)
+        points_chk.pack(side="right", padx=(6, 0))
+        HoverTooltip(points_chk, "Toggle Live LiDAR Point Cloud", "Show or hide real-time 3D LiDAR depth points streamed from the iOS scanner.")
         
-        path_chk = ttk.Checkbutton(toolbar, text="Path", variable=self.live_show_path, command=self.redraw_live_3d_canvas)
-        path_chk.pack(side="right", padx=(4, 0))
+        path_chk = ttk.Checkbutton(toolbar, text="〰 Path", variable=self.live_show_path, command=self.redraw_live_3d_canvas)
+        path_chk.pack(side="right", padx=(6, 0))
+        HoverTooltip(path_chk, "Toggle Camera Trajectory Ribbon", "Show or hide the historical 3D motion path of the tracked camera.")
         
-        follow_chk = ttk.Checkbutton(toolbar, text="Follow", variable=self.live_follow, command=self.redraw_live_3d_canvas)
-        follow_chk.pack(side="right", padx=(4, 0))
+        follow_chk = ttk.Checkbutton(toolbar, text="📍 Follow", variable=self.live_follow, command=self.redraw_live_3d_canvas)
+        follow_chk.pack(side="right", padx=(6, 0))
+        HoverTooltip(follow_chk, "Lock Orbit Target to Active Camera", "Automatically centers the 3D viewport pivot on the live camera frustum.")
         
-        edit_origin_chk = ttk.Checkbutton(toolbar, text="Edit Origin", variable=self.live_edit_origin, command=self.redraw_live_3d_canvas)
-        edit_origin_chk.pack(side="right", padx=(4, 0))
+        edit_origin_chk = ttk.Checkbutton(toolbar, text="✥ Origin", variable=self.live_edit_origin, command=self.redraw_live_3d_canvas)
+        edit_origin_chk.pack(side="right", padx=(6, 0))
+        HoverTooltip(edit_origin_chk, "Interactive Stage Origin Gizmo", "Enable interactive 3D gizmo handles to drag or rotate the stage world origin directly in the viewport.")
         
         self.live_view_mode_combo = ttk.Combobox(toolbar, textvariable=self.live_view_mode, values=["Orbit", "Cockpit"], state="readonly", width=8)
         self.live_view_mode_combo.pack(side="right", padx=(4, 4))
         self.live_view_mode_combo.bind("<<ComboboxSelected>>", lambda e: self.redraw_live_3d_canvas())
+        HoverTooltip(self.live_view_mode_combo, "Viewport Camera Mode", "Switch between external 3rd-person Orbit view and 1st-person Camera Cockpit POV.")
         
         self.live_canvas = tk.Canvas(rx_canvas_card, bg=BG_COLOR, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
         self.live_canvas.grid(row=1, column=0, sticky="nsew")
@@ -1590,12 +1718,12 @@ class CamTrackDesktopApp:
         self.live_canvas.bind("<Double-Button-1>", lambda e: self.reset_live_view())
         
         # Card 4: Console
-        rx_console_card = ttk.Frame(rx_right, style="Card.TFrame", padding=12)
+        rx_console_card = ttk.Frame(rx_right, style="Card.TFrame", padding=10)
         rx_console_card.grid(row=2, column=0, sticky="nsew")
         rx_console_card.columnconfigure(0, weight=1)
         rx_console_card.rowconfigure(1, weight=1)
         
-        ttk.Label(rx_console_card, text="06 // LIVE TRACKING STREAM LOG CONSOLE (LAST 15 FRAMES)", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
+        ttk.Label(rx_console_card, text="🖥 LIVE STREAM PACKET LOG (LAST 15 FRAMES)", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 4))
         
         self.rx_console = tk.Text(rx_console_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 8), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
         self.rx_console.grid(row=1, column=0, sticky="nsew")
@@ -3353,6 +3481,8 @@ class CamTrackDesktopApp:
 
     def on_align_preset_changed(self, *args):
         preset = self.pc_align_preset.get()
+        if hasattr(self, "rx_align_drawer"):
+            self.rx_align_drawer.set_badge(f"Preset: {preset}")
         if preset == "Default":
             self.pc_x_sign.set(1)
             self.pc_x_src.set("X")
