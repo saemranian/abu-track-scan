@@ -1,4 +1,4 @@
 # Generated automatically by build_version_tracker.py. Do not edit.
-VERSION = "1.0.1"
-BUILD = 94
-BUILD_TIME = "2026-06-03 22:39:23"
+VERSION = "0.1.0.2"
+BUILD = 95
+BUILD_TIME = "2026-10-18 01:40:19"

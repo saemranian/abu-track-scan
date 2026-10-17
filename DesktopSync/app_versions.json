@@ -1,9 +1,9 @@
 {
   "desktop": {
-    "version": "1.0.1",
-    "build": 94,
-    "last_build_time": "2026-06-03 22:39:23",
-    "last_task": "Baseline release (June 3, 2026) prior to 4-part v0.1.0.2 versioning"
+    "version": "0.1.0.2",
+    "build": 95,
+    "last_build_time": "2026-10-18 01:40:19",
+    "last_task": "Phase 5 Step 5.1: Create DesktopSync/abu_clock_bridge.py (FFI/Kalman PLL + UDP 50320 Stratum-1 SNTP/Discovery responder + SCHEDULE_CAPTURE_AT barrier trigger) and integrate persistent Master SMPTE Timecode & Ecosystem Status Bar in camtrack_desktop_gui.py"
   },
   "ios": {
     "version": "0.0.7.6",
@@ -107,6 +107,15 @@
       "version": "0.0.0.2",
       "build": 2,
       "task": "Phase 4 Step 4.2: Upgrade FLiveLinkAbuTrackSource to decode Enriched LiveLink JSON, 29B/37B FreeD (0xD1), 41B SMPTE FreeD-TC (0xD2), and OpenTrackIO (OTrk), stamp CameraFrameData.MetaData.SceneTime with FQualifiedFrameTime + sub-frame phase, and register UE5 node with Abu Clock"
+    },
+    {
+      "timestamp": "2026-10-18 01:40:19",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "1.0.1",
+      "version": "0.1.0.2",
+      "build": 95,
+      "task": "Phase 5 Step 5.1: Create DesktopSync/abu_clock_bridge.py (FFI/Kalman PLL + UDP 50320 Stratum-1 SNTP/Discovery responder + SCHEDULE_CAPTURE_AT barrier trigger) and integrate persistent Master SMPTE Timecode & Ecosystem Status Bar in camtrack_desktop_gui.py"
     }
   ]
 }

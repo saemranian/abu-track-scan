@@ -178,15 +178,26 @@ class CamTrackDesktopApp:
     def __init__(self, root):
         self.root = root
         
+        # Initialize Abu Clock Master Timing Bridge (FFI / Daemon / UDP 50320 SNTP + Discovery)
+        from abu_clock_bridge import AbuClockBridge
+        self.abu_clock = AbuClockBridge.instance()
+        self.abu_clock_tc_var = tk.StringVar(value="00:00:00;00.00")
+        self.abu_clock_bcd_var = tk.StringVar(value="BCD: 0x00000000")
+        self.abu_clock_tai_var = tk.StringVar(value="TAI: 0 ns")
+        self.abu_clock_lock_var = tk.StringVar(value="WORKSTATION_MASTER")
+        self.abu_clock_fps_var = tk.StringVar(value="29.97 DF")
+        self.abu_clock_nodes_var = tk.StringVar(value="NODES: 0")
+        self.abu_clock_barrier_var = tk.StringVar(value="BARRIER: Idle")
+        
         # Load versioning information dynamically
         try:
             from version_info import VERSION, BUILD, BUILD_TIME
             title_suffix = f" (v{VERSION} Build {BUILD} - {BUILD_TIME})"
         except ImportError:
-            title_suffix = " (v1.0.1 Build 52)"
+            title_suffix = " (v0.1.0.2 Build 95)"
             
-        self.root.title(f"ABU TRACK // 3DGS & METASHAPE PROCESSING SUITE{title_suffix}")
-        self.root.geometry("1100x760")
+        self.root.title(f"ABU TRACK & SCAN // 3DGS, METASHAPE & ABU CLOCK SUITE{title_suffix}")
+        self.root.geometry("1180x800")
         self.root.configure(bg=BG_COLOR)
         
         # State variables
@@ -412,6 +423,54 @@ class CamTrackDesktopApp:
         style.configure("Horizontal.TProgressbar", thickness=8, troughcolor=BG_COLOR, background=ACCENT_CYAN, borderwidth=0)
         
     def build_ui(self):
+        # Persistent Top Abu Clock Master Timecode & Ecosystem Status Bar
+        self.clock_bar = tk.Frame(self.root, bg="#080C14", highlightthickness=1, highlightbackground="#1B2A4A", padx=12, pady=6)
+        self.clock_bar.pack(fill="x", side="top")
+        
+        # Left: Lock Status Indicator + Master Label
+        self.clock_led_canvas = tk.Canvas(self.clock_bar, width=12, height=12, bg="#080C14", highlightthickness=0)
+        self.clock_led_canvas.pack(side="left", padx=(0, 6))
+        self.clock_led_dot = self.clock_led_canvas.create_oval(2, 2, 10, 10, fill=ACCENT_GREEN, outline="")
+        
+        tk.Label(self.clock_bar, text="ABU CLOCK ST 2059:", bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 9, "bold")).pack(side="left", padx=(0, 4))
+        self.clock_lock_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_lock_var, bg="#080C14", fg=ACCENT_GREEN, font=("Consolas", 9, "bold"))
+        self.clock_lock_lbl.pack(side="left", padx=(0, 14))
+        
+        # Center-Left: Live SMPTE Timecode Readout + Sub-frame Phase Bar
+        self.clock_tc_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tc_var, bg="#0D1524", fg=ACCENT_CYAN, font=("Consolas", 13, "bold"), padx=10, pady=2)
+        self.clock_tc_lbl.pack(side="left", padx=(0, 8))
+        
+        phase_col = tk.Frame(self.clock_bar, bg="#080C14")
+        phase_col.pack(side="left", padx=(0, 12))
+        self.clock_bcd_lbl = tk.Label(phase_col, textvariable=self.abu_clock_bcd_var, bg="#080C14", fg=ACCENT_AMBER, font=("Consolas", 8, "bold"))
+        self.clock_bcd_lbl.pack(anchor="w")
+        self.clock_phase_canvas = tk.Canvas(phase_col, width=110, height=6, bg="#131B2E", highlightthickness=0)
+        self.clock_phase_canvas.pack(anchor="w", pady=(2, 0))
+        self.clock_phase_rect = self.clock_phase_canvas.create_rectangle(0, 0, 0, 6, fill=ACCENT_CYAN, outline="")
+        
+        self.clock_tai_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tai_var, bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 8))
+        self.clock_tai_lbl.pack(side="left", padx=(0, 12))
+        
+        self.clock_nodes_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_nodes_var, bg="#080C14", fg=ACCENT_GREEN, font=("Consolas", 8, "bold"))
+        self.clock_nodes_lbl.pack(side="left", padx=(0, 10))
+        
+        # Right: FPS Selector + Barrier Trigger & Digital Clapper Slate Buttons
+        if hasattr(self, "open_clapper_slate_window"):
+            slate_cmd = self.open_clapper_slate_window
+        else:
+            slate_cmd = lambda: None
+        self.slate_top_btn = ttk.Button(self.clock_bar, text="CLAPPER SLATE", command=slate_cmd)
+        self.slate_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
+        
+        self.barrier_top_btn = ttk.Button(self.clock_bar, text="TRIGGER BARRIER (+50ms)", style="Action.TButton", command=self.trigger_global_capture_barrier)
+        self.barrier_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
+        
+        fps_options = ["23.976", "24", "25", "29.97 DF", "29.97 NDF", "30", "50", "59.94 DF", "60"]
+        self.clock_fps_combo = ttk.Combobox(self.clock_bar, textvariable=self.abu_clock_fps_var, values=fps_options, state="readonly", width=10)
+        self.clock_fps_combo.pack(side="right", padx=(4, 6))
+        self.clock_fps_combo.bind("<<ComboboxSelected>>", lambda _e: self.abu_clock.set_frame_rate(self.abu_clock_fps_var.get()))
+        tk.Label(self.clock_bar, text="FPS:", bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 8, "bold")).pack(side="right")
+
         # Notebook Tabbed System
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
@@ -3290,10 +3349,36 @@ class CamTrackDesktopApp:
             now = time.time()
             time_str = time.strftime('%H:%M:%S', time.localtime(now))
             ms = int((now % 1.0) * 1000)
-            self.receiver_pc_time_var.set(f"{time_str}.{ms:03d} ({now:.3f})")
+            snap = self.abu_clock.now()
+            self.receiver_pc_time_var.set(f"{time_str}.{ms:03d} | TC {snap.smpte_subframe_string}")
+            self.abu_clock_tc_var.set(snap.smpte_subframe_string)
+            self.abu_clock_bcd_var.set(f"BCD: {snap.bcd_hex} | φ={snap.phase:.2f}")
+            self.abu_clock_tai_var.set(f"TAI: {snap.tai_ns} ns")
+            self.abu_clock_lock_var.set(snap.lock_state)
+            self.abu_clock_nodes_var.set(f"NODES: {len(self.abu_clock.discovered_nodes)}")
+            if hasattr(self, "clock_phase_canvas") and hasattr(self, "clock_phase_rect"):
+                bar_w = int(max(0.0, min(1.0, snap.phase)) * 110.0)
+                self.clock_phase_canvas.coords(self.clock_phase_rect, 0, 0, bar_w, 6)
             self.root.after(33, self.update_pc_local_time)
         except Exception:
-            pass
+            try:
+                self.root.after(33, self.update_pc_local_time)
+            except Exception:
+                pass
+
+    def trigger_global_capture_barrier(self):
+        try:
+            info = self.abu_clock.schedule_capture_barrier(lead_time_ms=50)
+            msg = (
+                f"[ABU CLOCK BARRIER] Dispatched SCHEDULE_CAPTURE_AT #{info['sequence_id']} "
+                f"-> Target TC {info['target_smpte']} (TAI {info['target_tai_ns']} ns, +{info['lead_time_ms']}ms) "
+                f"to {len(info['destinations'])} node(s)"
+            )
+            self.log(msg)
+            if hasattr(self, "rx_log"):
+                self.rx_log(msg)
+        except Exception as e:
+            logger.error(f"Failed to dispatch SCHEDULE_CAPTURE_AT barrier: {e}")
 
     def start_receiver(self):
         if self.receiver_running:
