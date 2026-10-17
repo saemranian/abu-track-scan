@@ -6,10 +6,10 @@
     "last_task": "Step 5.3: Upgrade UDP receiver/forwarder with 41B 0xD2 FreeD-TC, OpenTrackIO timing block, and Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer"
   },
   "ios": {
-    "version": "0.0.7.6",
-    "build": 100,
-    "last_build_time": "2026-10-18 01:31:22",
-    "last_task": "Phase 3 Step 3.2: Lock 4K RTP H.264/HEVC timestamps to disciplined AbuClock TAI optical exposure midpoint and embed RFC 5285 (0xBEDE) RTP header extension carrying 32-bit BCD timecode and 64-bit TAI nanoseconds"
+    "version": "0.0.7.7",
+    "build": 101,
+    "last_build_time": "2026-10-18 02:30:16",
+    "last_task": "Phase 1 Step 1.1: Add ContextualHelpView.swift with InfoHelpButton, ContextualHelpSheet, rig coordinate diagram, and 3-tab QuickStartGuideSheet"
   },
   "ue_plugin": {
     "version": "0.0.0.2",
@@ -134,6 +134,15 @@
       "version": "0.1.0.4",
       "build": 97,
       "task": "Step 5.3: Upgrade UDP receiver/forwarder with 41B 0xD2 FreeD-TC, OpenTrackIO timing block, and Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer"
+    },
+    {
+      "timestamp": "2026-10-18 02:30:16",
+      "component": "ios",
+      "component_label": "iOS App (Abu Track & Scan)",
+      "previous_version": "0.0.7.6",
+      "version": "0.0.7.7",
+      "build": 101,
+      "task": "Phase 1 Step 1.1: Add ContextualHelpView.swift with InfoHelpButton, ContextualHelpSheet, rig coordinate diagram, and 3-tab QuickStartGuideSheet"
     }
   ]
 }
