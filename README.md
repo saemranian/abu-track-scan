@@ -1,129 +1,93 @@
-# CamTrack Pro - Enterprise Spatial Telemetry & Photogrammetry Sync
+# Abu Track & Scan — Enterprise Virtual Production Camera Tracking, LiDAR & Photogrammetry Synchronization Suite
 
-**CamTrack Pro** is a professional-grade telemetry logging and spatial post-processing synchronization suite for photogrammetry experts using **Agisoft Metashape** or **RealityScan**.
+**Repository:** `https://github.com/saemranian/abu-track-scan`
 
-It runs natively on your **iPhone 16 Pro Max** to log continuous high-precision 3D device attitude (yaw, pitch, roll, quaternions), relative barometric elevation (centimeter precision), and absolute dual-frequency GPS coordinates in the background. It then pairs these logs either with photos taken on the **default iPhone camera** or with high-fidelity images taken on a **professional DSLR/Mirrorless camera** mounted to a hot-shoe bracket (using spatial lever-arm corrections).
-
----
-
-## Part 1: How to Deploy and Compile Directly on Your iPhone (No Mac Required)
-
-You do not need a Mac or a developer account to run **CamTrack Pro** on your iPhone. We leverage Apple's free **Swift Playgrounds** app, which compiles and executes native SwiftUI applications directly on device with full access to hardware sensors and background capabilities.
-
-### Step-by-Step Installation:
-1. **Download Swift Playgrounds:**
-   * Open the **App Store** on your iPhone 16 Pro Max.
-   * Search for and install **Swift Playgrounds** (by Apple, completely free).
-2. **Create a New App Project:**
-   * Open **Swift Playgrounds**.
-   * Under the "My Playgrounds" dashboard, tap **"+" (New App)** at the bottom. This generates a SwiftUI app project.
-3. **Copy-Paste the Code Base:**
-   * Tap the sidebar menu icon in Swift Playgrounds to view your file list.
-   * Add the following files to your project exactly matching the names in this workspace:
-     * `Sources/Managers/LocationManager.swift`
-     * `Sources/Managers/MotionAndTrackingManager.swift`
-     * `Sources/Managers/TelemetryLogger.swift`
-     * `Sources/Managers/PhotoSyncManager.swift`
-     * `Sources/Views/ContentView.swift`
-     * `Sources/Views/DashboardView.swift`
-     * `Sources/Views/SessionsView.swift`
-     * `Sources/Views/SettingsView.swift`
-     * `Sources/CamTrackApp.swift` (Overwriting the default App file)
-   * Copy the code from this workspace and paste it into each respective file.
-4. **Enable Hardware Capabilities (Permissions):**
-   * Inside your Playgrounds project, tap the **App Settings** button (the gear/app icon next to the App Name).
-   * Tap **Capabilities** -> **Add Capability**.
-   * Add the following items, making sure to write a detailed explanation in the **Purpose String** (iOS will fail to prompt if the purpose string is blank!):
-     * **Location:** *Always and When In Use* 
-       * Purpose: "CamTrack Pro logs precise background GPS coordinates to georeference your photogrammetry points."
-     * **Photo Library:** *Read/Write Access* 
-       * Purpose: "CamTrack Pro matches your capture session times to the photos in your library to sync image filenames with telemetry."
-     * **Camera:** *Access Camera* 
-       * Purpose: "CamTrack Pro uses the camera and LiDAR scanner to run real-time Visual-Inertial-LiDAR Odometry."
-     * **Motion:** *Access Motion Activity* 
-       * Purpose: "CamTrack Pro records high-frequency IMU gyro details to capture precise camera pitch, roll, and yaw."
-5. **Run the App:**
-   * Click the **"Play" (Run)** button at the top toolbar. 
-   * The app will compile and launch full screen on your iPhone 16 Pro Max! Accept the security prompts when they appear.
+| Component | Latest Version | Build | Core Target |
+| :--- | :--- | :--- | :--- |
+| **Windows Workstation (`DesktopSync`)** | **`v0.1.0.4`** | `#97` | `DesktopSync/camtrack_desktop_gui.py` & `dist/abu_track_desktop.exe` |
+| **iOS App (`Abu Track & Scan`)** | **`v0.0.7.6`** | `#100` | `Sources/` (iPhone 13–17 Pro / Pro Max with LiDAR) |
+| **Unreal Engine 5 Plugin (`LiveLinkAbuTrack`)** | **`v0.0.0.2`** | `#2` | `UnrealPlugin/LiveLinkAbuTrack` (`LiveLink` + `AbuClock` Timing Engine) |
 
 ---
 
-## Part 2: Pro DSLR/Mirrorless Hot-Shoe Workflow
+## Overview
 
-If you want to use a professional mirrorless camera (Sony Alpha, Canon R, Nikon Z) instead of your iPhone's camera, follow this professional "lever-arm" pipeline.
+**Abu Track & Scan** is an end-to-end Virtual Production (ICVFX / AR) and 3D Photogrammetry / Gaussian Splatting synchronization ecosystem powered by **Abu Clock** (SMPTE ST 12-1 / ST 2059-2 Timecode Generator & Sub-Microsecond Master Clock):
+
+1. **Abu Scan (Multi-Sensor Photogrammetry & LiDAR Capture):**
+   - Synchronizes the iOS RGB Camera (HEIC / ProRAW), iOS LiDAR Depth Scanner (`.ply`), 60Hz VIO + CoreMotion IMU + Barometer + RTK GPS telemetry (`telemetry_log.csv`), and external DSLR/Mirrorless cameras mounted via hot-shoe or multi-camera rigs.
+   - **Optical Exposure-Midpoint Timestamping:** Evaluates every photo and LiDAR depth frame at the exact optical exposure midpoint $T_{\text{mid}} = T_{\text{SOF}} + \frac{1}{2}T_{\text{exposure}}$ in 64-bit TAI nanoseconds (`tai_ns`).
+   - **Future-Time Barrier Trigger (`SCHEDULE_CAPTURE_AT` / `ABU_TRIG_V1`):** Broadcasts a 56-byte binary barrier command on UDP `50319` (`T_target = now + 50ms`) so multi-rig iOS nodes and workstation triggers fire within $\pm 50\,\mu\text{s}$.
+   - **Digital Clapper Slate & Frame-00 Optical Flash Calibration:** High-contrast SMPTE ST 2059-2 digital clapper slate with a Frame-00 (`FF == 00`) pure-white flash marker and sub-frame phase sweep bar ($\phi \in [0, 1)$), paired with an automated Frame-00 luminance detector and Quaternion SLERP interpolator on Windows.
+   - **Industry Manifest Exporters:** Exports Agisoft Metashape CSV/XML, RealityScan CSV, Postshot 3DGS JSON, COLMAP `colmap_images.txt`, and `.abuscan.json`.
+
+2. **Abu Track (Real-Time 6DoF Virtual Production & AR Compositing):**
+   - Streams 60Hz 6DoF camera tracking, hardware-intrinsic lens distortion ($f_{35\text{mm}}, k_1, k_2$), LiDAR point clouds, and 4K H.264/HEVC RTP video across Ultra-Wide (`13mm`), Main Wide (`24mm`), Telephoto (`77mm`/`120mm`), and Front TrueDepth (`180°` Dual-Camera Simultaneous ARSession) lenses.
+   - **Timecode-Stamped Telemetry Protocols:**
+     - **Enriched LiveLink JSON** (`taiNs`, `smpteTimecode`, `bcdTimecode`, `subframePhase`, `clockLockState`)
+     - **41-Byte SMPTE FreeD-TC (`0xD2`)** (29B FreeD body + 32-bit SMPTE ST 12-1 BCD timecode + 64-bit TAI nanoseconds)
+     - **29B / 37B FreeD (`0xD1`)**
+     - **OpenTrackIO (`OTrk`)** with `timing` block (`taiNs`, `smpteTimecode`, `bcdTimecode`, `subframePhase`, `frameRate`)
+   - **RFC 5285 (`0xBEDE`) RTP Header Extensions:** Embeds the 12-byte Abu Clock header (`bcdTimecode` + `taiNs`) directly into 4K H.264/HEVC RTP video packets (`ID=1, L=11`).
+   - **Unified UE5 Plugin (`LiveLinkAbuTrack`):** Combines `FLiveLinkAbuTrackSource` (`FQualifiedFrameTime` sub-frame `SceneTime` stamping), `UAbuClockTimecodeProvider`, and `UAbuClockCustomTimeStep` (`abu_clock_wait_for_next_frame` sub-frame phase-locked engine pacing) in a single Unreal Engine 5 plugin.
+
+---
+
+## Part 1: Abu Clock Synchronization Architecture
 
 ```
-   [ iPhone ]   <-- Center of Phone (LiDAR / IMU Tracking Center)
-       |
-       |  <-- Measure physical distances (Δx, Δy, Δz)
-       |
- [ DSLR Lens ]  <-- Optical Center of DSLR Sensor Plane
++-----------------------------------------------------------------------------------+
+|                WINDOWS WORKSTATION MASTER (DesktopSync v0.1.0.4)                  |
+|  - AbuClockBridge (abuclock.dll FFI / QPC + 2-State Kalman PLL / abu-clock.exe)   |
+|  - UDP 50320: ABU_ECO_V1 Auto-Discovery Beacon & Stratum-1 48B SNTP Server        |
+|  - UDP 50319: SCHEDULE_CAPTURE_AT (ABU_TRIG_V1 56B) Future-Time Barrier Trigger   |
+|  - Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer + UE5 Forwarder      |
++-------------------+-------------------------------------------+-------------------+
+                    | UDP 50320 (Discovery/SNTP)                | Local / LAN IPC
+                    | UDP 50319 (Barrier Trigger)               v
+                    | UDP 8080 / 5000 (Track & RTP Video)  +------------------------+
+                    v                                      | UNREAL ENGINE 5.3-5.5  |
++---------------------------------------+                  | LiveLinkAbuTrack v0.0.0.2
+| iOS APP (Abu Track & Scan v0.0.7.6)   |----------------->| - FLiveLinkAbuTrackSource
+| - AbuClockKit (Kalman PLL + ST 2059)  |  0xD2 / OTrk /   |   (SceneTime stamped)  |
+| - Exposure Midpoint (T_sof + T_exp/2) |  LiveLink JSON   | - UAbuClockTimecode    |
+| - RFC 5285 (0xBEDE) RTP Video Ext     |                  | - UAbuClockCustomStep  |
++---------------------------------------+                  +------------------------+
 ```
 
-### 1. Rig Assembly & Lever-Arm Measurement:
-Mount the iPhone securely in a cold/hot-shoe bracket directly above your DSLR lens. The sensors on your iPhone and the DSLR CMOS sensor are physically offset. You must measure this offset in **centimeters** from the iPhone's center to your DSLR's sensor center (indicated by the $\phi$ line mark on the DSLR body):
-*   **$\Delta x$ (Lateral):** Left/Right offset. Set to `0.0` if the phone is perfectly centered on the hot-shoe.
-*   **$\Delta y$ (Vertical):** Vertical height offset. Usually `+4.0` to `+10.0` cm.
-*   **$\Delta z$ (Depth):** Depth offset forward/backward. Positive if the phone sits further forward than the DSLR sensor plane.
+---
 
-### 2. Time Synchronization (Shutter-Sync):
-Before shooting, synchronize the internal clock of your DSLR perfectly with the iPhone's clock down to the second.
-*   *Tip:* The easiest way is to use your DSLR's official companion app (Sony Creators' App, Canon Camera Connect) which syncs the camera clock to your phone's system time automatically via Bluetooth.
+## Part 2: Deploying & Running the Suite
 
-### 3. Capture Workflow:
-1. Open **CamTrack Pro** on your iPhone.
-2. Under **Calibration**, enter your measured $\Delta x, \Delta y, \Delta z$ offsets.
-3. Tap **Start Logging** on the Dashboard.
-4. Put the phone in your pocket or mount it on the DSLR. Shoot your raw photos normally with your DSLR.
-5. When finished, return to the app and tap **Stop Logging**.
-6. Export the `.csv` log file from the session history using the **Raw Logs** share button (AirDrop it to your PC).
+### 1. iOS App (`Sources/`)
+1. Open the project in Xcode or **Swift Playgrounds** on an iPhone 13 Pro / 14 Pro / 15 Pro / 16 Pro / 17 Pro (or Pro Max).
+2. Ensure all files in `Sources/Managers/` (including `AbuClockKit.swift`, `NTPSyncClient.swift`, `CameraManager.swift`, `MotionAndTrackingManager.swift`, `TelemetryLogger.swift`, `PhotoSyncManager.swift`, `UDPStreamingManager.swift`, `LiveVideoStreamingManager.swift`, `UEMonitoringManager.swift`) and `Sources/Views/` (including `AbuClockSlateView.swift`, `DashboardView.swift`, `ContentView.swift`, `SessionsView.swift`, `SettingsView.swift`, `UEMonitorView.swift`) are included.
+3. Grant **Camera**, **Location**, **Motion**, **Photo Library**, and **Local Network** permissions.
+4. Upon launch, `AbuClockKit` automatically discovers the Windows Workstation Master on UDP `50320` (`ABU_ECO_V1`), locks its 2-state Kalman PLL via burst SNTP exchanges, and displays live SMPTE ST 2059-2 timecode and lock status (`LOCKED / MASTER / HOLDOVER`) in the top HUD bar.
 
-### 4. Desktop Post-Processing Script:
-1. Copy the DSLR photos from your SD card into a folder on your Windows PC.
-2. Install Python 3 and the Pillow image library on your PC:
-   ```bash
-   pip install Pillow
-   ```
-3. Run our provided syncing script `sync_photos.py`:
-   ```bash
-   python sync_photos.py
-   ```
-4. Enter the path to your photo folder, the path to the exported `telemetry_log.csv`, and confirm your rig offsets.
-5. The script extracts the sub-second EXIF timestamp of each DSLR photo, interpolates the iPhone telemetry, **rotates the 3D offset vector in space using the logged quaternions**, and outputs a perfectly corrected `dslr_metashape_cameras.csv` directly in your photo folder!
+### 2. Windows Workstation (`DesktopSync/`)
+Run the standalone executable `dist/abu_track_desktop.exe` or launch directly via Python:
+```powershell
+python DesktopSync/camtrack_desktop_gui.py
+```
+- **Top Master Clock Bar:** Select SMPTE frame rate (`23.976 NDF`, `24 NDF`, `25 NDF`, `29.97 DF`, `29.97 NDF`, `30 NDF`, `50 NDF`, `59.94 DF`, `59.94 NDF`, `60 NDF`), open the **Digital Clapper Slate**, or click **TRIGGER CAPTURE BARRIER (+50ms)** to fire synchronized captures across all discovered iOS nodes.
+- **Tab 01 (Sync & Export):** Auto-detect the Frame-00 Optical Flash Slate photo (`AUTO-SOLVE SLATE FLASH OFFSET`), interpolate 6DoF poses at optical exposure midpoints via Quaternion SLERP, and export to Metashape, RealityScan, Postshot, `.abuscan.json`, and COLMAP `colmap_images.txt`.
+- **Tab 04 (Live Telemetry Checker):** Receive LiveLink JSON, 41B `0xD2` SMPTE FreeD-TC, 29B/37B `0xD1` FreeD, or OpenTrackIO (`OTrk`), view the timecode-aligned 3D LiDAR + 4K video Cockpit overlay, and forward to Unreal Engine.
+
+### 3. Unreal Engine 5 Plugin (`UnrealPlugin/LiveLinkAbuTrack/`)
+1. Copy `UnrealPlugin/LiveLinkAbuTrack` into your UE5 project's `Plugins/` folder.
+2. Enable **Abu Track LiveLink & AbuClock Timing Plugin** in `Edit -> Plugins`.
+3. In **Project Settings -> Timecode**, set **Timecode Provider** to `AbuClockTimecodeProvider` and **Custom TimeStep** to `AbuClockCustomTimeStep` for hardware-disciplined frame pacing.
+4. In **Window -> Virtual Production -> Live Link**, add an **Abu Track LiveLink** source (UDP port `8080`). Incoming camera poses automatically populate `MetaData.SceneTime` (`FQualifiedFrameTime` with sub-frame phase) for Composure and Timecode Synchronizer.
 
 ---
 
-## Part 3: Importing Telemetry Into Agisoft Metashape
+## Part 3: Automated Versioning & Audit Trail
 
-Once your photos and CSV are exported, import them into Metashape:
+Every component edit is tracked via `build_version_tracker.py` using the 4-part decimal rollover scheme (`vA.B.C.D`, where `.9` rolls over to `.1.0`, e.g., `v0.1.0.9` $\rightarrow$ `v0.1.1.0`):
 
-1. **Import Photos:** Drag and drop your DSLR or iPhone photos into the Metashape workspace.
-2. **Open Reference Pane:** Navigate to `View` -> `Reference` to open the Reference Panel.
-3. **Import CSV:** Tap the **Import** button (Folder icon with an arrow) on the Reference Pane toolbar.
-4. **Select Coordinate System:**
-   * If GPS was **Enabled** (Outdoors): Select `WGS 84` (EPSG::4326).
-   * If GPS was **Disabled** (Indoors): Select **`Local Coordinates (m)`**.
-5. **Configure Column Layout:**
-   Map the columns of our CSV output to Metashape's fields:
-   * **Label:** Column 1 (`label`)
-   * **X / Easting / Local X:** Column 2 (`x_local_m`)
-   * **Y / Northing / Local Y:** Column 3 (`y_local_m`)
-   * **Z / Altitude / Local Z:** Column 4 (`z_local_m` or `baro_alt_m` if you want barometric vertical coordinates)
-   * **Yaw:** Column 9 (`yaw`)
-   * **Pitch:** Column 10 (`pitch`)
-   * **Roll:** Column 11 (`roll`)
-6. **Set Accuracy parameters:**
-   * Set **Camera Position Accuracy (m):**
-     * Local coordinates: `0.02` (represents our centimeter-precise VIO accuracy).
-     * GPS coordinates: `5.0` (standard mobile GPS) or `0.02` (if utilizing an external RTK antenna).
-   * Set **Camera Orientation Accuracy (deg):** `0.5` (represents our IMU gyro precision).
-7. **Align Cameras:** Tap **Workflow** -> **Align Photos**. Metashape will use the telemetry seeds to run at lightning speed and perfectly orient your models!
+```powershell
+python -B build_version_tracker.py --target <win|ios|ue|all> --task "Description of change"
+```
 
----
-
-## Part 4: Technical Sensor Reference Specs
-
-*   **CoreMotion IMU (Gyro/Accel):** Updates up to 60Hz. Resolves micro-rotations down to **0.05 degrees** (essential for macro scans).
-*   **Barometer (Altimeter):** Detects atmospheric air pressure variations down to $0.1\text{ hPa}$, providing a relative height tracking resolution of **1–5 centimeters** indoors, completely immune to indoor GPS wall degradation.
-*   **ARKit VIO (LiDAR):** Runs visual tracking at 60Hz. Integrates structural LiDAR depth meshes to provide a true-scale local metric grid. Experienced drift scales linearly at a minor **1–2% of distance traveled** (effectively zeroed by returning to previously scanned paths to trigger Loop Closure).
-*   **RTK GPS Compatibility:** Fully compatible with iOS-approved external Bluetooth RTK receivers (e.g. *Emlid Reach*, *Bad Elf Flex*). No custom drivers needed; iOS automatically passes sub-centimeter georeferencing coordinates directly to the app.
+See [VERSION_CHANGELOG.md](VERSION_CHANGELOG.md) and [app_versions.json](app_versions.json) for the complete chronological audit trail.
