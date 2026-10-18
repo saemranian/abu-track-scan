@@ -52,7 +52,7 @@ struct SettingsView: View {
                                 .foregroundColor(ProTheme.textPrimary)
                             Spacer()
                             Text(VersionInfo.version)
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
                                 .foregroundColor(ProTheme.accentCyan)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
@@ -106,6 +106,11 @@ struct SettingsView: View {
             }
             .onAppear {
                 loadOffsets()
+            }
+            .onReceive(locationManager.$isGPSEnabled) { newValue in
+                if self.isGPSEnabled != newValue {
+                    self.isGPSEnabled = newValue
+                }
             }
             .onChange(of: leverArmX) { _ in updateLeverArmX() }
             .onChange(of: leverArmY) { _ in updateLeverArmY() }
@@ -214,7 +219,7 @@ struct SettingsView: View {
                                     RigSettings.captureRate = presetHz
                                 }) {
                                     Text("\(Int(presetHz)) Hz")
-                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
                                         .foregroundColor(captureRate == presetHz ? .black : .white)
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 5)
@@ -237,7 +242,7 @@ struct SettingsView: View {
                 sectionHeader(icon: "ruler.fill", title: "DSLR / Cinema Rig Lever-Arm (cm)", topic: .dslrRigOffsets)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Physical distance from the iPhone Rear Main (1x) lens to your external camera's sensor plane mark (⌀). Leave at 0, 0, 0 for Single-Device mode.")
+                    Text("Physical distance from the iPhone Rear Main (1x) lens to your external camera's sensor plane mark (⌀). Leave at 0, 0, 0 for Single-Device mode. Outgoing UDP packets tag leverArmApplied=true to prevent double-compensation on PC/UE5.")
                         .font(.caption2)
                         .foregroundColor(ProTheme.textSecondary)
 

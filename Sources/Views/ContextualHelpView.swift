@@ -33,7 +33,7 @@ struct ViewportIconButton: View {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                 Text(label)
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
             }
             .foregroundColor(isActive ? activeColor : Color.white.opacity(0.68))
             .padding(.horizontal, 8)

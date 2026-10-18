@@ -1,21 +1,21 @@
 {
   "desktop": {
-    "version": "0.1.0.4",
-    "build": 97,
-    "last_build_time": "2026-10-18 01:53:38",
-    "last_task": "Step 5.3: Upgrade UDP receiver/forwarder with 41B 0xD2 FreeD-TC, OpenTrackIO timing block, and Timecode-Aligned Telemetry & 4K Video Playout Ring Buffer"
+    "version": "0.1.1.0",
+    "build": 103,
+    "last_build_time": "2026-10-18 11:23:10",
+    "last_task": "Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5"
   },
   "ios": {
-    "version": "0.0.7.9",
-    "build": 103,
-    "last_build_time": "2026-10-18 02:39:04",
-    "last_task": "Phase 1 Step 1.3: Redesign SettingsView with 3-way segmented categories (Rig & Optics, Stream & Clock, Space & System), InfoHelpButtons, collapsible drawers, and add WorkflowStepBanners to SessionsView and UEMonitorView"
+    "version": "0.0.8.0",
+    "build": 104,
+    "last_build_time": "2026-10-18 11:23:10",
+    "last_task": "Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5"
   },
   "ue_plugin": {
-    "version": "0.0.0.2",
-    "build": 2,
-    "last_build_time": "2026-10-18 01:36:31",
-    "last_task": "Phase 4 Step 4.2: Upgrade FLiveLinkAbuTrackSource to decode Enriched LiveLink JSON, 29B/37B FreeD (0xD1), 41B SMPTE FreeD-TC (0xD2), and OpenTrackIO (OTrk), stamp CameraFrameData.MetaData.SceneTime with FQualifiedFrameTime + sub-frame phase, and register UE5 node with Abu Clock"
+    "version": "0.0.0.4",
+    "build": 4,
+    "last_build_time": "2026-10-18 11:23:10",
+    "last_task": "Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5"
   },
   "history": [
     {
@@ -161,6 +161,87 @@
       "version": "0.0.7.9",
       "build": 103,
       "task": "Phase 1 Step 1.3: Redesign SettingsView with 3-way segmented categories (Rig & Optics, Stream & Clock, Space & System), InfoHelpButtons, collapsible drawers, and add WorkflowStepBanners to SessionsView and UEMonitorView"
+    },
+    {
+      "timestamp": "2026-10-18 02:47:58",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.4",
+      "version": "0.1.0.5",
+      "build": 98,
+      "task": "Phase 2 Step 2.1: Add HoverTooltip, CollapsibleCard, ScrollableSidebarFrame, Segoe UI typography, workflow banners, and reordered icon-driven workspace tabs"
+    },
+    {
+      "timestamp": "2026-10-18 02:53:53",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.5",
+      "version": "0.1.0.6",
+      "build": 99,
+      "task": "Phase 2 Step 2.2: Declutter Live Track and Scan & Sync tabs with ScrollableSidebarFrame, CollapsibleCard drawers, 3D icon toolbar, and hover tooltips on all controls"
+    },
+    {
+      "timestamp": "2026-10-18 02:54:16",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.6",
+      "version": "0.1.0.7",
+      "build": 100,
+      "task": "Phase 2 Step 2.3: Rebuild standalone dist/abu_track_desktop.exe binary with v0.1.0.7 minimalist UI/UX redesign"
+    },
+    {
+      "timestamp": "2026-10-18 02:58:52",
+      "component": "ue_plugin",
+      "component_label": "UE5 Plugin (LiveLinkAbuTrack)",
+      "previous_version": "0.0.0.2",
+      "version": "0.0.0.3",
+      "build": 3,
+      "task": "Phase 3 Step 3.1: Add rich UPROPERTY tooltips and custom Slate IDetailCustomization with 1-Click UE5 TimecodeProvider & Genlock auto-configuration"
+    },
+    {
+      "timestamp": "2026-10-18 03:01:24",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.7",
+      "version": "0.1.0.8",
+      "build": 101,
+      "task": "Phase 4 Verification Fix: Unify CollapsibleCard keyword arguments (expanded, badge_text, tooltip_title/body, .body, .set_badge) and verify headless CamTrackDesktopApp instantiation"
+    },
+    {
+      "timestamp": "2026-10-18 09:28:39",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.8",
+      "version": "0.1.0.9",
+      "build": 102,
+      "task": "Fix PyInstaller optimize=2 docstring stripping crash (argument docstring of add_docstring should be a str) by setting optimize=1 in camtrack_desktop_gui.spec and adding --self-test verification"
+    },
+    {
+      "timestamp": "2026-10-18 11:23:10",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.9",
+      "version": "0.1.1.0",
+      "build": 103,
+      "task": "Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5"
+    },
+    {
+      "timestamp": "2026-10-18 11:23:10",
+      "component": "ios",
+      "component_label": "iOS App (Abu Track & Scan)",
+      "previous_version": "0.0.7.9",
+      "version": "0.0.8.0",
+      "build": 104,
+      "task": "Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5"
+    },
+    {
+      "timestamp": "2026-10-18 11:23:10",
+      "component": "ue_plugin",
+      "component_label": "UE5 Plugin (LiveLinkAbuTrack)",
+      "previous_version": "0.0.0.3",
+      "version": "0.0.0.4",
+      "build": 4,
+      "task": "Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5"
     }
   ]
 }

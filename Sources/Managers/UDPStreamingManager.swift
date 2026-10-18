@@ -335,6 +335,8 @@ class UDPStreamingManager: ObservableObject {
     private func formatLiveLink(x: Double, y: Double, z: Double, yaw: Double, pitch: Double, roll: Double, focalLength: Double = 24.0, k1: Double = 0.0, k2: Double = 0.0, videoCodec: String = "H.264", newPoints: [RawPoint3D]? = nil, isMappingActive: Bool = true) -> Data {
         let stamp = AbuClockKitBridge.shared.stampMonotonicNanoseconds(AbuClockKitBridge.currentMachNanoseconds())
         let disciplinedUtcSec = max((Double(stamp.disciplinedTaiNanoseconds) * 1.0e-9) - AbuClockKitBridge.taiMinusUtcSeconds, Date().timeIntervalSince1970)
+        let leverArmApplied = (abs(RigSettings.leverArmX) > 0.0001 || abs(RigSettings.leverArmY) > 0.0001 || abs(RigSettings.leverArmZ) > 0.0001)
+        let originApplied = (abs(RigSettings.originOffsetX) > 0.0001 || abs(RigSettings.originOffsetY) > 0.0001 || abs(RigSettings.originOffsetZ) > 0.0001 || abs(RigSettings.originOffsetYaw) > 0.0001)
         var json: [String: Any] = [
             "deviceName": "AbuTrack",
             "translation": [x, y, z],
@@ -353,7 +355,9 @@ class UDPStreamingManager: ObservableObject {
             "fpsNum": stamp.fpsNum,
             "fpsDen": stamp.fpsDen,
             "dropFrame": stamp.dropFrame,
-            "clockLockState": stamp.clockLockState
+            "clockLockState": stamp.clockLockState,
+            "leverArmApplied": leverArmApplied,
+            "originApplied": originApplied
         ]
         if let pts = newPoints, !pts.isEmpty {
             json["new_points"] = pts.map { [$0.x, $0.y, $0.z] }
@@ -487,6 +491,8 @@ class UDPStreamingManager: ObservableObject {
         let mm = Int(((bcd >> 20) & 0xF) * 10 + ((bcd >> 16) & 0xF))
         let ss = Int(((bcd >> 12) & 0xF) * 10 + ((bcd >> 8) & 0xF))
         let ff = Int(((bcd >> 4) & 0xF) * 10 + (bcd & 0xF))
+        let leverArmApplied = (abs(RigSettings.leverArmX) > 0.0001 || abs(RigSettings.leverArmY) > 0.0001 || abs(RigSettings.leverArmZ) > 0.0001)
+        let originApplied = (abs(RigSettings.originOffsetX) > 0.0001 || abs(RigSettings.originOffsetY) > 0.0001 || abs(RigSettings.originOffsetZ) > 0.0001 || abs(RigSettings.originOffsetYaw) > 0.0001)
         
         openTrackSequence += 1
         var json: [String: Any] = [
@@ -503,6 +509,8 @@ class UDPStreamingManager: ObservableObject {
             "clockLockState": stamp.clockLockState,
             "isMappingActive": isMappingActive,
             "thermalState": getThermalStateString(),
+            "leverArmApplied": leverArmApplied,
+            "originApplied": originApplied,
             "timing": [
                 "mode": "PTP_SMPTE_ST2059_2",
                 "sample_timestamp_tai_sec": taiSec,

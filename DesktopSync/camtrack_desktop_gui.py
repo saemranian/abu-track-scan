@@ -230,7 +230,7 @@ class HoverTooltip:
             text=f"ⓘ  {self.title}",
             bg="#0D1322",
             fg=ACCENT_CYAN,
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 10, "bold"),
             anchor="w",
             justify="left",
         ).pack(fill="x", pady=(0, 4))
@@ -240,8 +240,8 @@ class HoverTooltip:
             text=self.body,
             bg="#0D1322",
             fg=TEXT_PRIMARY,
-            font=("Segoe UI", 8),
-            wraplength=310,
+            font=("Segoe UI", 9),
+            wraplength=340,
             anchor="w",
             justify="left",
         ).pack(fill="x")
@@ -252,8 +252,8 @@ class HoverTooltip:
                 text=f"✓ {self.recommendation}",
                 bg="#0D1322",
                 fg=ACCENT_GREEN,
-                font=("Segoe UI", 8, "bold"),
-                wraplength=310,
+                font=("Segoe UI", 9, "bold"),
+                wraplength=340,
                 anchor="w",
                 justify="left",
             ).pack(fill="x", pady=(6, 0))
@@ -312,6 +312,8 @@ class CollapsibleCard(ttk.Frame):
             bg=CARD_BG,
             fg=ACCENT_CYAN,
             font=("Segoe UI", 10, "bold"),
+            padx=2,
+            pady=3,
         )
         self.arrow_lbl.grid(row=0, column=0, padx=(0, 6))
 
@@ -322,6 +324,7 @@ class CollapsibleCard(ttk.Frame):
             fg=ACCENT_CYAN,
             font=("Segoe UI", 9, "bold"),
             anchor="w",
+            pady=3,
         )
         self.title_lbl.grid(row=0, column=1, sticky="w")
 
@@ -331,9 +334,9 @@ class CollapsibleCard(ttk.Frame):
             textvariable=self.badge_var,
             bg=FIELD_BG if (badge_text or badge_var is not None) else CARD_BG,
             fg=ACCENT_GREEN,
-            font=("Consolas", 8, "bold"),
-            padx=6 if (badge_text or badge_var is not None) else 0,
-            pady=1,
+            font=("Consolas", 9, "bold"),
+            padx=8 if (badge_text or badge_var is not None) else 0,
+            pady=3,
         )
         self.badge_lbl.grid(row=0, column=2, padx=(6, 6))
         self.badge_lbl.bind("<Button-1>", self.toggle)
@@ -346,7 +349,9 @@ class CollapsibleCard(ttk.Frame):
                 text=" ⓘ ",
                 bg=FIELD_BG,
                 fg=ACCENT_CYAN,
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 9, "bold"),
+                padx=6,
+                pady=3,
                 cursor="question_arrow",
             )
             self.info_badge.grid(row=0, column=3, padx=(4, 0))
@@ -360,9 +365,13 @@ class CollapsibleCard(ttk.Frame):
         if is_expanded:
             self.content.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
 
-    def set_badge(self, text: str):
+    def set_badge(self, text: str, fg: str = None):
         self.badge_var.set(text)
-        self.badge_lbl.configure(bg=FIELD_BG if text else CARD_BG, padx=6 if text else 0)
+        self.badge_lbl.configure(
+            bg=FIELD_BG if text else CARD_BG,
+            padx=8 if text else 0,
+            fg=fg if fg else ACCENT_GREEN,
+        )
 
     def toggle(self, _event=None):
         self.is_open = not self.is_open
@@ -375,7 +384,7 @@ class CollapsibleCard(ttk.Frame):
 
 
 class ScrollableSidebarFrame(ttk.Frame):
-    """Mouse-wheel scrollable sidebar container so left inspector panels never clip on 1080p screens."""
+    """Mouse-wheel scrollable sidebar container with child-widget scroll passthrough (no global scroll hijacking)."""
 
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
@@ -404,13 +413,25 @@ class ScrollableSidebarFrame(ttk.Frame):
         self.canvas.itemconfig(self.inner_id, width=event.width)
 
     def _bind_mousewheel(self, _event=None):
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        if self.canvas.winfo_exists():
+            self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
     def _unbind_mousewheel(self, _event=None):
-        self.canvas.unbind_all("<MouseWheel>")
+        if self.canvas.winfo_exists():
+            self.canvas.unbind_all("<MouseWheel>")
 
     def _on_mousewheel(self, event):
         try:
+            # Do not hijack mousewheel from scrollable child widgets (Text, Listbox, Combobox) or other Toplevel modals
+            w = getattr(event, "widget", None)
+            if w is not None:
+                if isinstance(w, (tk.Text, tk.Listbox, ttk.Combobox)):
+                    return
+                if w.winfo_toplevel() != self.winfo_toplevel():
+                    return
+            # Only scroll if content exceeds canvas height
+            if self.inner.winfo_reqheight() <= self.canvas.winfo_height():
+                return
             self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         except Exception:
             pass
@@ -424,7 +445,7 @@ class CamTrackDesktopApp:
         from abu_clock_bridge import AbuClockBridge
         self.abu_clock = AbuClockBridge.instance()
         self.abu_clock_tc_var = tk.StringVar(value="00:00:00;00.00")
-        self.abu_clock_bcd_var = tk.StringVar(value="BCD: 0x00000000")
+        self.abu_clock_bcd_var = tk.StringVar(value="φ=0.00")
         self.abu_clock_tai_var = tk.StringVar(value="TAI: 0 ns")
         self.abu_clock_lock_var = tk.StringVar(value="WORKSTATION_MASTER")
         self.abu_clock_fps_var = tk.StringVar(value="29.97 DF")
@@ -439,7 +460,23 @@ class CamTrackDesktopApp:
             title_suffix = " (v0.1.0.2 Build 95)"
             
         self.root.title(f"ABU TRACK & SCAN // 3DGS, METASHAPE & ABU CLOCK SUITE{title_suffix}")
-        self.root.geometry("1180x800")
+        
+        # Adaptive High-DPI Window Sizing & Centered Launch Geometry (WIN-UI-01)
+        try:
+            sw = self.root.winfo_screenwidth()
+            sh = self.root.winfo_screenheight()
+            if sw >= 2200:
+                curr_scale = float(self.root.tk.call("tk", "scaling"))
+                if curr_scale < 1.35:
+                    self.root.tk.call("tk", "scaling", 1.35)
+            win_w = max(1380, min(1620, int(sw * 0.85)))
+            win_h = max(860, min(980, int(sh * 0.85)))
+            pos_x = max(20, (sw - win_w) // 2)
+            pos_y = max(20, (sh - win_h) // 2)
+            self.root.geometry(f"{win_w}x{win_h}+{pos_x}+{pos_y}")
+        except Exception:
+            self.root.geometry("1480x920")
+        self.root.minsize(1280, 820)
         self.root.configure(bg=BG_COLOR)
         
         # State variables
@@ -481,6 +518,10 @@ class CamTrackDesktopApp:
         self.trajectory_points = [] # List of matched camera records
         self.original_ply_path = None
         self.selected_camera_index = None
+        self.plot_point_size = 1.0
+        self.selected_photo_summary_var = tk.StringVar(
+            value="Click any photo below to highlight its 3D frustum • Double-click to inspect EXIF"
+        )
         
         self.time_offset.trace_add("write", self._on_slider_change)
         self.time_entry_var.trace_add("write", self._on_entry_change)
@@ -497,7 +538,7 @@ class CamTrackDesktopApp:
         
         self.receiver_port = tk.IntVar(value=8080)
         self.is_video_stream_enabled = tk.BooleanVar(value=True)
-        self.video_stream_port = tk.IntVar(value=8082)
+        self.video_stream_port = tk.IntVar(value=5004)
         self.is_spout_enabled = tk.BooleanVar(value=False)
         self.latest_decoded_frame = None
         self.latest_decoded_pil_image = None
@@ -521,6 +562,11 @@ class CamTrackDesktopApp:
         self.receiver_pc_time_var = tk.StringVar(value="00:00:00.000")
         self.receiver_thermal_var = tk.StringVar(value="UNKNOWN")
         self.root_exists = True
+        
+        # Cross-device Double-Compensation Guard state (ARCH-UX-01)
+        self.ios_lever_arm_applied = False
+        self.ios_origin_applied = False
+        self.double_comp_warn_var = tk.StringVar(value="")
         
         # Thread-safe lock for points & trajectory access
         self.data_lock = threading.Lock()
@@ -566,6 +612,7 @@ class CamTrackDesktopApp:
         self.forward_host = tk.StringVar(value="127.0.0.1")
         self.forward_port = tk.IntVar(value=8081)  # Default Unreal plugin listener port
         self.forward_protocol = tk.StringVar(value="Live Link JSON")  # Options: Live Link JSON, FreeD Binary, OpenTrackIO JSON
+        self.forward_apply_pitch_offset = tk.BooleanVar(value=True)
         self.forwarder_sock = None
         
         # Workstation Offset Overrides (Local modifications applied prior to forwarders/visualizers)
@@ -638,7 +685,7 @@ class CamTrackDesktopApp:
         style.configure("TFrame", background=BG_COLOR)
         style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
         
-        # Tab Notebook Style (Segoe UI for clean human readability)
+        # Tab Notebook Style (Segoe UI 10pt bold for high-DPI clarity)
         style.configure("TNotebook", background=BG_COLOR, borderwidth=0)
         style.configure(
             "TNotebook.Tab",
@@ -646,7 +693,7 @@ class CamTrackDesktopApp:
             foreground=TEXT_MUTED,
             borderwidth=1,
             bordercolor=BORDER_COLOR,
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 10, "bold"),
             padding=(14, 8),
         )
         style.map(
@@ -655,25 +702,25 @@ class CamTrackDesktopApp:
             foreground=[("selected", ACCENT_CYAN), ("active", BG_COLOR)],
         )
         
-        # Core Labels (Segoe UI for UI copy, Consolas reserved for live telemetry/logs)
-        style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 9))
+        # Core Labels (Raised from 8pt/9pt to 9pt/10pt floor — WIN-UI-02)
+        style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 10))
         style.configure("Header.TLabel", background=CARD_BG, foreground=ACCENT_CYAN, font=("Segoe UI", 10, "bold"))
-        style.configure("Muted.TLabel", background=CARD_BG, foreground=TEXT_MUTED, font=("Segoe UI", 8))
-        style.configure("Mono.TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Consolas", 9))
+        style.configure("Muted.TLabel", background=CARD_BG, foreground=TEXT_MUTED, font=("Segoe UI", 9))
+        style.configure("Mono.TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Consolas", 10))
         
         # Checkbuttons
-        style.configure("TCheckbutton", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 9))
+        style.configure("TCheckbutton", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 10))
         style.map("TCheckbutton", background=[("active", CARD_BG)], foreground=[("active", ACCENT_CYAN)])
         
-        # Sleek Minimal Buttons
-        style.configure("TButton", background=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Segoe UI", 9, "bold"))
+        # Sleek Minimal Buttons with >=28px touch/click padding (WIN-UI-05)
+        style.configure("TButton", background=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Segoe UI", 9, "bold"), padding=(8, 4))
         style.map(
             "TButton",
             background=[("active", ACCENT_CYAN), ("pressed", BORDER_COLOR)],
             foreground=[("active", BG_COLOR)],
         )
         
-        style.configure("Action.TButton", background=ACCENT_CYAN, foreground=BG_COLOR, font=("Segoe UI", 10, "bold"), borderwidth=0, relief="flat")
+        style.configure("Action.TButton", background=ACCENT_CYAN, foreground=BG_COLOR, font=("Segoe UI", 10, "bold"), borderwidth=0, relief="flat", padding=(10, 5))
         style.map(
             "Action.TButton",
             background=[("active", ACCENT_AMBER)],
@@ -693,9 +740,9 @@ class CamTrackDesktopApp:
             text="WORKFLOW",
             bg="#13223D",
             fg=ACCENT_CYAN,
-            font=("Segoe UI", 8, "bold"),
-            padx=6,
-            pady=1,
+            font=("Segoe UI", 9, "bold"),
+            padx=8,
+            pady=3,
         )
         badge.pack(side="left", padx=(0, 10))
         
@@ -716,10 +763,10 @@ class CamTrackDesktopApp:
             fg=ACCENT_CYAN,
             activebackground=ACCENT_CYAN,
             activeforeground=BG_COLOR,
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bd=0,
-            padx=8,
-            pady=2,
+            padx=10,
+            pady=4,
             cursor="hand2",
             command=lambda: self.show_quick_guide_modal(guide_title, guide_body),
         )
@@ -731,7 +778,7 @@ class CamTrackDesktopApp:
         """Displays a clean, minimalist dark-mode Quick Guide modal with interactive workflow cards and rig diagram."""
         win = tk.Toplevel(self.root)
         win.title(title)
-        win.geometry("760x620")
+        win.geometry("780x650")
         win.configure(bg=BG_COLOR)
         win.transient(self.root)
         
@@ -746,13 +793,13 @@ class CamTrackDesktopApp:
         if highlight_body:
             ctx_card = tk.Frame(body, bg="#0F1B33", highlightthickness=1, highlightbackground=ACCENT_CYAN, padx=14, pady=10)
             ctx_card.pack(fill="x", pady=(0, 12))
-            tk.Label(ctx_card, text="ACTIVE WORKSPACE GUIDE", bg="#0F1B33", fg=ACCENT_CYAN, font=("Segoe UI", 9, "bold")).pack(anchor="w")
-            tk.Label(ctx_card, text=highlight_body, bg="#0F1B33", fg=TEXT_PRIMARY, font=("Segoe UI", 9), justify="left", wraplength=700).pack(anchor="w", pady=(4, 0))
+            tk.Label(ctx_card, text="ACTIVE WORKSPACE GUIDE", bg="#0F1B33", fg=ACCENT_CYAN, font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            tk.Label(ctx_card, text=highlight_body, bg="#0F1B33", fg=TEXT_PRIMARY, font=("Segoe UI", 9), justify="left", wraplength=720).pack(anchor="w", pady=(4, 0))
         
         # Rig Lever-Arm Visual Diagram Card
         diag_card = tk.Frame(body, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=14, pady=10)
         diag_card.pack(fill="x", pady=(0, 12))
-        tk.Label(diag_card, text="🎥 RIG LEVER-ARM COORDINATE CONVENTION (iPhone Tracker → Cinema/DSLR Sensor)", bg=CARD_BG, fg=ACCENT_AMBER, font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(0, 6))
+        tk.Label(diag_card, text="🎥 RIG LEVER-ARM COORDINATE CONVENTION (iPhone Tracker → Cinema/DSLR Sensor)", bg=CARD_BG, fg=ACCENT_AMBER, font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
         diagram_ascii = (
             "          [ +Y : Up (Height) ]                  • dx (Lateral cm): +Right / -Left from iPhone lens to DSLR sensor\n"
             "                  ▲                             • dy (Vertical cm): +Up / -Down from iPhone lens to DSLR sensor\n"
@@ -760,7 +807,7 @@ class CamTrackDesktopApp:
             "      [iPhone]────┼───► [ +X : Right ]          • Boresight (rx, ry, rz °): Mechanical tilt difference between rigs\n"
             "         │        ▼                             • Front Selfie Tracking: Uses Rear Main VIO + automatic 180° Yaw flip"
         )
-        tk.Label(diag_card, text=diagram_ascii, bg="#080C14", fg=TEXT_PRIMARY, font=("Consolas", 8), justify="left", padx=10, pady=8).pack(fill="x")
+        tk.Label(diag_card, text=diagram_ascii, bg="#080C14", fg=TEXT_PRIMARY, font=("Consolas", 9), justify="left", padx=10, pady=8).pack(fill="x")
         
         # 3 Workflow Cards
         workflows = [
@@ -771,9 +818,9 @@ class CamTrackDesktopApp:
                 "③ Click 'Inject EXIF & Export' and inspect your reconstructed trajectory & LiDAR cloud in '🕸 3D Spatial Map'.",
             ),
             (
-                "📡 2. Live Virtual Production Tracking (Unreal Engine 5 / FreeD / OpenTrackIO)",
+                "📡 2. Live Virtual Production Tracking (UDP 8080 Telemetry / 8081 UE Forwarder / 5004 Video)",
                 "① Open '📡 Live Track & Stream', check your PC Local IP, and enter it in the iOS app's Setup → Stream & Clock tab.\n"
-                "② Click 'Start Listening' (UDP 8080). Optionally enable UDP Forwarding to Unreal Engine (Live Link JSON, 41B FreeD-TC 0xD2, or OpenTrackIO).\n"
+                "② Click 'Start Listening' (UDP 8080). Optionally enable UDP Forwarding (Port 8081) to Unreal Engine (Live Link JSON, 41B FreeD-TC 0xD2, or OpenTrackIO).\n"
                 "③ In UE5 Live Link, add 'Abu Track Source' and click '⚡ Configure UE5 TimecodeProvider & Genlock' for 1-click sync.",
             ),
             (
@@ -786,11 +833,11 @@ class CamTrackDesktopApp:
         for wf_title, wf_desc in workflows:
             c = tk.Frame(body, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=12, pady=8)
             c.pack(fill="x", pady=4)
-            tk.Label(c, text=wf_title, bg=CARD_BG, fg=ACCENT_CYAN, font=("Segoe UI", 9, "bold")).pack(anchor="w")
-            tk.Label(c, text=wf_desc, bg=CARD_BG, fg=TEXT_MUTED, font=("Segoe UI", 8), justify="left", wraplength=700).pack(anchor="w", pady=(2, 0))
+            tk.Label(c, text=wf_title, bg=CARD_BG, fg=ACCENT_CYAN, font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            tk.Label(c, text=wf_desc, bg=CARD_BG, fg=TEXT_MUTED, font=("Segoe UI", 9), justify="left", wraplength=720).pack(anchor="w", pady=(2, 0))
         
     def build_ui(self):
-        # Persistent Top Abu Clock Master Timecode & Ecosystem Status Bar
+        # Persistent Top Abu Clock Master Timecode & Ecosystem Status Bar (WIN-UI-03: Zero-clipping layout)
         self.clock_bar = tk.Frame(self.root, bg="#080C14", highlightthickness=1, highlightbackground="#1B2A4A", padx=12, pady=6)
         self.clock_bar.pack(fill="x", side="top")
         
@@ -802,40 +849,40 @@ class CamTrackDesktopApp:
         clock_title_lbl = tk.Label(self.clock_bar, text="⏱ ABU CLOCK ST 2059:", bg="#080C14", fg=TEXT_MUTED, font=("Segoe UI", 9, "bold"))
         clock_title_lbl.pack(side="left", padx=(0, 4))
         self.clock_lock_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_lock_var, bg="#080C14", fg=ACCENT_GREEN, font=("Consolas", 9, "bold"))
-        self.clock_lock_lbl.pack(side="left", padx=(0, 14))
+        self.clock_lock_lbl.pack(side="left", padx=(0, 10))
         HoverTooltip(
             self.clock_lock_lbl,
             "Abu Clock PTP / CSPTP Lock State",
             "Shows whether this workstation is acting as the ST 2059-2 Master Clock or locked to an external PTP/CSPTP reference.",
         )
         
-        # Center-Left: Live SMPTE Timecode Readout + Sub-frame Phase Bar
+        # Center-Left: Live SMPTE Timecode Readout + Compact Sub-frame Phase Bar
         self.clock_tc_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tc_var, bg="#0D1524", fg=ACCENT_CYAN, font=("Consolas", 13, "bold"), padx=10, pady=2)
         self.clock_tc_lbl.pack(side="left", padx=(0, 8))
         HoverTooltip(
             self.clock_tc_lbl,
             "Live SMPTE ST 12-1 / ST 2059-2 Timecode",
-            "Deterministic frame-accurate timecode synthesized from the Abu Clock TAI epoch. Shared across iOS, Windows, and UE5.",
+            "Deterministic frame-accurate timecode synthesized from the Abu Clock TAI epoch. Open Clapper Slate for full 64-bit TAI & 32-bit BCD telemetry.",
         )
         
         phase_col = tk.Frame(self.clock_bar, bg="#080C14")
-        phase_col.pack(side="left", padx=(0, 12))
-        self.clock_bcd_lbl = tk.Label(phase_col, textvariable=self.abu_clock_bcd_var, bg="#080C14", fg=ACCENT_AMBER, font=("Consolas", 8, "bold"))
+        phase_col.pack(side="left", padx=(0, 10))
+        self.clock_bcd_lbl = tk.Label(phase_col, textvariable=self.abu_clock_bcd_var, bg="#080C14", fg=ACCENT_AMBER, font=("Consolas", 9, "bold"))
         self.clock_bcd_lbl.pack(anchor="w")
-        self.clock_phase_canvas = tk.Canvas(phase_col, width=110, height=6, bg="#131B2E", highlightthickness=0)
+        self.clock_phase_canvas = tk.Canvas(phase_col, width=90, height=6, bg="#131B2E", highlightthickness=0)
         self.clock_phase_canvas.pack(anchor="w", pady=(2, 0))
         self.clock_phase_rect = self.clock_phase_canvas.create_rectangle(0, 0, 0, 6, fill=ACCENT_CYAN, outline="")
         HoverTooltip(
             phase_col,
-            "32-bit BCD Timecode & Sub-Frame Phase",
-            "Displays the hex SMPTE BCD word and live sub-frame phase progress (0.0 to 1.0) within the current frame window.",
+            "Sub-Frame Phase & BCD Timecode",
+            "Displays live sub-frame phase progress (0.0 to 1.0) within the current SMPTE frame window.",
         )
         
-        self.clock_tai_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tai_var, bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 8))
-        self.clock_tai_lbl.pack(side="left", padx=(0, 12))
+        # Keep clock_tai_lbl as an internal reference for Clapper Slate / tooltips without crowding the top bar
+        self.clock_tai_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tai_var, bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 9))
         
-        self.clock_nodes_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_nodes_var, bg="#080C14", fg=ACCENT_GREEN, font=("Segoe UI", 8, "bold"))
-        self.clock_nodes_lbl.pack(side="left", padx=(0, 10))
+        self.clock_nodes_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_nodes_var, bg="#080C14", fg=ACCENT_GREEN, font=("Segoe UI", 9, "bold"))
+        self.clock_nodes_lbl.pack(side="left", padx=(0, 8))
         HoverTooltip(
             self.clock_nodes_lbl,
             "Discovered Abu Ecosystem Nodes",
@@ -868,7 +915,7 @@ class CamTrackDesktopApp:
         )
         
         fps_options = ["23.976", "24", "25", "29.97 DF", "29.97 NDF", "30", "50", "59.94 DF", "60"]
-        self.clock_fps_combo = ttk.Combobox(self.clock_bar, textvariable=self.abu_clock_fps_var, values=fps_options, state="readonly", width=10)
+        self.clock_fps_combo = ttk.Combobox(self.clock_bar, textvariable=self.abu_clock_fps_var, values=fps_options, state="readonly", width=9)
         self.clock_fps_combo.pack(side="right", padx=(4, 6))
         self.clock_fps_combo.bind("<<ComboboxSelected>>", lambda _e: self.abu_clock.set_frame_rate(self.abu_clock_fps_var.get()))
         HoverTooltip(
@@ -876,7 +923,7 @@ class CamTrackDesktopApp:
             "Master SMPTE Frame Rate",
             "Sets the master timecode frame rate for the entire Abu Track & Scan studio session (supports NDF and Drop-Frame standards).",
         )
-        tk.Label(self.clock_bar, text="FPS:", bg="#080C14", fg=TEXT_MUTED, font=("Segoe UI", 8, "bold")).pack(side="right")
+        tk.Label(self.clock_bar, text="FPS:", bg="#080C14", fg=TEXT_MUTED, font=("Segoe UI", 9, "bold")).pack(side="right")
 
         # Notebook Tabbed System — Ordered by logical production workflow
         self.notebook = ttk.Notebook(self.root)
@@ -897,7 +944,7 @@ class CamTrackDesktopApp:
         self.notebook.add(self.tab_docs, text="📘 Interactive Guide")
         
         # ----------------- TAB 1: SYNCHRONIZATION INTERFACE -----------------
-        self.tab_sync.columnconfigure(0, weight=4) # Left Panel
+        self.tab_sync.columnconfigure(0, weight=4, minsize=470) # Left Panel with guaranteed minimum width
         self.tab_sync.columnconfigure(1, weight=5) # Right Logs Panel
         self.tab_sync.rowconfigure(1, weight=1)
         
@@ -913,25 +960,18 @@ class CamTrackDesktopApp:
         left_panel = self.sync_left_scroll.inner
         left_panel.columnconfigure(0, weight=1)
         
-        # Title
-        title_frame = ttk.Frame(left_panel)
-        title_frame.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        ttk.Label(title_frame, text="ABU TRACK & SCAN // DESKTOP WORKSTATION", font=("Segoe UI", 12, "bold"), background=BG_COLOR, foreground=TEXT_PRIMARY).grid(row=0, column=0, sticky="w")
-        
         try:
             from version_info import VERSION, BUILD
             version_text = f"Version {VERSION} (Build #{BUILD}) • 3DGS, Metashape & Abu Clock ST 2059-2 Ready"
         except ImportError:
-            version_text = "Version 0.1.0.5 • 3DGS, Metashape & Abu Clock ST 2059-2 Ready"
-            
-        ttk.Label(title_frame, text=version_text, font=("Segoe UI", 8), background=BG_COLOR, foreground=TEXT_MUTED).grid(row=1, column=0, sticky="w", pady=(2, 0))
+            version_text = "Version 0.1.0.9 • 3DGS, Metashape & Abu Clock ST 2059-2 Ready"
         
-        # Card 1: Data Directories
+        # Card 1: Data Directories (Starts at row 0 without redundant duplicate window title banner — WIN-UI-06)
         io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
-        io_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+        io_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         io_card.columnconfigure(1, weight=1)
         
-        ttk.Label(io_card, text="📂 01 // SESSION DIRECTORIES & LENS PROFILE", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        ttk.Label(io_card, text="📂 01 // SESSION DIRECTORIES & LENS PROFILE", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
         
         img_lbl = ttk.Label(io_card, text="Image Folder:")
         img_lbl.grid(row=1, column=0, sticky="w", pady=4)
@@ -968,13 +1008,13 @@ class CamTrackDesktopApp:
         # Card 2: Collapsible DSLR Rig Lever-Arm & Boresight Offsets
         self.sync_rig_drawer = CollapsibleCard(
             left_panel,
-            title="📐 02 // RIG LEVER-ARM & BORESIGHT OFFSETS",
+            title="📐 02 // RIG LEVER-ARM & BORESIGHT",
             badge_text="cm / deg",
             expanded=True,
             tooltip_title="Physical Camera Rig Offset Compensation",
             tooltip_body="Compensates for the physical 3D translation (cm) and angular boresight difference (°) between the iPhone tracker lens and your main DSLR/cinema sensor.",
         )
-        self.sync_rig_drawer.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        self.sync_rig_drawer.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         rig_card = self.sync_rig_drawer.body
         rig_card.columnconfigure(0, weight=1)
         rig_card.columnconfigure(1, weight=1)
@@ -990,10 +1030,10 @@ class CamTrackDesktopApp:
             fg=ACCENT_CYAN,
             activebackground=ACCENT_CYAN,
             activeforeground=BG_COLOR,
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bd=0,
-            padx=6,
-            pady=1,
+            padx=10,
+            pady=4,
             cursor="hand2",
             command=lambda: self.show_quick_guide_modal("Rig Lever-Arm & Boresight Coordinate Guide"),
         )
@@ -1010,7 +1050,7 @@ class CamTrackDesktopApp:
         
         # Card 3: Clock Sync + Sync Button
         action_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
-        action_card.grid(row=3, column=0, sticky="nsew")
+        action_card.grid(row=2, column=0, sticky="nsew")
         action_card.columnconfigure(0, weight=1)
         
         ttk.Label(action_card, text="⏱ 03 // ABU CLOCK OFFSET & EXIF INJECTION", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 2))
@@ -1029,7 +1069,7 @@ class CamTrackDesktopApp:
         ttk.Label(slider_frame, text="sec", style="Muted.TLabel").grid(row=0, column=2, sticky="w")
         
         self.slate_solve_btn = ttk.Button(action_card, text="⚡ Auto-Solve Frame-00 Slate Flash Offset", command=self.solve_slate_flash_offset)
-        self.slate_solve_btn.grid(row=3, column=0, sticky="ew", ipady=5, pady=(2, 6))
+        self.slate_solve_btn.grid(row=3, column=0, sticky="ew", ipady=4, pady=(2, 6))
         HoverTooltip(
             self.slate_solve_btn,
             "Automatic Frame-00 Optical Slate Solver",
@@ -1037,7 +1077,7 @@ class CamTrackDesktopApp:
         )
         
         self.sync_btn = ttk.Button(action_card, text="🚀 INJECT EXIF & EXPORT METASHAPE / ABUSCAN / COLMAP", style="Action.TButton", command=self.run_synchronization)
-        self.sync_btn.grid(row=4, column=0, sticky="ew", ipady=10, pady=(2, 0))
+        self.sync_btn.grid(row=4, column=0, sticky="ew", ipady=8, pady=(2, 0))
         HoverTooltip(
             self.sync_btn,
             "Run Geodetic EXIF Injection & Multi-Format Export",
@@ -1055,7 +1095,7 @@ class CamTrackDesktopApp:
         
         ttk.Label(right_panel, text="🖥 PIPELINE TELEMETRY LOGS & INTEGRITY ANALYSIS", font=("Segoe UI", 10, "bold"), background=BG_COLOR, foreground=ACCENT_CYAN).grid(row=0, column=0, sticky="w", pady=(0, 8))
         
-        self.log_box = tk.Text(right_panel, wrap="word", bg=CARD_BG, fg=TEXT_PRIMARY, insertbackground=ACCENT_CYAN, font=("Consolas", 9), bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=ACCENT_CYAN, padx=12, pady=12)
+        self.log_box = tk.Text(right_panel, wrap="word", bg=CARD_BG, fg=TEXT_PRIMARY, insertbackground=ACCENT_CYAN, font=("Consolas", 10), bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=ACCENT_CYAN, padx=12, pady=12)
         self.log_box.grid(row=1, column=0, sticky="nsew")
         
         scroll = ttk.Scrollbar(right_panel, orient="vertical", command=self.log_box.yview)
@@ -1068,24 +1108,33 @@ class CamTrackDesktopApp:
         
         # ----------------- TAB 2: 3D SPATIAL WORKSTATION -----------------
         self.tab_visualizer.columnconfigure(0, weight=5) # 3D Plot Canvas
-        self.tab_visualizer.columnconfigure(1, weight=3) # Side photography controller
+        self.tab_visualizer.columnconfigure(1, weight=3, minsize=420) # Side photography controller
         self.tab_visualizer.rowconfigure(1, weight=1)
         
         self.create_workflow_banner(
             self.tab_visualizer,
             "① Inspect synced camera frustums & LiDAR point cloud   →   ② Clean outliers (SOR)   →   ③ Select Lens Profile & Export to Postshot / Metashape / RealityScan",
             "3D Spatial Map & Multi-Target Export Guide",
-            "After running EXIF Sync in Tab 1, your camera trajectory and LiDAR point cloud appear here. Click any photo in the Photography Controller list to highlight its 3D frustum, run Statistical Outlier Removal (SOR), and export ready-to-train scenes for Jawset Postshot (3DGS), Agisoft Metashape (Z-Up), or Epic RealityScan.",
+            "After running EXIF Sync in Tab 1, your camera trajectory and LiDAR point cloud appear here. Click any photo in the Photography Controller list to highlight its 3D frustum (double-click to open snapshot), run Statistical Outlier Removal (SOR), and export ready-to-train scenes.",
         )
         
-        # Left: Matplotlib 3D Viewport
+        # Left: Matplotlib 3D Viewport + Unified Camera Toolbar (WIN-UX-03)
         self.view_frame = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=10)
         self.view_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
 
         self.view_frame.columnconfigure(0, weight=1)
         self.view_frame.rowconfigure(1, weight=1)
         
-        ttk.Label(self.view_frame, text="🕸 INTERACTIVE 3D SPATIAL MAP", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 10))
+        map_toolbar = ttk.Frame(self.view_frame, style="Card.TFrame")
+        map_toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        ttk.Label(map_toolbar, text="🕸 INTERACTIVE 3D SPATIAL MAP", style="Header.TLabel").pack(side="left")
+        
+        ttk.Button(map_toolbar, text="➖ Pt", width=5, command=lambda: self.adjust_3d_point_size(0.7)).pack(side="right", padx=(2, 0), ipady=2)
+        ttk.Button(map_toolbar, text="➕ Pt", width=5, command=lambda: self.adjust_3d_point_size(1.4)).pack(side="right", padx=2, ipady=2)
+        ttk.Button(map_toolbar, text="📐 Top", width=6, command=lambda: self.set_3d_camera_preset(90, -90)).pack(side="right", padx=2, ipady=2)
+        ttk.Button(map_toolbar, text="📐 Side", width=6, command=lambda: self.set_3d_camera_preset(0, -90)).pack(side="right", padx=2, ipady=2)
+        ttk.Button(map_toolbar, text="🎥 Iso", width=6, command=lambda: self.set_3d_camera_preset(30, -60)).pack(side="right", padx=2, ipady=2)
+        ttk.Button(map_toolbar, text="🔄 Reset", width=7, command=self.render_3d_scene).pack(side="right", padx=2, ipady=2)
         
         # Create empty Matplotlib figure inside Tkinter
         self.fig = plt.figure(facecolor=BG_COLOR)
@@ -1097,31 +1146,54 @@ class CamTrackDesktopApp:
         self.canvas_3d.get_tk_widget().grid(row=1, column=0, sticky="nsew")
         self.fig.canvas.mpl_connect('button_press_event', self.on_canvas_click)
 
-        
         # Right Control Panel
         side_panel = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=15)
         side_panel.grid(row=1, column=1, sticky="nsew")
         side_panel.columnconfigure(0, weight=1)
         side_panel.rowconfigure(1, weight=1)
         
-        ttk.Label(side_panel, text="📸 PHOTOGRAPHY CONTROLLER", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 10))
+        ttk.Label(side_panel, text="📸 PHOTOGRAPHY CONTROLLER", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
         
-        # Listbox containing photography frames
-        self.photo_listbox = tk.Listbox(side_panel, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 9), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
-        self.photo_listbox.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+        # Listbox containing photography frames (Single-click highlights frustum; Double-click opens snapshot — WIN-UX-04)
+        self.photo_listbox = tk.Listbox(side_panel, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 10), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
+        self.photo_listbox.grid(row=1, column=0, sticky="nsew", pady=(0, 6))
         self.photo_listbox.bind("<<ListboxSelect>>", self._on_listbox_select)
+        self.photo_listbox.bind("<Double-Button-1>", self.open_selected_photo_dialog)
         
         scroll_list = ttk.Scrollbar(side_panel, orient="vertical", command=self.photo_listbox.yview)
-        scroll_list.grid(row=1, column=1, sticky="ns", pady=(0, 10))
+        scroll_list.grid(row=1, column=1, sticky="ns", pady=(0, 6))
         self.photo_listbox.configure(yscrollcommand=scroll_list.set)
         
-        # Processing Buttons
-        btn_frame = ttk.Frame(side_panel)
-        btn_frame.grid(row=2, column=0, columnspan=2, sticky="ew")
-        btn_frame.columnconfigure(0, weight=1)
+        # Inline Selected Photo Inspector Summary Bar
+        self.photo_summary_lbl = tk.Label(
+            side_panel,
+            textvariable=self.selected_photo_summary_var,
+            bg="#0B1324",
+            fg=ACCENT_CYAN,
+            font=("Consolas", 9),
+            anchor="w",
+            justify="left",
+            padx=8,
+            pady=6,
+        )
+        self.photo_summary_lbl.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         
-        self.clean_btn = ttk.Button(btn_frame, text="🧹 Clean Point Cloud (SOR Filter)", command=self.clean_point_cloud_sor)
-        self.clean_btn.grid(row=0, column=0, sticky="ew", ipady=8)
+        # Processing & Inspection Buttons
+        btn_frame = ttk.Frame(side_panel)
+        btn_frame.grid(row=3, column=0, columnspan=2, sticky="ew")
+        btn_frame.columnconfigure(0, weight=1)
+        btn_frame.columnconfigure(1, weight=1)
+        
+        self.inspect_photo_btn = ttk.Button(btn_frame, text="🔍 Inspect Photo & EXIF", command=self.open_selected_photo_dialog)
+        self.inspect_photo_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4), ipady=5)
+        HoverTooltip(
+            self.inspect_photo_btn,
+            "Inspect Selected Camera Snapshot",
+            "Opens a non-blocking preview window with image thumbnail, interpolated 6DoF pose, GPS coordinates, and SMPTE timecode.",
+        )
+        
+        self.clean_btn = ttk.Button(btn_frame, text="🧹 Clean Cloud (SOR)", command=self.clean_point_cloud_sor)
+        self.clean_btn.grid(row=0, column=1, sticky="ew", padx=(4, 0), ipady=5)
         HoverTooltip(
             self.clean_btn,
             "Statistical Outlier Removal (SOR)",
@@ -1130,7 +1202,7 @@ class CamTrackDesktopApp:
         
         # 06 // CALIBRATION & MULTI-TARGET EXPORTS
         export_frame = ttk.Frame(side_panel)
-        export_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(15, 0))
+        export_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         export_frame.columnconfigure(0, weight=1)
         export_frame.columnconfigure(1, weight=1)
         export_frame.columnconfigure(2, weight=1)
@@ -1183,7 +1255,7 @@ class CamTrackDesktopApp:
         HoverTooltip(self.realityscan_btn, "Export for Epic RealityScan / RealityCapture", "Exports flight log and XMP camera priors compatible with RealityScan / RealityCapture.")
         
         # ----------------- TAB 3: OPTICAL LENS CALIBRATION & SOLVER -----------------
-        self.tab_calibrator.columnconfigure(0, weight=4) # Left controls panel
+        self.tab_calibrator.columnconfigure(0, weight=4, minsize=460) # Left controls panel
         self.tab_calibrator.columnconfigure(1, weight=5) # Right preview panel
         self.tab_calibrator.rowconfigure(1, weight=1)
         
@@ -1242,7 +1314,7 @@ class CamTrackDesktopApp:
         
         ttk.Label(calib_list_card, text="🖼 BOARD CAPTURE SERIES", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
         
-        self.calib_listbox = tk.Listbox(calib_list_card, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 9), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
+        self.calib_listbox = tk.Listbox(calib_list_card, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 10), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
         self.calib_listbox.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         self.calib_listbox.bind("<<ListboxSelect>>", self.on_calib_listbox_select)
         
@@ -1298,7 +1370,7 @@ class CamTrackDesktopApp:
         
         ttk.Label(calib_log_card, text="🖥 OPTICAL SOLVER CONSOLE", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
         
-        self.calib_console = tk.Text(calib_log_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 8), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
+        self.calib_console = tk.Text(calib_log_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 10), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
         self.calib_console.grid(row=1, column=0, sticky="nsew")
         
         scroll_console = ttk.Scrollbar(calib_log_card, orient="vertical", command=self.calib_console.yview)
@@ -1306,15 +1378,15 @@ class CamTrackDesktopApp:
         self.calib_console.configure(yscrollcommand=scroll_console.set)
         
         # ----------------- TAB 4: LIVE TELEMETRY CHECKER -----------------
-        self.tab_receiver.columnconfigure(0, weight=4) # Left Controls Panel
+        self.tab_receiver.columnconfigure(0, weight=4, minsize=470) # Left Controls Panel with guaranteed width (WIN-UI-04)
         self.tab_receiver.columnconfigure(1, weight=6) # Right Panel
         self.tab_receiver.rowconfigure(1, weight=1)
         
         self.create_workflow_banner(
             self.tab_receiver,
-            "① Enter PC Local IP on iOS & Click Start Listening   →   ② Optional: Enable UDP Forwarding to UE5   →   ③ Monitor 6DoF Pose, Timecode & 3D Frustum",
+            "① Enter PC Local IP on iOS (UDP 8080) & Start Listening   →   ② Optional: Forward to UE5 (Port 8081)   →   ③ Monitor 6DoF Pose, Timecode & 3D Stage",
             "Live Track & Stream — Real-Time 6DoF & Virtual Production Hub",
-            "Receives 60Hz–120Hz UDP telemetry & H.264 video from iOS, buffers and smooths network jitter, applies workstation origin & lever-arm overrides, and re-broadcasts Live Link JSON, 41B SMPTE FreeD-TC (0xD2), 29B FreeD, or OpenTrackIO to Unreal Engine 5.",
+            "Port Topology: iOS → PC Telemetry (UDP 8080) | iOS → PC RTP Video (UDP 5004) | PC → UE5 Forwarder (UDP 8081) | Abu Clock PTP (UDP 50320) | Discovery (UDP 53530).",
         )
         
         # Scrollable Left Sidebar so all 5 cards fit on 13"–15" laptop screens without clipping
@@ -1326,34 +1398,52 @@ class CamTrackDesktopApp:
         # Card 1: Receiver Configuration (Always Visible)
         rx_config_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
         rx_config_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        rx_config_card.columnconfigure(0, weight=1)
         rx_config_card.columnconfigure(1, weight=1)
         
-        ttk.Label(rx_config_card, text="📡 01 // UDP LISTENER & VIDEO STREAM", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
+        ttk.Label(rx_config_card, text="📡 01 // UDP LISTENER & VIDEO STREAM", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
         
-        ttk.Label(rx_config_card, text="UDP Telemetry Port:").grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Label(rx_config_card, text="UDP Telemetry Port:").grid(row=1, column=0, sticky="w", pady=3)
         port_entry = ttk.Entry(rx_config_card, textvariable=self.receiver_port, width=10)
-        port_entry.grid(row=1, column=1, sticky="w", pady=4)
+        port_entry.grid(row=1, column=1, sticky="w", pady=3)
         HoverTooltip(port_entry, "UDP Telemetry Listener Port", "Local UDP port to receive 6DoF tracking packets from iOS (default: 8080). Must match the Target Port set in the iOS app.")
         
-        ttk.Label(rx_config_card, text="H.264 Video Port:").grid(row=2, column=0, sticky="w", pady=4)
+        ttk.Label(rx_config_card, text="RTP H.264/HEVC Port:").grid(row=2, column=0, sticky="w", pady=3)
         video_port_entry = ttk.Entry(rx_config_card, textvariable=self.video_stream_port, width=10)
-        video_port_entry.grid(row=2, column=1, sticky="w", pady=4)
-        HoverTooltip(video_port_entry, "H.264 Live Video Stream Port", "UDP port for receiving low-latency H.264 camera video packets from iOS (default: 8081).")
+        video_port_entry.grid(row=2, column=1, sticky="w", pady=3)
+        HoverTooltip(video_port_entry, "RTP Live Video Stream Port", "UDP port for receiving low-latency RTP H.264/HEVC camera video packets from iOS (default: 5004).")
         
-        video_chk = ttk.Checkbutton(rx_config_card, text="Enable H.264 Video Stream", variable=self.is_video_stream_enabled)
-        video_chk.grid(row=3, column=0, columnspan=2, sticky="w", pady=3)
-        HoverTooltip(video_chk, "Decode Incoming H.264 Camera Feed", "When enabled, decodes the live iOS camera video stream for preview or Spout GPU sharing.")
+        video_chk = ttk.Checkbutton(rx_config_card, text="Enable RTP Camera Video Stream", variable=self.is_video_stream_enabled)
+        video_chk.grid(row=3, column=0, columnspan=2, sticky="w", pady=2)
+        HoverTooltip(video_chk, "Decode Incoming Camera Feed", "When enabled, decodes the live iOS camera video stream for 3D Cockpit background preview or Spout GPU sharing.")
         
         spout_chk = ttk.Checkbutton(rx_config_card, text="Enable DirectX Spout GPU Sharing", variable=self.is_spout_enabled)
-        spout_chk.grid(row=4, column=0, columnspan=2, sticky="w", pady=3)
+        spout_chk.grid(row=4, column=0, columnspan=2, sticky="w", pady=2)
         HoverTooltip(spout_chk, "Zero-Copy Spout Texture Sender", "Shares the decoded iOS camera feed directly to Unreal Engine, TouchDesigner, or OBS via DirectX Spout.")
         
-        # Action Buttons
+        # Primary Start/Stop Action Buttons
         self.start_rx_btn = ttk.Button(rx_config_card, text="▶ START LISTENING", style="Action.TButton", command=self.start_receiver)
-        self.start_rx_btn.grid(row=5, column=0, sticky="ew", padx=(0, 3), pady=(8, 0), ipady=5)
+        self.start_rx_btn.grid(row=5, column=0, sticky="ew", padx=(0, 3), pady=(8, 4), ipady=4)
         
         self.stop_rx_btn = ttk.Button(rx_config_card, text="■ STOP", state="disabled", command=self.stop_receiver)
-        self.stop_rx_btn.grid(row=5, column=1, sticky="ew", padx=(3, 0), pady=(8, 0), ipady=5)
+        self.stop_rx_btn.grid(row=5, column=1, sticky="ew", padx=(3, 0), pady=(8, 4), ipady=4)
+        
+        # Restored 1-Click Firewall Whitelist & Logs Utility Row (WIN-UX-05)
+        self.firewall_btn = ttk.Button(rx_config_card, text="🛡 Fix Firewall (8080/5004)", command=self.fix_windows_firewall)
+        self.firewall_btn.grid(row=6, column=0, sticky="ew", padx=(0, 3), pady=(2, 0), ipady=3)
+        HoverTooltip(
+            self.firewall_btn,
+            "1-Click Windows Defender Firewall Rule",
+            "Requests Administrator elevation to whitelist inbound UDP ports 8080 (Telemetry), 5004 (RTP Video), 50320 (Abu Clock), and 53530 (Discovery).",
+        )
+        
+        self.open_logs_btn = ttk.Button(rx_config_card, text="📂 Open Logs Folder", command=self.open_logs_folder)
+        self.open_logs_btn.grid(row=6, column=1, sticky="ew", padx=(3, 0), pady=(2, 0), ipady=3)
+        HoverTooltip(
+            self.open_logs_btn,
+            "Open Diagnostic Logs Directory",
+            "Opens the local AppData log folder containing abu_track_desktop.log for network and solver diagnostics.",
+        )
         
         # Card 2: Dynamic UDP Forwarder Server Settings (Always Visible)
         rx_forward_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
@@ -1363,22 +1453,22 @@ class CamTrackDesktopApp:
         ttk.Label(rx_forward_card, text="🔀 02 // UNREAL / FREED / OPENTRACKIO FORWARDER", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
         
         forward_chk = ttk.Checkbutton(rx_forward_card, text="Enable Target UDP Forwarding", variable=self.forward_enabled, command=self.toggle_forwarding)
-        forward_chk.grid(row=1, column=0, columnspan=2, sticky="w", pady=3)
+        forward_chk.grid(row=1, column=0, columnspan=2, sticky="w", pady=2)
         HoverTooltip(forward_chk, "Re-Broadcast Calibrated Telemetry", "Forwards buffered, coordinate-aligned, and lever-arm compensated poses + Abu Clock timecode to Unreal Engine or disguise/vizrt.")
         
-        ttk.Label(rx_forward_card, text="Target IP / Host:").grid(row=2, column=0, sticky="w", pady=4)
+        ttk.Label(rx_forward_card, text="Target IP / Host:").grid(row=2, column=0, sticky="w", pady=3)
         host_entry = ttk.Entry(rx_forward_card, textvariable=self.forward_host, width=15)
-        host_entry.grid(row=2, column=1, sticky="w", pady=4)
+        host_entry.grid(row=2, column=1, sticky="w", pady=3)
         HoverTooltip(host_entry, "Destination IP Address", "IP address of the Unreal Engine workstation (use 127.0.0.1 if Unreal Engine is running on this same PC).")
         
-        ttk.Label(rx_forward_card, text="Target Port:").grid(row=3, column=0, sticky="w", pady=4)
+        ttk.Label(rx_forward_card, text="Target Port:").grid(row=3, column=0, sticky="w", pady=3)
         tgt_port_entry = ttk.Entry(rx_forward_card, textvariable=self.forward_port, width=10)
-        tgt_port_entry.grid(row=3, column=1, sticky="w", pady=4)
-        HoverTooltip(tgt_port_entry, "Destination UDP Port", "UDP port configured in the Unreal Engine Live Link Abu Track Source (default: 8082 when forwarding on same PC, or 8080 on remote PC).")
+        tgt_port_entry.grid(row=3, column=1, sticky="w", pady=3)
+        HoverTooltip(tgt_port_entry, "Destination UDP Port", "UDP port configured in the Unreal Engine Live Link Abu Track Source (default: 8081 when forwarding on same PC).")
         
-        ttk.Label(rx_forward_card, text="Protocol Format:").grid(row=4, column=0, sticky="w", pady=4)
+        ttk.Label(rx_forward_card, text="Protocol Format:").grid(row=4, column=0, sticky="w", pady=3)
         proto_combo = ttk.Combobox(rx_forward_card, textvariable=self.forward_protocol, values=["Live Link JSON", "SMPTE FreeD-TC (0xD2 - 41B)", "FreeD Binary", "OpenTrackIO JSON"], state="readonly", width=24)
-        proto_combo.grid(row=4, column=1, sticky="w", pady=4)
+        proto_combo.grid(row=4, column=1, sticky="w", pady=3)
         HoverTooltip(
             proto_combo,
             "Output Telemetry Protocol",
@@ -1388,11 +1478,19 @@ class CamTrackDesktopApp:
             "• OpenTrackIO JSON: SMPTE RIS OpenTrackIO virtual production payload",
         )
         
+        pitch_offset_chk = ttk.Checkbutton(rx_forward_card, text="Apply -90° UE Pitch Horizon Offset", variable=self.forward_apply_pitch_offset)
+        pitch_offset_chk.grid(row=5, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        HoverTooltip(
+            pitch_offset_chk,
+            "ARKit-to-UE5 -90° Pitch Horizon Alignment",
+            "Applies -90° pitch rotation when forwarding to UE5. If enabled here, uncheck 'Apply -90° Pitch Offset' in the UE5 LiveLink Details panel to avoid double rotation.",
+        )
+        
         # Card 3: Collapsible Workstation Calibration & Offsets (Collapsed by default to reduce clutter)
         self.rx_offset_drawer = CollapsibleCard(
             rx_left,
-            title="📐 03 // WORKSTATION ORIGIN & LEVER-ARM",
-            badge_text="6-Axis + Lever",
+            title="📐 03 // STAGE ORIGIN & LEVER-ARM",
+            badge_text="6-Axis",
             expanded=False,
             tooltip_title="Workstation Stage Origin & Lever-Arm Overrides",
             tooltip_body="Click to expand 6-axis studio floor origin offsets (X, Y, Z, Yaw, Pitch, Roll) and real-time camera lever-arm translation (cm).",
@@ -1402,62 +1500,75 @@ class CamTrackDesktopApp:
         rx_offset_card.columnconfigure(1, weight=1)
         rx_offset_card.columnconfigure(3, weight=1)
         
-        # Section A: Initial Origin Offsets (6-Axis)
-        ttk.Label(rx_offset_card, text="STAGE ORIGIN OFFSETS (m / deg)", style="Muted.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 4))
+        # Cross-device Double-Compensation Warning Banner (ARCH-UX-01)
+        self.double_comp_warn_lbl = tk.Label(
+            rx_offset_card,
+            textvariable=self.double_comp_warn_var,
+            bg="#261B0A",
+            fg=ACCENT_AMBER,
+            font=("Segoe UI", 9, "bold"),
+            wraplength=400,
+            justify="left",
+            padx=8,
+            pady=4,
+        )
         
-        ttk.Label(rx_offset_card, text="Origin X (m):").grid(row=1, column=0, sticky="w", pady=2)
+        # Section A: Initial Origin Offsets (6-Axis)
+        ttk.Label(rx_offset_card, text="STAGE ORIGIN OFFSETS (m / deg)", style="Muted.TLabel").grid(row=1, column=0, columnspan=4, sticky="w", pady=(0, 4))
+        
+        ttk.Label(rx_offset_card, text="Origin X (m):").grid(row=2, column=0, sticky="w", pady=2)
         ox_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_x, width=8)
-        ox_ent.grid(row=1, column=1, sticky="w", pady=2)
+        ox_ent.grid(row=2, column=1, sticky="w", pady=2)
         HoverTooltip(ox_ent, "Stage Origin X Offset (m)", "Shifts the world origin along the X axis in meters.")
         
-        ttk.Label(rx_offset_card, text="Origin Y (m):").grid(row=1, column=2, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Origin Y (m):").grid(row=2, column=2, sticky="w", pady=2)
         oy_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_y, width=8)
-        oy_ent.grid(row=1, column=3, sticky="w", pady=2)
+        oy_ent.grid(row=2, column=3, sticky="w", pady=2)
         HoverTooltip(oy_ent, "Stage Origin Y Offset (m)", "Shifts the world origin along the Y axis in meters.")
         
-        ttk.Label(rx_offset_card, text="Origin Z (m):").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Origin Z (m):").grid(row=3, column=0, sticky="w", pady=2)
         oz_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_z, width=8)
-        oz_ent.grid(row=2, column=1, sticky="w", pady=2)
+        oz_ent.grid(row=3, column=1, sticky="w", pady=2)
         HoverTooltip(oz_ent, "Stage Origin Z Offset (m)", "Shifts the world origin height/depth along the Z axis in meters.")
         
-        ttk.Label(rx_offset_card, text="Origin Yaw (°):").grid(row=2, column=2, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Origin Yaw (°):").grid(row=3, column=2, sticky="w", pady=2)
         oyaw_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_yaw, width=8)
-        oyaw_ent.grid(row=2, column=3, sticky="w", pady=2)
+        oyaw_ent.grid(row=3, column=3, sticky="w", pady=2)
         HoverTooltip(oyaw_ent, "Stage Origin Yaw Rotation (°)", "Rotates the entire tracking coordinate system around the vertical axis.")
         
-        ttk.Label(rx_offset_card, text="Origin Pitch(°):").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Origin Pitch(°):").grid(row=4, column=0, sticky="w", pady=2)
         opitch_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_pitch, width=8)
-        opitch_ent.grid(row=3, column=1, sticky="w", pady=2)
+        opitch_ent.grid(row=4, column=1, sticky="w", pady=2)
         
-        ttk.Label(rx_offset_card, text="Origin Roll (°):").grid(row=3, column=2, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Origin Roll (°):").grid(row=4, column=2, sticky="w", pady=2)
         oroll_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_roll, width=8)
-        oroll_ent.grid(row=3, column=3, sticky="w", pady=2)
+        oroll_ent.grid(row=4, column=3, sticky="w", pady=2)
         
         # Separator line
-        ttk.Separator(rx_offset_card, orient="horizontal").grid(row=4, column=0, columnspan=4, sticky="ew", pady=6)
+        ttk.Separator(rx_offset_card, orient="horizontal").grid(row=5, column=0, columnspan=4, sticky="ew", pady=6)
         
         # Section B: Camera Lever Arm Offsets
-        ttk.Label(rx_offset_card, text="RIG LEVER-ARM OVERRIDE (cm)", style="Muted.TLabel").grid(row=5, column=0, columnspan=4, sticky="w", pady=(0, 4))
+        ttk.Label(rx_offset_card, text="RIG LEVER-ARM OVERRIDE (cm)", style="Muted.TLabel").grid(row=6, column=0, columnspan=4, sticky="w", pady=(0, 4))
         
-        ttk.Label(rx_offset_card, text="Lever X (cm):").grid(row=6, column=0, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Lever X (cm):").grid(row=7, column=0, sticky="w", pady=2)
         lx_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_x, width=8)
-        lx_ent.grid(row=6, column=1, sticky="w", pady=2)
+        lx_ent.grid(row=7, column=1, sticky="w", pady=2)
         HoverTooltip(lx_ent, "Workstation Lever-Arm X (cm)", "Lateral offset from iPhone tracker to main cinema sensor (+Right / -Left).")
         
-        ttk.Label(rx_offset_card, text="Lever Y (cm):").grid(row=6, column=2, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Lever Y (cm):").grid(row=7, column=2, sticky="w", pady=2)
         ly_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_y, width=8)
-        ly_ent.grid(row=6, column=3, sticky="w", pady=2)
+        ly_ent.grid(row=7, column=3, sticky="w", pady=2)
         HoverTooltip(ly_ent, "Workstation Lever-Arm Y (cm)", "Vertical offset from iPhone tracker to main cinema sensor (+Up / -Down).")
         
-        ttk.Label(rx_offset_card, text="Lever Z (cm):").grid(row=7, column=0, sticky="w", pady=2)
+        ttk.Label(rx_offset_card, text="Lever Z (cm):").grid(row=8, column=0, sticky="w", pady=2)
         lz_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_z, width=8)
-        lz_ent.grid(row=7, column=1, sticky="w", pady=2)
+        lz_ent.grid(row=8, column=1, sticky="w", pady=2)
         HoverTooltip(lz_ent, "Workstation Lever-Arm Z (cm)", "Forward/depth offset from iPhone tracker to main cinema nodal point (+Forward / -Behind).")
         
         # Card 4: Collapsible Coordinate System & LiDAR Alignment (Collapsed by default with active Preset Badge)
         self.rx_align_drawer = CollapsibleCard(
             rx_left,
-            title="🧭 04 // COORDINATE & LIDAR AXIS REMAP",
+            title="🧭 04 // AXIS & LIDAR REMAP",
             badge_text=f"Preset: {self.pc_align_preset.get()}",
             expanded=False,
             tooltip_title="Coordinate Handedness & LiDAR Axis Remapping",
@@ -1520,11 +1631,13 @@ class CamTrackDesktopApp:
         lz_src_combo.grid(row=8, column=2, sticky="w", pady=2)
         
         # Card 5: Collapsible PC Network & Stream Diagnostics (Expanded by default so IP & Hz are visible)
-        local_ips_str = ", ".join(self.get_local_ips())
+        local_ips_list = self.get_local_ips()
+        local_ips_str = ", ".join(local_ips_list)
+        primary_ip = local_ips_list[0] if local_ips_list else "127.0.0.1"
         self.rx_diag_drawer = CollapsibleCard(
             rx_left,
-            title="📊 05 // NETWORK, BUFFER & CLOCK DIAGNOSTICS",
-            badge_text=local_ips_str.split(",")[0] if local_ips_str else "Localhost",
+            title="📊 05 // STREAM & CLOCK DIAGNOSTICS",
+            badge_text=primary_ip,
             expanded=True,
             tooltip_title="Network Telemetry, Jitter Buffer & Thermal Diagnostics",
             tooltip_body="Monitors incoming packet rate (Hz), playout buffer smoothing, Abu Clock latency shift, and iPhone thermal state.",
@@ -1533,11 +1646,11 @@ class CamTrackDesktopApp:
         rx_diag_card = self.rx_diag_drawer.body
         rx_diag_card.columnconfigure(1, weight=1)
         
-        # Local IP List
-        ttk.Label(rx_diag_card, text="PC Local IP(s):").grid(row=1, column=0, sticky="w", pady=3)
-        ip_label = ttk.Label(rx_diag_card, text=local_ips_str, foreground=ACCENT_CYAN, font=("Consolas", 8, "bold"))
+        # Local IP List (Wrapped cleanly so multi-adapter IPs never overflow horizontally — WIN-UI-04)
+        ttk.Label(rx_diag_card, text="PC Local IP(s):").grid(row=1, column=0, sticky="nw", pady=3)
+        ip_label = ttk.Label(rx_diag_card, text=local_ips_str, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"), wraplength=235, justify="right")
         ip_label.grid(row=1, column=1, sticky="e", pady=3)
-        HoverTooltip(ip_label, "Workstation Local IPv4 Address(es)", "Enter this IP address inside the iOS app under Setup → Stream & Clock → Target IP.")
+        HoverTooltip(ip_label, "Workstation Local IPv4 Address(es)", f"All Local IPs: {local_ips_str}\nEnter your LAN IP inside the iOS app under Setup → Stream & Clock → Target IP.")
         
         # PC System Time
         ttk.Label(rx_diag_card, text="PC Epoch Time:").grid(row=2, column=0, sticky="w", pady=3)
@@ -1603,7 +1716,7 @@ class CamTrackDesktopApp:
         smooth_slider = ttk.Scale(smoothing_frame, from_=0.1, to=5.0, value=1.0, variable=self.receiver_smoothing_sec, command=lambda v: self._update_smoothing_label())
         smooth_slider.pack(side="left", padx=(0, 4))
         
-        self.smooth_lbl = ttk.Label(smoothing_frame, text="1.0s", font=("Consolas", 8, "bold"))
+        self.smooth_lbl = ttk.Label(smoothing_frame, text="1.0s", font=("Consolas", 9, "bold"))
         self.smooth_lbl.pack(side="left")
         
         # Playout Buffer Slider
@@ -1616,7 +1729,7 @@ class CamTrackDesktopApp:
         buffer_slider.pack(side="left", padx=(0, 4))
         HoverTooltip(buffer_slider, "Jitter Playout Buffer Delay (ms)", "Buffers incoming Wi-Fi packets and releases them at a rock-solid cadence synced to camera shutter timestamps.")
         
-        self.buffer_lbl = ttk.Label(buffer_frame, text="100ms", font=("Consolas", 8, "bold"))
+        self.buffer_lbl = ttk.Label(buffer_frame, text="100ms", font=("Consolas", 9, "bold"))
         self.buffer_lbl.pack(side="left")
         
         auto_chk = ttk.Checkbutton(buffer_frame, text="Auto-Profile", variable=self.receiver_auto_calibrate)
@@ -1654,15 +1767,15 @@ class CamTrackDesktopApp:
         pos_frame.columnconfigure(1, weight=1)
         pos_frame.columnconfigure(2, weight=1)
         
-        ttk.Label(pos_frame, text="X (EAST)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=0, pady=1)
+        ttk.Label(pos_frame, text="X (EAST)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=0, pady=1)
         self.pos_x_lbl = ttk.Label(pos_frame, textvariable=self.pose_x_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
         self.pos_x_lbl.grid(row=1, column=0, pady=2)
         
-        ttk.Label(pos_frame, text="Y (NORTH)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=1, pady=1)
+        ttk.Label(pos_frame, text="Y (NORTH)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=1, pady=1)
         self.pos_y_lbl = ttk.Label(pos_frame, textvariable=self.pose_y_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
         self.pos_y_lbl.grid(row=1, column=1, pady=2)
         
-        ttk.Label(pos_frame, text="Z (HEIGHT)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=2, pady=1)
+        ttk.Label(pos_frame, text="Z (HEIGHT)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=2, pady=1)
         self.pos_z_lbl = ttk.Label(pos_frame, textvariable=self.pose_z_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
         self.pos_z_lbl.grid(row=1, column=2, pady=2)
         
@@ -1673,15 +1786,15 @@ class CamTrackDesktopApp:
         rot_frame.columnconfigure(1, weight=1)
         rot_frame.columnconfigure(2, weight=1)
         
-        ttk.Label(rot_frame, text="ROLL (X°)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=0, pady=1)
+        ttk.Label(rot_frame, text="ROLL (X°)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=0, pady=1)
         self.rot_roll_lbl = ttk.Label(rot_frame, textvariable=self.pose_roll_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
         self.rot_roll_lbl.grid(row=1, column=0, pady=2)
         
-        ttk.Label(rot_frame, text="PITCH (Y°)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=1, pady=1)
+        ttk.Label(rot_frame, text="PITCH (Y°)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=1, pady=1)
         self.rot_pitch_lbl = ttk.Label(rot_frame, textvariable=self.pose_pitch_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
         self.rot_pitch_lbl.grid(row=1, column=1, pady=2)
         
-        ttk.Label(rot_frame, text="YAW (Z°)", font=("Segoe UI", 8, "bold"), foreground=TEXT_MUTED).grid(row=0, column=2, pady=1)
+        ttk.Label(rot_frame, text="YAW (Z°)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=2, pady=1)
         self.rot_yaw_lbl = ttk.Label(rot_frame, textvariable=self.pose_yaw_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
         self.rot_yaw_lbl.grid(row=1, column=2, pady=2)
         
@@ -1696,12 +1809,12 @@ class CamTrackDesktopApp:
         
         ttk.Label(toolbar, text="🕸 LIVE 3D STAGE VIEWPORT", style="Header.TLabel").pack(side="left")
         
-        clear_btn = ttk.Button(toolbar, text="🗑 Clear", command=self.clear_live_data, width=8)
-        clear_btn.pack(side="right", padx=(4, 0))
+        clear_btn = ttk.Button(toolbar, text="🗑 Clear", command=self.clear_live_data, width=7)
+        clear_btn.pack(side="right", padx=(4, 0), ipady=2)
         HoverTooltip(clear_btn, "Clear Trajectory & Point Cloud", "Clears the accumulated 3D camera path and LiDAR point cloud from the viewport.")
         
-        reset_btn = ttk.Button(toolbar, text="🎯 Reset", command=self.reset_live_view, width=8)
-        reset_btn.pack(side="right", padx=(4, 0))
+        reset_btn = ttk.Button(toolbar, text="🎯 Reset", command=self.reset_live_view, width=7)
+        reset_btn.pack(side="right", padx=(4, 0), ipady=2)
         HoverTooltip(reset_btn, "Reset 3D Camera View", "Resets orbit angles, pan offset, and zoom level (or double-left-click anywhere on the 3D canvas).")
         
         points_chk = ttk.Checkbutton(toolbar, text="🧊 LiDAR", variable=self.live_show_points, command=self.redraw_live_3d_canvas)
@@ -1745,7 +1858,7 @@ class CamTrackDesktopApp:
         
         ttk.Label(rx_console_card, text="🖥 LIVE STREAM PACKET LOG (LAST 15 FRAMES)", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 4))
         
-        self.rx_console = tk.Text(rx_console_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 8), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
+        self.rx_console = tk.Text(rx_console_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 9), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
         self.rx_console.grid(row=1, column=0, sticky="nsew")
         
         scroll_rx_console = ttk.Scrollbar(rx_console_card, orient="vertical", command=self.rx_console.yview)
@@ -1780,11 +1893,11 @@ class CamTrackDesktopApp:
         # Configure tags for clean human-readable Segoe UI rendering
         self.docs_text.tag_config("h1", font=("Segoe UI", 13, "bold"), foreground=ACCENT_CYAN, spacing1=12, spacing3=6)
         self.docs_text.tag_config("h2", font=("Segoe UI", 11, "bold"), foreground=ACCENT_CYAN, spacing1=10, spacing3=4)
-        self.docs_text.tag_config("bold", font=("Segoe UI", 9, "bold"), foreground=TEXT_PRIMARY)
-        self.docs_text.tag_config("bullet", font=("Segoe UI", 9, "bold"), foreground=ACCENT_GREEN)
-        self.docs_text.tag_config("code", font=("Consolas", 9, "bold"), foreground=ACCENT_AMBER, background=BG_COLOR)
-        self.docs_text.tag_config("warning", font=("Segoe UI", 9, "bold"), foreground=ACCENT_RED)
-        self.docs_text.tag_config("normal", font=("Segoe UI", 9), foreground=TEXT_MUTED, spacing2=4)
+        self.docs_text.tag_config("bold", font=("Segoe UI", 10, "bold"), foreground=TEXT_PRIMARY)
+        self.docs_text.tag_config("bullet", font=("Segoe UI", 10, "bold"), foreground=ACCENT_GREEN)
+        self.docs_text.tag_config("code", font=("Consolas", 10, "bold"), foreground=ACCENT_AMBER, background=BG_COLOR)
+        self.docs_text.tag_config("warning", font=("Segoe UI", 10, "bold"), foreground=ACCENT_RED)
+        self.docs_text.tag_config("normal", font=("Segoe UI", 10), foreground=TEXT_MUTED, spacing2=4)
         
         self.write_documentation_manual()
         
@@ -1832,9 +1945,31 @@ class CamTrackDesktopApp:
         
         self.ue_canvas = tk.Canvas(disp_card, bg="black", bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.ue_canvas.grid(row=0, column=0, sticky="nsew")
-        
-        # Center message
-        self.ue_canvas.create_text(400, 225, text="UE5 RETURN MONITOR IDLE\nEnter RTSP / SRT / HTTP Stream URL above and click 'Start Local Decoder'\nor click 'Launch Browser (WebRTC)' for Unreal Pixel Streaming", fill=TEXT_MUTED, font=("Segoe UI", 11, "bold"), justify="center")
+        self.ue_status_text_str = (
+            "UE5 RETURN MONITOR IDLE\n"
+            "Enter RTSP / SRT / HTTP Stream URL above and click 'Start Local Decoder'\n"
+            "or click 'Launch Browser (WebRTC)' for Unreal Pixel Streaming"
+        )
+        self.ue_status_text_color = TEXT_MUTED
+        self.ue_canvas.bind("<Configure>", self._on_ue_canvas_configure)
+
+    def _on_ue_canvas_configure(self, event=None):
+        if self.ue_monitor_thread and getattr(self.ue_monitor_thread, "running", False):
+            return
+        try:
+            w = max(200, self.ue_canvas.winfo_width())
+            h = max(120, self.ue_canvas.winfo_height())
+            self.ue_canvas.delete("all")
+            self.ue_canvas.create_text(
+                w // 2,
+                h // 2,
+                text=self.ue_status_text_str,
+                fill=self.ue_status_text_color,
+                font=("Segoe UI", 11, "bold"),
+                justify="center",
+            )
+        except Exception:
+            pass
 
     def start_ue_monitor(self):
         if self.ue_monitor_thread and self.ue_monitor_thread.running:
@@ -1846,8 +1981,9 @@ class CamTrackDesktopApp:
             return
             
         logger.info(f"UE Monitor: Starting local decoder thread for {url}")
-        self.ue_canvas.delete("all")
-        self.ue_canvas.create_text(400, 225, text="CONNECTING TO STREAM...", fill=ACCENT_CYAN, font=("Consolas", 12, "bold"), justify="center")
+        self.ue_status_text_str = f"CONNECTING TO STREAM ({url})..."
+        self.ue_status_text_color = ACCENT_CYAN
+        self._on_ue_canvas_configure()
         
         self.ue_monitor_thread = UEMonitorThread(url, self.ue_canvas, self)
         self.start_ue_dec_btn.configure(state="disabled")
@@ -1859,8 +1995,13 @@ class CamTrackDesktopApp:
             self.ue_monitor_thread.stop()
             self.ue_monitor_thread = None
             
-        self.ue_canvas.delete("all")
-        self.ue_canvas.create_text(400, 225, text="UE MONITOR DECODER IDLE\nENTER RTSP/SRT/HTTP STREAM URL AND CLICK START DECODER\nOR LAUNCH SYSTEM BROWSER FOR PIXEL STREAMING", fill=TEXT_MUTED, font=("Consolas", 12, "bold"), justify="center")
+        self.ue_status_text_str = (
+            "UE5 RETURN MONITOR IDLE\n"
+            "Enter RTSP / SRT / HTTP Stream URL above and click 'Start Local Decoder'\n"
+            "or click 'Launch Browser (WebRTC)' for Unreal Pixel Streaming"
+        )
+        self.ue_status_text_color = TEXT_MUTED
+        self._on_ue_canvas_configure()
         
         self.start_ue_dec_btn.configure(state="normal")
         self.stop_ue_dec_btn.configure(state="disabled")
@@ -1896,59 +2037,34 @@ class CamTrackDesktopApp:
         def add_code(text):
             self.docs_text.insert(tk.END, "  " + text + "\n", "code")
 
-        add_h1("ABU TRACK SYSTEM ACADEMY & OPERATIONS MANUAL")
-        add_p("Welcome to the complete deployment and operations manual for the Abu Track ecosystem. This system bridges multi-frequency, sensor-fused iOS VIO (Visual Inertial Odometry) and high-accuracy ToF LiDAR depth scanners with virtual production workstations, photo-georeferencing pipelines (e.g. Agisoft Metashape, 3D Gaussian Splatting), and Unreal Engine real-time camera tracking.")
+        add_h1("ABU TRACK & SCAN — STUDIO OPERATIONS MANUAL")
+        add_p("Welcome to the Abu Track & Scan Desktop Workstation manual. This suite unifies sub-microsecond Abu Clock SMPTE ST 2059-2 timing, iOS 6DoF VIO + LiDAR depth scanning, DSLR/Mirrorless geodetic EXIF synchronization, 3D Gaussian Splatting (Postshot / COLMAP) & Metashape exports, and Unreal Engine 5 Live Link virtual production.")
         
-        add_h2("1. CORE ARCHITECTURE OVERVIEW")
-        add_p("The Abu Track pipeline combines industrial mobile tracking hardware and workstation receiver engines to capture, buffer, smooth, and forward spatial coordinates.")
-        add_bullet("✓", "iOS Client (VIO SLAM): ", "Leverages dual-frequency GNSS (GPS), high-rate IMUs, and Apple ARKit scene reconstruction (LiDAR ToF). Coordinates are calculated in local body space and shifted using rig lever-arms and origin offsets.")
-        add_bullet("✓", "Desktop Workstation: ", "Listens to multi-format high-frequency UDP telemetry packets, dynamically applies workstation-side offset overrides, tracks camera path trajectories, visualizes LiDAR point clouds, and forwards clean positional metrics.")
+        add_h2("1. WORKSPACE TAB ARCHITECTURE (6-TAB STUDIO PIPELINE)")
+        add_bullet("📸", "Tab 1 — Scan & Photo Sync: ", "Interpolates 60Hz–240Hz iOS VIO + GPS + Abu Clock TAI telemetry into DSLR/Mirrorless or iOS photos, applies 6-axis lever-arm/boresight offsets, and exports georeferenced_metashape.csv, session_manifest.abuscan.json, and colmap_images.txt.")
+        add_bullet("🕸", "Tab 2 — 3D Spatial Map: ", "Interactive 3D trajectory frustum & LiDAR point cloud inspector. Single-click any photo to highlight its 3D camera pyramid; double-click (or click 'Inspect Photo & EXIF') to view its thumbnail and telemetry. Includes Statistical Outlier Removal (SOR) and 1-click exports for Postshot (3DGS), Metashape (Z-Up), and RealityScan.")
+        add_bullet("📡", "Tab 3 — Live Track & Stream: ", "Real-time UDP telemetry receiver (Port 8080), RTP H.264/HEVC camera video decoder (Port 5004), DirectX Spout GPU texture sender, jitter buffer, and multi-protocol UE5 forwarder (Port 8081: Live Link JSON, 41B SMPTE FreeD-TC 0xD2, 29B FreeD, OpenTrackIO).")
+        add_bullet("🖥", "Tab 4 — UE & AR Monitor: ", "Low-latency RTSP / SRT / HTTP video return decoder and WebRTC Pixel Streaming launcher for monitoring Unreal Engine 5 composites.")
+        add_bullet("🎯", "Tab 5 — Lens Lab: ", "Sub-pixel OpenCV Brown-Conrady checkerboard optical solver for focal length (fx, fy), principal point (cx, cy), and radial/tangential distortion (.ATLP, Metashape XML, Postshot JSON).")
+        add_bullet("📘", "Tab 6 — Interactive Guide: ", "Complete reference manual, port topology, and single-source-of-truth calibration rules.")
         
-        add_h2("2. STEP-BY-STEP SYSTEM DEPLOYMENT")
-        add_bullet("1", "Check Local Network Connectivity: ", "Verify that both your iOS device and PC are connected to the exact same Wi-Fi subnet. The client and host must be able to discover each other.")
-        add_bullet("2", "Configure Port Whitelisting: ", "Ensure the target port (default: 8080) is whitelisted in your Windows Firewall. If connection blocks, close port conflicts (e.g. stop Unreal Engine or other listeners before launching Abu Track).")
-        add_bullet("3", "Identify PC IP Address: ", "Check 'PC Local IP(s)' displayed in tab 04 // LIVE TELEMETRY CHECKER. Enter this PC IP under the Target IP inside the iOS App's Calibration tab.")
-        add_bullet("4", "Initialize Stream: ", "Toggles 'Enable UDP Broadcast' in the iOS app, select 'Live Link' or 'FreeD' streaming protocol. Tap 'START LISTENING' on the workstation to open the UDP socket server.")
+        add_h2("2. UNIFIED NETWORK PORT TOPOLOGY")
+        add_bullet("•", "UDP 8080 (iOS → PC Telemetry): ", "Primary 60Hz–120Hz 6DoF pose + LiDAR + Abu Clock telemetry listener on this workstation (or direct to UE5).")
+        add_bullet("•", "UDP 5004 (iOS → PC RTP Video): ", "Low-latency H.264 / HEVC camera video stream from iOS to the Desktop 3D Cockpit viewport and Spout GPU sender.")
+        add_bullet("•", "UDP 8081 (PC → UE5 Forwarder): ", "Re-broadcasts buffered, coordinate-aligned poses from this workstation to Unreal Engine 5 Live Link on the same PC (127.0.0.1:8081) or a render node.")
+        add_bullet("•", "UDP 50320 & 53530 (Abu Clock PTP & Discovery): ", "Sub-microsecond SNTP/CSPTP clock synchronization and automatic subnet node discovery.")
+        add_bullet("🛡", "1-Click Firewall Setup: ", "In '📡 Live Track & Stream' → Card 01, click '🛡 Fix Firewall (8080/5004)' to automatically whitelist all required UDP ports in Windows Defender Firewall.")
         
-        add_h2("3. CALIBRATION & RIG OFFSETS (LOCAL VS WORKSTATION)")
-        add_p("To align the tracker (phone) with the actual optical capture center (DSLR/Mirrorless camera sensor) and physical studio space, two distinct offset tiers are supported:")
+        add_h2("3. SINGLE SOURCE OF TRUTH (AVOIDING DOUBLE-COMPENSATION)")
+        add_p("To prevent accidentally applying Lever-Arm, Stage Origin, or -90° Pitch offsets twice across iOS, Windows, and Unreal Engine:")
+        add_bullet("⚠", "Lever-Arm & Stage Origin Guard: ", "Enter your physical hot-shoe Lever-Arm (dx, dy, dz cm) EITHER in the iOS app OR in the Windows Workstation — never both. If iOS sends telemetry with Lever-Arm or Origin already baked in, Card 03 ('Stage Origin & Lever-Arm') automatically displays an amber warning and prevents double-offsetting.")
+        add_bullet("⚠", "-90° Pitch Horizon Offset: ", "When forwarding from Windows to UE5 (Card 02), 'Apply -90° UE Pitch Horizon Offset' is enabled by default. Leave 'Apply -90° Pitch Offset' UNCHECKED inside the UE5 Live Link Source settings when receiving from the Windows Forwarder.")
         
-        add_bullet("■", "Origin Offsets (Studio Alignment): ", "Offsets the tracking trajectory relative to the physical studio floor coordinate system.")
-        add_bullet(" ", "- X Offset: ", "Shifts the trajectory left/right in meters.")
-        add_bullet(" ", "- Y Offset: ", "Shifts the trajectory up/down in meters.")
-        add_bullet(" ", "- Z Offset: ", "Shifts the trajectory forward/backward in meters.")
-        add_bullet(" ", "- Yaw Offset: ", "Rotates the entire tracking coordinate system around gravity (Y-axis) in degrees.")
+        add_h2("4. ABU CLOCK ST 2059-2 & MULTI-RIG BARRIER CAPTURE")
+        add_bullet("⏱", "Top Master Timecode Bar: ", "Always visible across all tabs. Displays live PTP/CSPTP lock state, SMPTE timecode, sub-frame phase (φ), and discovered ecosystem nodes.")
+        add_bullet("⚡", "Trigger Multi-Rig (+50ms): ", "Broadcasts a deterministic SCHEDULE_CAPTURE_AT barrier packet 50ms into the future so all connected iPhones and rigs fire their shutters at the exact same microsecond.")
+        add_bullet("🎬", "Digital Clapper Slate: ", "Opens the high-contrast Frame-00 optical flash & 1kHz audio slate for calibrating non-genlocked DSLR/Mirrorless cameras via '⚡ Auto-Solve Frame-00 Slate Flash Offset' in Tab 1.")
         
-        add_bullet("■", "DSLR Lever-Arm Offsets (Hot-Shoe Rig): ", "Sets the 3D translation vector (X, Y, Z in cm) between the center of the phone's lens and the DSLR's optical CMOS sensor plane.")
-        add_bullet(" ", "- Lever X: ", "Positive if the phone center is offset to the right of the lens axis.")
-        add_bullet(" ", "- Lever Y: ", "Positive if the phone is mounted higher than the lens center.")
-        add_bullet(" ", "- Lever Z: ", "Positive if the phone is mounted further forward than the DSLR sensor plane.")
-        
-        add_p("Lever-Arm translation vector is rotated in real-time by the unit orientation quaternion of the camera before it is applied to the raw coordinates, ensuring consistent offsets at any tilt angle!")
-        
-        add_h2("4. LIVE 3D CANVAS VIEW NAVIGATION")
-        add_p("The Live 3D Monitor provides rich perspective-projected spatial visualizers for your active camera trajectory and point cloud.")
-        add_bullet("🖱", "Orbit Rotation (Left-Click Drag): ", "Rotate the viewpoint around the focus target center.")
-        add_bullet("🖱", "Pan View (Right-Click Drag): ", "Shift the camera viewport target center. This breaks the Follow Lock.")
-        add_bullet("🖱", "Zoom In/Out (Scroll Wheel): ", "Increase or decrease the viewport magnification.")
-        add_bullet("🖱", "Orbit Target Snap (Double-Left-Click): ", "Instantly center the viewport focus target onto the latest active camera coordinate. Perfect for resetting your rotation target.")
-        
-        add_h2("5. INTEGRATION IN ACTION (UNREAL ENGINE & METASHAPE)")
-        add_bullet("✔", "Unreal Engine Virtual Camera: ", "Set forward host/port in '02 // DYNAMIC UDP FORWARDER SERVER' to forward packets to UE. Use Live Link protocol with subject name 'AbuTrack'. Set pitch offset to -90° inside UE settings for horizon alignment.")
-        add_bullet("✔", "Agisoft Metashape EXIF Sync: ", "Under '01 // CONSOLE LOGS & EXIF SYNC', import your DSLR photos folder and select the session ID log captured on your iOS device. Click 'Inject Precision GPS and Pose' to auto-interpolate, write EXIF, and solve matching cameras.")
-        
-        add_h2("6. TROUBLESHOOTING FIREWALLS & SOCKETS")
-        add_p("If you are getting 'SOCKET ERROR' or not receiving signals in Tab 4:")
-        add_bullet("⚠", "Check Port Locks: ", "Make sure other software (e.g. Unreal Engine Live Link plugin) is not already listening on the same port. Only one program can bind to a UDP port at a time.")
-        add_bullet("⚠", "Firewall Rules: ", "Add an Inbound Rule in Windows Defender Firewall to allow UDP traffic on port 8080.")
-        add_bullet("⚠", "IP Mismatch: ", "Ensure the Target IP entered on the phone exactly matches the PC IP. Do not use broadcast mode unless the local router supports packet replication.")
-        
-        add_h2("7. UNREAL ENGINE MONITOR VIEWPORT SETUP (LOW-LATENCY 4K)")
-        add_p("To stream the Unreal Engine viewport back into the mobile app and workstation GUI:")
-        add_bullet("■", "Pixel Streaming (WebRTC): ", "Install the 'Pixel Streaming' plugin in Unreal Engine. Start Pixel Streaming using standard signaling script. Access the stream via http://<UE-IP-Address>:80 in browser or UE Monitor tab. This enables low-latency WebRTC streams up to 4K resolution.")
-        add_bullet("■", "Local Codec Optimization: ", "For local RTSP/SRT/HTTP video decoders, use low-latency compression profiles. On iOS, toggling H.265 compression reduces bandwidth requirements by up to 50% for cinematic video feeds.")
-        
-        add_p("\nManual version: 1.2.0 | System Architecture: Cyberpunk Industrial Real-Time")
         self.docs_text.configure(state="disabled")
         
     def setup_3d_axes(self):
@@ -1956,7 +2072,7 @@ class CamTrackDesktopApp:
         self.ax.set_facecolor(BG_COLOR)
         self.ax.grid(color=BORDER_COLOR, linestyle='--', linewidth=0.5)
         
-        # Cyberpunk visual styles
+        # Studio dark visual styles
         self.ax.xaxis.pane.fill = False
         self.ax.yaxis.pane.fill = False
         self.ax.zaxis.pane.fill = False
@@ -1965,11 +2081,11 @@ class CamTrackDesktopApp:
         self.ax.yaxis.pane.set_edgecolor(BORDER_COLOR)
         self.ax.zaxis.pane.set_edgecolor(BORDER_COLOR)
         
-        self.ax.set_xlabel("X (East)", color=TEXT_MUTED, fontname="Consolas")
-        self.ax.set_ylabel("Y (North)", color=TEXT_MUTED, fontname="Consolas")
-        self.ax.set_zlabel("Z (Up)", color=TEXT_MUTED, fontname="Consolas")
+        self.ax.set_xlabel("X (East)", color=TEXT_MUTED, fontname="Consolas", fontsize=9)
+        self.ax.set_ylabel("Y (North)", color=TEXT_MUTED, fontname="Consolas", fontsize=9)
+        self.ax.set_zlabel("Z (Up)", color=TEXT_MUTED, fontname="Consolas", fontsize=9)
         
-        self.ax.tick_params(colors=TEXT_MUTED, labelsize=8)
+        self.ax.tick_params(colors=TEXT_MUTED, labelsize=9)
         self.ax.set_title("SPATIAL MAP RECONSTRUCTION CONSOLE", color=ACCENT_CYAN, fontsize=10, fontweight="bold", fontname="Consolas", pad=12)
         
     def format_epoch(self, epoch):
@@ -2019,10 +2135,21 @@ class CamTrackDesktopApp:
             HoverTooltip(lbl, tooltip_title, tooltip_body)
             HoverTooltip(entry, tooltip_title, tooltip_body)
         
+    def _log_main(self, msg):
+        try:
+            self.log_box.insert(tk.END, f"{msg}\n")
+            self.log_box.see(tk.END)
+        except Exception:
+            pass
+
     def log(self, msg):
-        self.log_box.insert(tk.END, f"{msg}\n")
-        self.log_box.see(tk.END)
-        self.root.update_idletasks()
+        if threading.current_thread() is threading.main_thread():
+            self._log_main(msg)
+        else:
+            try:
+                self.root.after(0, lambda m=msg: self._log_main(m))
+            except Exception:
+                pass
         
     def browse_photos(self):
         folder = filedialog.askdirectory()
@@ -2080,17 +2207,26 @@ class CamTrackDesktopApp:
             self.render_3d_scene()
         except Exception as e:
             self.log(f"Failed to load point cloud: {str(e)}")
+
+    def set_3d_camera_preset(self, elev: float, azim: float):
+        try:
+            self.ax.view_init(elev=elev, azim=azim)
+            self.canvas_3d.draw_idle()
+        except Exception:
+            pass
+
+    def adjust_3d_point_size(self, factor: float):
+        cur = getattr(self, "plot_point_size", 1.2)
+        self.plot_point_size = max(0.3, min(10.0, cur * factor))
+        self.render_3d_scene()
             
     def render_3d_scene(self):
         self.setup_3d_axes()
         
-        # 1. Plot Point Cloud sparse vertices (small gray markers)
+        # 1. Plot Point Cloud sparse vertices
         # ARKit: X = right, Y = Up, Z = back
         # Visualizer: X = East (Right), Y = North (Back), Z = Up
         if self.point_cloud:
-            # Subsample for rendering performance: standard Matplotlib 3D is extremely slow with >100k points.
-            # We subsample every Nth point to keep visual reviews buttery smooth, while keeping 100% of raw data for filters & exports!
-            # Reducing plot points count to ~3000 and disabling depthshade makes Matplotlib rendering ultra-fast & fluid!
             n_pts = len(self.point_cloud)
             step = max(1, n_pts // 3000)
             subsampled = self.point_cloud[::step]
@@ -2098,11 +2234,10 @@ class CamTrackDesktopApp:
             xs = [p[0] for p in subsampled]
             ys = [-p[2] for p in subsampled]  # Swap Y and Z for visual alignment, negate Z for North positive
             zs = [p[1] for p in subsampled]  # Swap Y and Z for visual alignment
-            self.ax.scatter(xs, ys, zs, c='#3E4E63', s=0.6, alpha=0.4, depthshade=False)
-
-
+            pt_size = getattr(self, "plot_point_size", 1.2)
+            self.ax.scatter(xs, ys, zs, c='#4E627D', s=pt_size, alpha=0.55, depthshade=False)
             
-        # 2. Plot Camera Trajectory Path (Yellow line)
+        # 2. Plot Camera Trajectory Path (Amber line)
         if self.trajectory_points:
             tx = [p["local_x"] for p in self.trajectory_points]
             ty = [-p["local_z"] for p in self.trajectory_points]  # Swap Y and Z for visual alignment, negate Z for North positive
@@ -2112,7 +2247,7 @@ class CamTrackDesktopApp:
             # 3. Plot 3D wireframe camera pyramid at each camera position
             for i, p in enumerate(self.trajectory_points):
                 color = ACCENT_CYAN if i != self.selected_camera_index else ACCENT_RED
-                lw = 1.0 if i != self.selected_camera_index else 2.0
+                lw = 1.0 if i != self.selected_camera_index else 2.2
                 self.plot_camera_pyramid(p["local_x"], p["local_y"], p["local_z"], p["q_w"], p["q_x"], p["q_y"], p["q_z"], color=color, linewidth=lw)
                 
         # 4. Plot 3D Origin Gizmo (0, 0, 0)
@@ -2122,10 +2257,10 @@ class CamTrackDesktopApp:
         self.ax.plot([0, 0], [0, gizmo_scale], [0, 0], color='#34C759', linewidth=2.5, label='_nolegend_')
         self.ax.plot([0, 0], [0, 0], [0, gizmo_scale], color='#007AFF', linewidth=2.5, label='_nolegend_')
         
-        # Add tiny coordinate text markers
-        self.ax.text(gizmo_scale + 0.05, 0, 0, "X", color='#FF3B30', fontweight='bold', fontsize=8)
-        self.ax.text(0, gizmo_scale + 0.05, 0, "Y", color='#34C759', fontweight='bold', fontsize=8)
-        self.ax.text(0, 0, gizmo_scale + 0.05, "Z", color='#007AFF', fontweight='bold', fontsize=8)
+        # Coordinate text markers
+        self.ax.text(gizmo_scale + 0.05, 0, 0, "X", color='#FF3B30', fontweight='bold', fontsize=9)
+        self.ax.text(0, gizmo_scale + 0.05, 0, "Y", color='#34C759', fontweight='bold', fontsize=9)
+        self.ax.text(0, 0, gizmo_scale + 0.05, "Z", color='#007AFF', fontweight='bold', fontsize=9)
         
         # Set aspect limits automatically
         if self.point_cloud or self.trajectory_points:
@@ -2134,7 +2269,7 @@ class CamTrackDesktopApp:
             all_z = [-p[2] for p in self.point_cloud] + [-p["local_z"] for p in self.trajectory_points] # Negate Z for North positive Y-axis
             
             if all_x:
-                max_range = max(max(all_x) - min(all_x), max(all_y) - min(all_y), max(all_z) - min(all_z)) / 2.0
+                max_range = max(max(all_x) - min(all_x), max(all_y) - min(all_y), max(all_z) - min(all_z), 0.5) / 2.0
                 mid_x = (max(all_x) + min(all_x)) / 2.0
                 mid_y = (max(all_y) + min(all_y)) / 2.0
                 mid_z = (max(all_z) + min(all_z)) / 2.0
@@ -2187,8 +2322,6 @@ class CamTrackDesktopApp:
             corners_world.append([px + rx, py + ry, pz + rz])
             
         # Draw 8 segments connecting wireframe
-        # Apex lines
-        # Swap Y and Z coordinate paths and negate Z to match rendering mapping (X->X, Y->-Z, Z->Y)
         for cw in corners_world:
             self.ax.plot([px, cw[0]], [-pz, -cw[2]], [py, cw[1]], color=color, linewidth=linewidth, alpha=0.8)
             
@@ -2198,6 +2331,13 @@ class CamTrackDesktopApp:
             c2 = corners_world[(i+1)%4]
             self.ax.plot([c1[0], c2[0]], [-c1[2], -c2[2]], [c1[1], c2[1]], color=color, linewidth=linewidth, alpha=0.8)
 
+    def _update_selected_photo_summary(self, record):
+        if hasattr(self, "selected_photo_summary_var"):
+            tc = record.get("smpte_timecode", "--:--:--:--")
+            self.selected_photo_summary_var.set(
+                f"📷 {record['label']}  |  TC {tc}  |  XYZ [{record['local_x']:+.2f}, {record['local_y']:+.2f}, {record['local_z']:+.2f}]m  |  "
+                f"P:{record['pitch']:+.1f}° R:{record['roll']:+.1f}° Y:{record['yaw']:+.1f}°  (Double-click to inspect)"
+            )
             
     def on_canvas_click(self, event):
         if event.inaxes != self.ax or not self.trajectory_points:
@@ -2212,7 +2352,7 @@ class CamTrackDesktopApp:
         
         for i, p in enumerate(self.trajectory_points):
             # Map raw coordinate points to the Matplotlib visual mapping
-            x_plot, y_plot, z_plot = p["local_x"], p["local_z"], p["local_y"]
+            x_plot, y_plot, z_plot = p["local_x"], -p["local_z"], p["local_y"]
             
             # Project 3D coordinate point to 2D screen pixels
             proj = self.ax.transData.transform((x_plot, y_plot, z_plot))
@@ -2234,55 +2374,65 @@ class CamTrackDesktopApp:
             
             self.render_3d_scene()
             
-            # Orbit viewport focus
             record = self.trajectory_points[nearest_idx]
-            self.ax.view_init(elev=30, azim=record["yaw"] - 90)
-            self.canvas_3d.draw()
-            
-            # Trigger custom popup dialog
-            self.show_photo_dialog(record)
+            self._update_selected_photo_summary(record)
+            if getattr(event, "dblclick", False):
+                self.show_photo_dialog(record)
 
     def _on_listbox_select(self, event):
         selection = self.photo_listbox.curselection()
-        if selection:
+        if selection and selection[0] < len(self.trajectory_points):
             idx = selection[0]
             self.selected_camera_index = idx
             record = self.trajectory_points[idx]
             
-            # Re-draw to highlight selected camera
+            # Re-draw to highlight selected camera pyramid in red
             self.render_3d_scene()
             
             # Orbit/focus target visual view onto the selected camera
             self.ax.view_init(elev=30, azim=record["yaw"] - 90)
-            self.canvas_3d.draw()
+            self.canvas_3d.draw_idle()
             
-            # Trigger pop up dialog displaying thumbnail and georeferenced coordinates
-            self.show_photo_dialog(record)
+            # Update inline summary bar without opening a blocking modal on every click
+            self._update_selected_photo_summary(record)
+
+    def open_selected_photo_dialog(self):
+        selection = self.photo_listbox.curselection()
+        idx = selection[0] if selection else self.selected_camera_index
+        if idx is not None and 0 <= idx < len(self.trajectory_points):
+            self.show_photo_dialog(self.trajectory_points[idx])
+        else:
+            messagebox.showinfo("Inspect Photo", "Select a synchronized photo from the list first.")
             
     def show_photo_dialog(self, record):
         photo_dir = self.photo_dir.get()
         p_path = os.path.join(photo_dir, record["label"])
         
+        if hasattr(self, "_photo_inspector_popup") and self._photo_inspector_popup is not None:
+            try:
+                if self._photo_inspector_popup.winfo_exists():
+                    self._photo_inspector_popup.destroy()
+            except Exception:
+                pass
+
         popup = tk.Toplevel(self.root)
+        self._photo_inspector_popup = popup
         popup.title(f"CAMERA SNAPSHOT: {record['label']}")
-        popup.geometry("400x530")
+        popup.geometry("440x560")
         popup.configure(bg=CARD_BG)
         popup.resizable(False, False)
-        
-        # Center popup relative to main window
         popup.transient(self.root)
-        popup.grab_set()
         
-        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 200
-        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 265
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 220
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 280
         popup.geometry(f"+{x}+{y}")
         
         # Thumbnail dimensions
-        canvas_w = 320
-        canvas_h = 220
+        canvas_w = 340
+        canvas_h = 230
         
         # Create a placeholder label immediately
-        lbl_img = tk.Label(popup, text="Loading image thumbnail...", font=("Consolas", 9), bg=FIELD_BG, fg=TEXT_MUTED, width=canvas_w // 8, height=canvas_h // 16)
+        lbl_img = tk.Label(popup, text="Loading image thumbnail...", font=("Consolas", 10), bg=FIELD_BG, fg=TEXT_MUTED, width=canvas_w // 8, height=canvas_h // 16)
         lbl_img.pack(pady=15, padx=20)
         
         # Load and resize thumbnail in background thread to prevent GUI freezes
@@ -2299,8 +2449,12 @@ class CamTrackDesktopApp:
                 popup.after(0, lambda: lbl_img.config(text="No synced JPEG image found in folder", fg=TEXT_MUTED))
                 
         def display_loaded_thumbnail(photo_img):
-            lbl_img.config(image=photo_img, text="", width=canvas_w, height=canvas_h)
-            lbl_img.image = photo_img  # Maintain reference!
+            try:
+                if lbl_img.winfo_exists():
+                    lbl_img.config(image=photo_img, text="", width=canvas_w, height=canvas_h)
+                    lbl_img.image = photo_img  # Maintain reference!
+            except Exception:
+                pass
             
         threading.Thread(target=load_thumbnail_thread, daemon=True).start()
             
@@ -2310,19 +2464,20 @@ class CamTrackDesktopApp:
         
         def add_meta(lbl, val, val_color=ACCENT_CYAN):
             f = tk.Frame(info_frame, bg=CARD_BG)
-            f.pack(fill="x", pady=2)
-            tk.Label(f, text=lbl, font=("Consolas", 8, "bold"), fg=TEXT_MUTED, bg=CARD_BG).pack(side="left")
-            tk.Label(f, text=val, font=("Consolas", 8.5, "bold"), fg=val_color, bg=CARD_BG).pack(side="right")
+            f.pack(fill="x", pady=3)
+            tk.Label(f, text=lbl, font=("Consolas", 9, "bold"), fg=TEXT_MUTED, bg=CARD_BG).pack(side="left")
+            tk.Label(f, text=val, font=("Consolas", 9, "bold"), fg=val_color, bg=CARD_BG).pack(side="right")
             
         add_meta("FILENAME:", record["label"], TEXT_PRIMARY)
         add_meta("LOCAL POS:", f"[{record['local_x']:+.3f}, {record['local_y']:+.3f}, {record['local_z']:+.3f}]")
         add_meta("GPS COORDS:", f"Lat: {record['gps_lat']:.6f}, Lon: {record['gps_lon']:.6f}")
         add_meta("BARO ALT:", f"{record['baro_alt']:.2f}m")
         add_meta("ATTITUDE:", f"P: {record['pitch']:+.1f}°, R: {record['roll']:+.1f}°, Y: {record['yaw']:+.1f}°", ACCENT_AMBER)
+        add_meta("SMPTE TC:", record.get("smpte_timecode", "--:--:--:--"), ACCENT_GREEN)
         add_meta("TIME SYNC:", self.format_epoch(record["epoch"]) + f" (dt: {record['time_diff']:+.3f}s)")
         
         # Sleek dismiss button
-        ttk.Button(popup, text="DISMISS CONSOLE VIEW", command=popup.destroy).pack(pady=15, ipady=4, ipadx=12)
+        ttk.Button(popup, text="DISMISS SNAPSHOT INSPECTOR", command=popup.destroy).pack(pady=15, ipady=4, ipadx=12)
 
 
     def run_synchronization(self):
@@ -2335,205 +2490,221 @@ class CamTrackDesktopApp:
         if not csv_path or not os.path.exists(csv_path):
             messagebox.showerror("IO Error", "Select a valid session telemetry CSV log file!")
             return
+
+        # Snapshot UI parameters on the main thread before spawning background worker
+        lx = self.dx.get() / 100.0
+        ly = self.dy.get() / 100.0
+        lz = self.dz.get() / 100.0
+        dt = self.time_offset.get()
+        r_roll = self.rot_roll.get()
+        r_pitch = self.rot_pitch.get()
+        r_yaw = self.rot_yaw.get()
             
         self.sync_btn.state(["disabled"])
         self.progress["value"] = 0
+        self.photo_listbox.delete(0, tk.END)
         self.log("----------------------------------------------------------------------")
         self.log("STARTING CONSOLIDATED SPATIAL TELEMETRY SYNCHRONIZER INTEGRATION...")
-        
-        try:
-            self.log("Parsing continuous telemetry csv buffer...")
-            telemetry = self.parse_csv(csv_path)
-            self.log(f"Logged track size: {len(telemetry)} discrete coordinate instances.")
-            
-            if not telemetry:
-                raise ValueError("Parsed CSV contains no geodetic tracking rows!")
-                
-            photo_files = [f for f in os.listdir(photo_dir) if f.lower().endswith(('.jpg', '.jpeg', '.tiff', '.heic'))]
-            self.log(f"Found {len(photo_files)} photos in directory.")
-            
-            if not photo_files:
-                raise ValueError("No JPEGs, HEICs or TIFF structures found in photos folder!")
-                
-            lx = self.dx.get() / 100.0
-            ly = self.dy.get() / 100.0
-            lz = self.dz.get() / 100.0
-            dt = self.time_offset.get()
-            
-            self.log(f"Configured 3D Lever-Arm: [{lx:+.3f}m, {ly:+.3f}m, {lz:+.3f}m]")
-            self.log(f"Configured Temporal delta: {dt:+.2f}s")
-            
-            # Print diagnostic range info
-            tel_start = telemetry[0]["epoch"]
-            tel_end = telemetry[-1]["epoch"]
-            self.log(f"Telemetry GPS track range: {self.format_epoch(tel_start)} to {self.format_epoch(tel_end)}")
-            
-            # Pre-scan the first photo's raw timestamp
-            first_p_path = os.path.join(photo_dir, photo_files[0])
-            first_p_time = self.get_photo_timestamp(first_p_path)
-            self.log(f"First photo raw time:      {self.format_epoch(first_p_time)}")
-            
-            # Dynamic Hour Offset Alignment calculation
-            time_diff_hours = round((first_p_time - tel_start) / 3600.0)
-            auto_tz_offset = time_diff_hours * 3600.0
-            
-            if abs(time_diff_hours) >= 1.0:
-                self.log(f"WARN // Large timezone/clock difference of {time_diff_hours:+.1f} hours detected.")
-                self.log(f"WARN // Auto-aligning clocks by subtracting {time_diff_hours:+.1f} hours ({auto_tz_offset:+.0f}s).")
-            else:
-                auto_tz_offset = 0.0
-                
-            matched = 0
-            self.trajectory_points = []
-            self.photo_listbox.delete(0, tk.END)
-            
-            csv_lines = [
-                "label,x,y,z,yaw,pitch,roll,latitude,longitude,altitude,time_diff,tai_ns,smpte_timecode,bcd_timecode"
-            ]
-            
-            total = len(photo_files)
-            for i, p_name in enumerate(photo_files):
-                p_path = os.path.join(photo_dir, p_name)
-                
-                # Dynamic photo timestamp (AbuScan TAI filename -> EXIF Exposure Midpoint -> Filename -> mtime)
-                raw_time = self.get_photo_timestamp(p_path)
-                p_epoch = raw_time - auto_tz_offset + dt
-                
-                # Locate nearest spatial odometry packet with Quaternion SLERP
-                record = self.match_epoch(p_epoch, telemetry)
-                
-                if record:
-                    matched += 1
-                    
-                    # Apply 3D Quaternion Offset Translation & Rotation
-                    corrected, q_dslr = self.apply_offsets(
-                        px=record["local_x"], py=record["local_y"], pz=record["local_z"],
-                        qw=record["q_w"], qx=record["q_x"], qy=record["q_y"], qz=record["q_z"],
-                        lx=lx, ly=ly, lz=lz,
-                        rot_roll=self.rot_roll.get(), rot_pitch=self.rot_pitch.get(), rot_yaw=self.rot_yaw.get()
-                    )
-                    
-                    # Compute decimal coordinates
-                    lat, lon, alt = self.to_gps_coords(
-                        base_lat=record["gps_lat"], base_lon=record["gps_lon"], base_alt=record["gps_alt"],
-                        dx=corrected[0] - record["local_x"], dy=corrected[1] - record["local_y"]
-                    )
-                    
-                    # Binary EXIF Write injection (Skips if image is HEIC to prevent format block error)
-                    if not p_name.lower().endswith('.heic'):
-                        self.write_exif(p_path, lat, lon, alt + corrected[1])
-                    
-                    time_diff = p_epoch - record["epoch"]
-                    snap = self.abu_clock.synthesize_from_utc_seconds(p_epoch)
-                    tai_ns = int(record.get("tai_ns") or snap.tai_ns)
-                    smpte_tc = record.get("smpte_timecode") or snap.smpte_string
-                    bcd_tc = int(record.get("bcd_timecode") or snap.bcd_timecode)
-                    
-                    # Standard Z-up ENU coordinates for georeferenced_metashape.csv
-                    pos_x = corrected[0]
-                    pos_y = -corrected[2]
-                    pos_z = corrected[1]
-                    
-                    # Decompose camera-to-world rotation matrix into Metashape YPR:
-                    qw, qx, qy, qz = q_dslr[0], q_dslr[1], q_dslr[2], q_dslr[3]
-                    r00 = 1.0 - 2.0*(qy**2 + qz**2)
-                    r01 = 2.0*(qx*qy - qw*qz)
-                    r02 = 2.0*(qx*qz + qw*qy)
-                    r10 = 2.0*(qx*qy + qw*qz)
-                    r11 = 1.0 - 2.0*(qx**2 + qz**2)
-                    r12 = 2.0*(qy*qz - qw*qx)
-                    r20 = 2.0*(qx*qz - qw*qy)
-                    r21 = 2.0*(qy*qz + qw*qx)
-                    r22 = 1.0 - 2.0*(qx**2 + qy**2)
-                    
-                    r11_clamped = max(-1.0, min(1.0, r11))
-                    pitch_rad = math.asin(r11_clamped)
-                    roll_rad = math.atan2(-r10, r12)
-                    yaw_rad = math.atan2(r01, -r21)
-                    
-                    yaw_val = (yaw_rad * 180.0 / math.pi) % 360.0
-                    pitch_val = pitch_rad * 180.0 / math.pi
-                    roll_val = roll_rad * 180.0 / math.pi
-                    
-                    csv_lines.append(
-                        f"{p_name},{pos_x:.5f},{pos_y:.5f},{pos_z:.5f},{yaw_val:.6f},{pitch_val:.6f},{roll_val:.6f},"
-                        f"{lat:.8f},{lon:.8f},{alt + corrected[1]:.3f},{time_diff:.4f},{tai_ns},{smpte_tc},0x{bcd_tc:08X}"
-                    )
-                    
-                    # Log to trajectories array for 3D graphics rendering
-                    traj_pt = {
-                        "label": p_name,
-                        "local_x": corrected[0],
-                        "local_y": corrected[1],
-                        "local_z": corrected[2],
-                        "epoch": p_epoch,
-                        "tai_ns": tai_ns,
-                        "smpte_timecode": smpte_tc,
-                        "bcd_timecode": bcd_tc,
-                        "time_diff": time_diff,
-                        "baro_alt": record["baro_alt"],
-                        "gps_lat": lat,
-                        "gps_lon": lon,
-                        "gps_alt": alt,
-                        "yaw": record["yaw"],
-                        "pitch": record["pitch"],
-                        "roll": record["roll"],
-                        "q_w": q_dslr[0],
-                        "q_x": q_dslr[1],
-                        "q_y": q_dslr[2],
-                        "q_z": q_dslr[3]
-                    }
-                    self.trajectory_points.append(traj_pt)
-                    self.photo_listbox.insert(tk.END, f"[{matched:03d}] {smpte_tc} // {p_name}")
-                    
-                    if matched % 15 == 0 or matched == total:
-                        self.log(f"Sync Match // {p_name} [TC {smpte_tc}] -> Lat: {lat:.6f}, Lon: {lon:.6f}, Alt: {alt:.2f}m (dt: {time_diff:+.4f}s)")
-                else:
-                    if i < 3 or i == total - 1:
-                        p_time_str = self.format_epoch(p_epoch)
-                        closest_anyway = self.match_epoch_any(p_epoch, telemetry)
-                        diff_sec = p_epoch - closest_anyway["epoch"] if closest_anyway else 999.0
-                        self.log(f"Skip // {p_name} (Aligned time: {p_time_str} - nearest log is {diff_sec:+.2f}s away)")
-                    elif i == 3:
-                        self.log("Skip // ... [suppressing subsequent mismatch logs for brevity] ...")
-                    
-                self.progress["value"] = int(((i + 1) / total) * 100)
-                
-            out_csv = os.path.join(photo_dir, "georeferenced_metashape.csv")
-            with open(out_csv, "w", encoding="utf-8") as f:
-                f.write("\n".join(csv_lines))
 
-            # Also export unified .abuscan.json and COLMAP images.txt manifests
-            from sync_photos import export_abuscan_and_colmap_manifests
-            abuscan_path, colmap_path = export_abuscan_and_colmap_manifests(
-                photo_dir,
-                self.trajectory_points,
-                session_name=os.path.basename(os.path.normpath(photo_dir)) or "AbuScanSession"
-            )
+        def _sync_worker():
+            try:
+                self.log("Parsing continuous telemetry csv buffer...")
+                telemetry = self.parse_csv(csv_path)
+                self.log(f"Logged track size: {len(telemetry)} discrete coordinate instances.")
                 
-            self.log("\n----------------------------------------------------------------------")
-            self.log(f"GEOREFERENCE SYNC SUCCESSFUL // {matched} / {total} photos synchronized.")
-            self.log(f"High-Accuracy telemetry injected into image EXIF binary blocks.")
-            self.log(f"Metashape CSV manifest written to: {out_csv}")
-            self.log(f"AbuScan JSON manifest written to:  {abuscan_path}")
-            self.log(f"COLMAP / 3DGS poses written to:    {colmap_path}")
-            
-            # Redraw view with visual wireframe camera pyramids
-            self.render_3d_scene()
-            
-            messagebox.showinfo(
-                "Complete",
-                f"Synchronizer completed successfully.\n"
-                f"Synchronized photos: {matched}\n\n"
-                f"Exported:\n• georeferenced_metashape.csv\n• session_manifest.abuscan.json\n• colmap_images.txt"
-            )
-            
-        except Exception as e:
-            self.log(f"CRITICAL PIPELINE ERROR // {str(e)}")
-            messagebox.showerror("Error", f"Synchronization failed:\n{str(e)}")
-            
-        finally:
-            self.sync_btn.state(["!disabled"])
+                if not telemetry:
+                    raise ValueError("Parsed CSV contains no geodetic tracking rows!")
+                    
+                photo_files = sorted([
+                    f for f in os.listdir(photo_dir)
+                    if f.lower().endswith(('.jpg', '.jpeg', '.tiff', '.heic'))
+                ])
+                self.log(f"Found {len(photo_files)} photos in directory.")
+                
+                if not photo_files:
+                    raise ValueError("No JPEGs, HEICs or TIFF structures found in photos folder!")
+                    
+                self.log(f"Configured 3D Lever-Arm: [{lx:+.3f}m, {ly:+.3f}m, {lz:+.3f}m]")
+                self.log(f"Configured Temporal delta: {dt:+.2f}s")
+                
+                # Print diagnostic range info
+                tel_start = telemetry[0]["epoch"]
+                tel_end = telemetry[-1]["epoch"]
+                self.log(f"Telemetry GPS track range: {self.format_epoch(tel_start)} to {self.format_epoch(tel_end)}")
+                
+                # Pre-scan the first photo's raw timestamp
+                first_p_path = os.path.join(photo_dir, photo_files[0])
+                first_p_time = self.get_photo_timestamp(first_p_path)
+                self.log(f"First photo raw time:      {self.format_epoch(first_p_time)}")
+                
+                # Dynamic Hour Offset Alignment calculation
+                time_diff_hours = round((first_p_time - tel_start) / 3600.0)
+                auto_tz_offset = time_diff_hours * 3600.0
+                
+                if abs(time_diff_hours) >= 1.0:
+                    self.log(f"WARN // Large timezone/clock difference of {time_diff_hours:+.1f} hours detected.")
+                    self.log(f"WARN // Auto-aligning clocks by subtracting {time_diff_hours:+.1f} hours ({auto_tz_offset:+.0f}s).")
+                else:
+                    auto_tz_offset = 0.0
+                    
+                matched = 0
+                new_trajectory_points = []
+                listbox_entries = []
+                
+                csv_lines = [
+                    "label,x,y,z,yaw,pitch,roll,latitude,longitude,altitude,time_diff,tai_ns,smpte_timecode,bcd_timecode"
+                ]
+                
+                total = len(photo_files)
+                for i, p_name in enumerate(photo_files):
+                    p_path = os.path.join(photo_dir, p_name)
+                    
+                    # Dynamic photo timestamp (AbuScan TAI filename -> EXIF Exposure Midpoint -> Filename -> mtime)
+                    raw_time = self.get_photo_timestamp(p_path)
+                    p_epoch = raw_time - auto_tz_offset + dt
+                    
+                    # Locate nearest spatial odometry packet with Quaternion SLERP
+                    record = self.match_epoch(p_epoch, telemetry)
+                    
+                    if record:
+                        matched += 1
+                        
+                        # Apply 3D Quaternion Offset Translation & Rotation
+                        corrected, q_dslr = self.apply_offsets(
+                            px=record["local_x"], py=record["local_y"], pz=record["local_z"],
+                            qw=record["q_w"], qx=record["q_x"], qy=record["q_y"], qz=record["q_z"],
+                            lx=lx, ly=ly, lz=lz,
+                            rot_roll=r_roll, rot_pitch=r_pitch, rot_yaw=r_yaw
+                        )
+                        
+                        # Compute decimal coordinates
+                        lat, lon, alt = self.to_gps_coords(
+                            base_lat=record["gps_lat"], base_lon=record["gps_lon"], base_alt=record["gps_alt"],
+                            dx=corrected[0] - record["local_x"], dy=corrected[1] - record["local_y"]
+                        )
+                        
+                        # Binary EXIF Write injection (Skips if image is HEIC to prevent format block error)
+                        if not p_name.lower().endswith('.heic'):
+                            self.write_exif(p_path, lat, lon, alt + corrected[1])
+                        
+                        time_diff = p_epoch - record["epoch"]
+                        snap = self.abu_clock.synthesize_from_utc_seconds(p_epoch)
+                        tai_ns = int(record.get("tai_ns") or snap.tai_ns)
+                        smpte_tc = record.get("smpte_timecode") or snap.smpte_string
+                        bcd_tc = int(record.get("bcd_timecode") or snap.bcd_timecode)
+                        
+                        # Standard Z-up ENU coordinates for georeferenced_metashape.csv
+                        pos_x = corrected[0]
+                        pos_y = -corrected[2]
+                        pos_z = corrected[1]
+                        
+                        # Decompose camera-to-world rotation matrix into Metashape YPR:
+                        qw, qx, qy, qz = q_dslr[0], q_dslr[1], q_dslr[2], q_dslr[3]
+                        r01 = 2.0*(qx*qy - qw*qz)
+                        r10 = 2.0*(qx*qy + qw*qz)
+                        r11 = 1.0 - 2.0*(qx**2 + qz**2)
+                        r12 = 2.0*(qy*qz - qw*qx)
+                        r21 = 2.0*(qy*qz + qw*qx)
+                        
+                        r11_clamped = max(-1.0, min(1.0, r11))
+                        pitch_rad = math.asin(r11_clamped)
+                        roll_rad = math.atan2(-r10, r12)
+                        yaw_rad = math.atan2(r01, -r21)
+                        
+                        yaw_val = (yaw_rad * 180.0 / math.pi) % 360.0
+                        pitch_val = pitch_rad * 180.0 / math.pi
+                        roll_val = roll_rad * 180.0 / math.pi
+                        
+                        csv_lines.append(
+                            f"{p_name},{pos_x:.5f},{pos_y:.5f},{pos_z:.5f},{yaw_val:.6f},{pitch_val:.6f},{roll_val:.6f},"
+                            f"{lat:.8f},{lon:.8f},{alt + corrected[1]:.3f},{time_diff:.4f},{tai_ns},{smpte_tc},0x{bcd_tc:08X}"
+                        )
+                        
+                        traj_pt = {
+                            "label": p_name,
+                            "local_x": corrected[0],
+                            "local_y": corrected[1],
+                            "local_z": corrected[2],
+                            "epoch": p_epoch,
+                            "tai_ns": tai_ns,
+                            "smpte_timecode": smpte_tc,
+                            "bcd_timecode": bcd_tc,
+                            "time_diff": time_diff,
+                            "baro_alt": record["baro_alt"],
+                            "gps_lat": lat,
+                            "gps_lon": lon,
+                            "gps_alt": alt,
+                            "yaw": record["yaw"],
+                            "pitch": record["pitch"],
+                            "roll": record["roll"],
+                            "q_w": q_dslr[0],
+                            "q_x": q_dslr[1],
+                            "q_y": q_dslr[2],
+                            "q_z": q_dslr[3]
+                        }
+                        new_trajectory_points.append(traj_pt)
+                        listbox_entries.append(f"[{matched:03d}] {smpte_tc} // {p_name}")
+                        
+                        if matched % 15 == 0 or matched == total:
+                            self.log(f"Sync Match // {p_name} [TC {smpte_tc}] -> Lat: {lat:.6f}, Lon: {lon:.6f}, Alt: {alt:.2f}m (dt: {time_diff:+.4f}s)")
+                    else:
+                        if i < 3 or i == total - 1:
+                            p_time_str = self.format_epoch(p_epoch)
+                            closest_anyway = self.match_epoch_any(p_epoch, telemetry)
+                            diff_sec = p_epoch - closest_anyway["epoch"] if closest_anyway else 999.0
+                            self.log(f"Skip // {p_name} (Aligned time: {p_time_str} - nearest log is {diff_sec:+.2f}s away)")
+                        elif i == 3:
+                            self.log("Skip // ... [suppressing subsequent mismatch logs for brevity] ...")
+                        
+                    pct = int(((i + 1) / total) * 100)
+                    self.root.after(0, lambda v=pct: self.progress.configure(value=v))
+                    
+                out_csv = os.path.join(photo_dir, "georeferenced_metashape.csv")
+                with open(out_csv, "w", encoding="utf-8") as f:
+                    f.write("\n".join(csv_lines))
+
+                # Also export unified .abuscan.json and COLMAP images.txt manifests
+                from sync_photos import export_abuscan_and_colmap_manifests
+                abuscan_path, colmap_path = export_abuscan_and_colmap_manifests(
+                    photo_dir,
+                    new_trajectory_points,
+                    session_name=os.path.basename(os.path.normpath(photo_dir)) or "AbuScanSession"
+                )
+                    
+                self.log("\n----------------------------------------------------------------------")
+                self.log(f"GEOREFERENCE SYNC SUCCESSFUL // {matched} / {total} photos synchronized.")
+                self.log(f"High-Accuracy telemetry injected into image EXIF binary blocks.")
+                self.log(f"Metashape CSV manifest written to: {out_csv}")
+                self.log(f"AbuScan JSON manifest written to:  {abuscan_path}")
+                self.log(f"COLMAP / 3DGS poses written to:    {colmap_path}")
+
+                def _on_sync_done():
+                    self.trajectory_points = new_trajectory_points
+                    self.photo_listbox.delete(0, tk.END)
+                    for item in listbox_entries:
+                        self.photo_listbox.insert(tk.END, item)
+                    if new_trajectory_points:
+                        self._update_selected_photo_summary(new_trajectory_points[0])
+                    self.render_3d_scene()
+                    self.sync_btn.state(["!disabled"])
+                    messagebox.showinfo(
+                        "Complete",
+                        f"Synchronizer completed successfully.\n"
+                        f"Synchronized photos: {matched}\n\n"
+                        f"Exported:\n• georeferenced_metashape.csv\n• session_manifest.abuscan.json\n• colmap_images.txt"
+                    )
+
+                self.root.after(0, _on_sync_done)
+                
+            except Exception as e:
+                err_msg = str(e)
+                self.log(f"CRITICAL PIPELINE ERROR // {err_msg}")
+                def _on_sync_err():
+                    self.sync_btn.state(["!disabled"])
+                    messagebox.showerror("Error", f"Synchronization failed:\n{err_msg}")
+                self.root.after(0, _on_sync_err)
+
+        threading.Thread(target=_sync_worker, daemon=True).start()
             
     def clean_point_cloud_sor(self):
         if not self.point_cloud:
@@ -4177,14 +4348,14 @@ class CamTrackDesktopApp:
             time_str = time.strftime('%H:%M:%S', time.localtime(now))
             ms = int((now % 1.0) * 1000)
             snap = self.abu_clock.now()
-            self.receiver_pc_time_var.set(f"{time_str}.{ms:03d} | TC {snap.smpte_subframe_string}")
+            self.receiver_pc_time_var.set(f"{time_str}.{ms:03d} | {snap.smpte_string}")
             self.abu_clock_tc_var.set(snap.smpte_subframe_string)
-            self.abu_clock_bcd_var.set(f"BCD: {snap.bcd_hex} | φ={snap.phase:.2f}")
+            self.abu_clock_bcd_var.set(f"φ={snap.phase:.2f}")
             self.abu_clock_tai_var.set(f"TAI: {snap.tai_ns} ns")
             self.abu_clock_lock_var.set(snap.lock_state)
             self.abu_clock_nodes_var.set(f"NODES: {len(self.abu_clock.discovered_nodes)}")
             if hasattr(self, "clock_phase_canvas") and hasattr(self, "clock_phase_rect"):
-                bar_w = int(max(0.0, min(1.0, snap.phase)) * 110.0)
+                bar_w = int(max(0.0, min(1.0, snap.phase)) * 90.0)
                 self.clock_phase_canvas.coords(self.clock_phase_rect, 0, 0, bar_w, 6)
             self.root.after(33, self.update_pc_local_time)
         except Exception:
@@ -4507,10 +4678,14 @@ class CamTrackDesktopApp:
                         px_raw, py_raw, pz_raw, roll_raw, pitch_raw, yaw_raw
                     )
                     
-                    # 2. Apply workstation DSLR Lever Arm Offset (convert cm to meters) and SUBTRACT
-                    lx = self.cached_ws_lever_x / 100.0
-                    ly = self.cached_ws_lever_y / 100.0
-                    lz = self.cached_ws_lever_z / 100.0
+                    # Cross-Device Single-Source-of-Truth Guard (ARCH-UX-01)
+                    ios_lever_applied = bool(parsed.get("leverArmApplied", False))
+                    ios_origin_applied = bool(parsed.get("originApplied", False))
+
+                    # 2. Apply workstation DSLR Lever Arm Offset (convert cm to meters) and SUBTRACT unless already applied on iOS
+                    lx = 0.0 if ios_lever_applied else (self.cached_ws_lever_x / 100.0)
+                    ly = 0.0 if ios_lever_applied else (self.cached_ws_lever_y / 100.0)
+                    lz = 0.0 if ios_lever_applied else (self.cached_ws_lever_z / 100.0)
                     
                     px_dslr_raw = px_aligned
                     py_dslr_raw = py_aligned
@@ -4525,13 +4700,36 @@ class CamTrackDesktopApp:
                         py_dslr_raw -= ry
                         pz_dslr_raw -= rz
                     
-                    # 3. Calculate camera pose relative to the 6-axis offset origin
-                    tx_o = self.cached_ws_origin_x
-                    ty_o = self.cached_ws_origin_y
-                    tz_o = self.cached_ws_origin_z
-                    pitch_o = self.cached_ws_origin_pitch
-                    yaw_o = self.cached_ws_origin_yaw
-                    roll_o = self.cached_ws_origin_roll
+                    # 3. Calculate camera pose relative to the 6-axis offset origin (unless already applied on iOS)
+                    tx_o = 0.0 if ios_origin_applied else self.cached_ws_origin_x
+                    ty_o = 0.0 if ios_origin_applied else self.cached_ws_origin_y
+                    tz_o = 0.0 if ios_origin_applied else self.cached_ws_origin_z
+                    pitch_o = 0.0 if ios_origin_applied else self.cached_ws_origin_pitch
+                    yaw_o = 0.0 if ios_origin_applied else self.cached_ws_origin_yaw
+                    roll_o = 0.0 if ios_origin_applied else self.cached_ws_origin_roll
+
+                    # Update double-compensation warning label in Card 03 if needed
+                    ws_has_lever = any(abs(v) > 1e-4 for v in (self.cached_ws_lever_x, self.cached_ws_lever_y, self.cached_ws_lever_z))
+                    ws_has_origin = any(abs(v) > 1e-4 for v in (
+                        self.cached_ws_origin_x, self.cached_ws_origin_y, self.cached_ws_origin_z,
+                        self.cached_ws_origin_pitch, self.cached_ws_origin_yaw, self.cached_ws_origin_roll
+                    ))
+                    warn_msg = ""
+                    if (ios_lever_applied and ws_has_lever) or (ios_origin_applied and ws_has_origin):
+                        warn_msg = "⚠ iOS stream already includes Lever-Arm/Origin — PC offset bypassed to prevent double-compensation."
+                    elif ios_lever_applied or ios_origin_applied:
+                        warn_msg = "ℹ iOS stream has on-device Lever-Arm/Origin active."
+                    if getattr(self, "_last_double_comp_warn", None) != warn_msg:
+                        self._last_double_comp_warn = warn_msg
+                        def _update_warn(m=warn_msg):
+                            if hasattr(self, "double_comp_warn_var"):
+                                self.double_comp_warn_var.set(m)
+                            if hasattr(self, "double_comp_warn_lbl"):
+                                if m:
+                                    self.double_comp_warn_lbl.grid(row=0, column=0, columnspan=4, sticky="ew", pady=(0, 6))
+                                else:
+                                    self.double_comp_warn_lbl.grid_remove()
+                        self.root.after(0, _update_warn)
                     
                     dx = px_dslr_raw - tx_o
                     dy = py_dslr_raw - ty_o
@@ -4737,7 +4935,9 @@ class CamTrackDesktopApp:
                             "videoCodec": video_codec,
                             "focalLength": focal_length,
                             "k1": k1,
-                            "k2": k2
+                            "k2": k2,
+                            "leverArmApplied": bool(payload.get("leverArmApplied", False)),
+                            "originApplied": bool(payload.get("originApplied", False)),
                         }
             except Exception as e:
                 print(f"OpenTrackIO parse failed: {e}")
@@ -4774,12 +4974,15 @@ class CamTrackDesktopApp:
                     "videoCodec": video_codec,
                     "focalLength": focal_length,
                     "k1": k1,
-                    "k2": k2
+                    "k2": k2,
+                    "leverArmApplied": bool(payload.get("leverArmApplied", False)),
+                    "originApplied": bool(payload.get("originApplied", False)),
                 }
         except Exception:
             pass
             
         return None
+
     def trigger_ping_blink(self):
         try:
             if hasattr(self, 'ping_canvas') and self.ping_canvas.winfo_exists():
@@ -4810,6 +5013,7 @@ class CamTrackDesktopApp:
             self.rx_console.configure(state="disabled")
         except Exception:
             pass
+
     def report_callback_exception(self, exc, val, tb):
         import traceback
         err_str = "".join(traceback.format_exception(exc, val, tb))
@@ -4823,20 +5027,22 @@ class CamTrackDesktopApp:
 
     def fix_windows_firewall(self):
         import subprocess
-        import sys
         
         port = 8080
+        v_port = 5004
         try:
-            port = self.receiver_port.get()
+            port = int(self.receiver_port.get())
+            v_port = int(self.video_stream_port.get())
         except Exception:
             pass
             
-        logger.info(f"[DIAGNOSTICS] Prompting user to run elevated PowerShell command to add inbound UDP rule on port {port}...")
+        ports_str = f"{port},{v_port},50320,53530"
+        logger.info(f"[DIAGNOSTICS] Prompting user to run elevated PowerShell command to add inbound UDP rules on ports {ports_str}...")
         
         ps_cmd = (
             f"Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command "
-            f"New-NetFirewallRule -Direction Inbound -Action Allow -Protocol UDP -LocalPort {port} "
-            f"-DisplayName \\\"ABU_TRACK_UDP_{port}\\\" -Force' -Verb RunAs"
+            f"New-NetFirewallRule -Direction Inbound -Action Allow -Protocol UDP -LocalPort {ports_str} "
+            f"-DisplayName \\\"ABU_TRACK_AND_SCAN_UDP\\\" -Force' -Verb RunAs"
         )
         
         try:
@@ -4844,8 +5050,9 @@ class CamTrackDesktopApp:
             logger.info("[DIAGNOSTICS] PowerShell elevation request sent successfully.")
             messagebox.showinfo(
                 "Firewall Setup", 
-                f"An Administrator prompt was requested to run PowerShell and add a firewall exception rule for UDP port {port}.\n\n"
-                f"Please accept the Windows prompt (UAC dialog) to complete the network exception configuration."
+                f"An Administrator prompt was requested to add Windows Defender Firewall rules for UDP ports:\n"
+                f"• {port} (Telemetry)\n• {v_port} (RTP Video)\n• 50320 & 53530 (Abu Clock PTP & Discovery)\n\n"
+                f"Please accept the Windows UAC prompt to complete setup."
             )
         except Exception as e:
             logger.error(f"[DIAGNOSTICS] Failed to request PowerShell elevation: {str(e)}", exc_info=True)
@@ -5366,19 +5573,19 @@ class CamTrackDesktopApp:
             x_proj = self.project_live_3d(tx_o + vx_x, ty_o + vx_y, tz_o + vx_z, w, h)
             if x_proj:
                 self.live_canvas.create_line(ox, oy, x_proj[0], x_proj[1], fill="#ff3366", width=2.5)
-                self.live_canvas.create_text(x_proj[0]+8, x_proj[1], text="X", fill="#ff3366", font=("Consolas", 8, "bold"))
+                self.live_canvas.create_text(x_proj[0]+8, x_proj[1], text="X", fill="#ff3366", font=("Consolas", 9, "bold"))
                 
             # Y - Up (Green)
             y_proj = self.project_live_3d(tx_o + vy_x, ty_o + vy_y, tz_o + vy_z, w, h)
             if y_proj:
                 self.live_canvas.create_line(ox, oy, y_proj[0], y_proj[1], fill="#00ff66", width=2.5)
-                self.live_canvas.create_text(y_proj[0], y_proj[1]-8, text="Y", fill="#00ff66", font=("Consolas", 8, "bold"))
+                self.live_canvas.create_text(y_proj[0], y_proj[1]-8, text="Y", fill="#00ff66", font=("Consolas", 9, "bold"))
                 
             # Z - North (Blue)
             z_proj = self.project_live_3d(tx_o + vz_x, ty_o + vz_y, tz_o + vz_z, w, h)
             if z_proj:
                 self.live_canvas.create_line(ox, oy, z_proj[0], z_proj[1], fill="#3366ff", width=2.5)
-                self.live_canvas.create_text(z_proj[0], z_proj[1]+8, text="Z", fill="#3366ff", font=("Consolas", 8, "bold"))
+                self.live_canvas.create_text(z_proj[0], z_proj[1]+8, text="Z", fill="#3366ff", font=("Consolas", 9, "bold"))
                 
         # Thread-safe copy of points and trajectory lists
         with self.data_lock:
@@ -5430,7 +5637,7 @@ class CamTrackDesktopApp:
                 self.live_canvas.create_text(
                     15, h-15, 
                     text=f"CAM: ({last_pt[0]:+.2f}, {last_pt[1]:+.2f}, {last_pt[2]:+.2f}) | TC: {tc_hud} | PTS: {len(pts_copy)}", 
-                    anchor="w", fill="#00f0ff", font=("Consolas", 8, "bold")
+                    anchor="w", fill="#00f0ff", font=("Consolas", 9, "bold")
                 )
 
     def forward_packet_to_unreal(self, parsed):
@@ -5478,8 +5685,9 @@ class CamTrackDesktopApp:
                 
             self.root.after(0, lambda t=smpte_tc: self.forward_timecode_var.set(t))
             
-            # Apply -90 degree offset globally around X-axis (Pitch) to align tracking data to UE!
-            pitch_forward = pitch - 90.0
+            # Apply -90 degree offset around X-axis (Pitch) if enabled in Forwarder settings (ARCH-UX-01)
+            apply_pitch = self.forward_apply_pitch_offset.get() if hasattr(self, "forward_apply_pitch_offset") else True
+            pitch_forward = (pitch - 90.0) if apply_pitch else pitch
             
             if proto == "Live Link JSON":
                 payload = {
@@ -5495,7 +5703,10 @@ class CamTrackDesktopApp:
                     "bcdTimecode": bcd_tc,
                     "subframePhase": subframe_phase,
                     "clockLockState": lock_state,
-                    "isMappingActive": parsed.get("is_mapping_active", True)
+                    "isMappingActive": parsed.get("is_mapping_active", True),
+                    "pitchOffsetApplied": bool(apply_pitch),
+                    "leverArmApplied": True,
+                    "originApplied": True,
                 }
                 if "new_points" in parsed:
                     payload["new_points"] = parsed["new_points"]
@@ -5559,6 +5770,9 @@ class CamTrackDesktopApp:
                     "sourceId": 101,
                     "timestamp": timestamp,
                     "isMappingActive": parsed.get("is_mapping_active", True),
+                    "pitchOffsetApplied": bool(apply_pitch),
+                    "leverArmApplied": True,
+                    "originApplied": True,
                     "timing": {
                         "mode": "external",
                         "taiNs": tai_ns,

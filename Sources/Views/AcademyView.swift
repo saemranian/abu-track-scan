@@ -4,189 +4,132 @@ struct AcademyView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Background dark theme
-                Color(red: 0.02, green: 0.03, blue: 0.08)
+                ProTheme.background
                     .ignoresSafeArea()
                 
-                RadialGradient(
-                    gradient: Gradient(colors: [Color(red: 0.0, green: 0.15, blue: 0.25), Color.clear]),
-                    center: .top,
-                    startRadius: 50,
-                    endRadius: 500
-                )
-                .ignoresSafeArea()
-                
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 16) {
                         // Academy Welcome Banner
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Image(systemName: "graduationcap.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.cyan)
-                                Text("ABU TRACK ACADEMY")
-                                    .font(.system(.title3, design: .monospaced))
-                                    .fontWeight(.black)
-                                    .foregroundColor(.white)
+                                    .font(.title3)
+                                    .foregroundColor(ProTheme.accentCyan)
+                                Text("ABU TRACK & SCAN ACADEMY")
+                                    .font(.system(size: 14, weight: .black, design: .rounded))
+                                    .foregroundColor(ProTheme.textPrimary)
                                 Spacer()
+                                Text(VersionInfo.version)
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundColor(ProTheme.accentCyan)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(ProTheme.surfaceElevated)
+                                    .cornerRadius(6)
                             }
                             
-                            Text("Your high-precision photogrammetry and spatial tracking training hub. Master coordinate translations and reality-capture pipelines.")
+                            Text("Complete field guide for 60Hz Visual-Inertial-LiDAR tracking, Abu Clock SMPTE ST 2059-2 genlock, DSLR Lever-Arm calibration, and Unreal Engine 5 / COLMAP / Metashape production pipelines.")
                                 .font(.caption2)
-                                .foregroundColor(.gray)
+                                .foregroundColor(ProTheme.textSecondary)
                                 .lineSpacing(3)
                         }
-                        .padding()
-                        .background(Color(red: 0.05, green: 0.08, blue: 0.18))
-                        .cornerRadius(14)
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cyan.opacity(0.2), lineWidth: 1))
+                        .padding(14)
+                        .background(ProTheme.cardBackground)
+                        .cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
                         .padding(.horizontal)
-                        .padding(.top, 15)
+                        .padding(.top, 10)
                         
                         // Lesson Topics List
-                        VStack(spacing: 15) {
+                        VStack(spacing: 12) {
                             LessonDisclosureGroup(
-                                title: "1. Core VIO & IMU Sensor Fusion",
-                                icon: "gyroscope",
-                                color: .cyan,
+                                title: "1. Single-Device & Dual-Device Capture Pipelines",
+                                icon: "camera.metering.center.weighted",
+                                color: ProTheme.accentCyan,
                                 content: """
-                                • **Foreground VIO (Maximum Precision):** ARKit Visual-Inertial-LiDAR Odometry tracks visual anchors and fuses them with high-frequency IMU sensors to provide sub-millimeter tracking accuracy. For maximum results, keep the app in the foreground.
+                                • **Active AR Tracking Mode (HI-RES AR + 6DoF EXIF):** While 'START CAPTURE' is active, tapping the shutter button captures a high-resolution ARKit frame paired with an exact Optical Midpoint Stamp (SMPTE ST 12-1 timecode, TAI nanoseconds, 6DoF pose, and LiDAR depth snapshot).
                                 
-                                • **The App-Switching Conflict:** iOS suspends visual camera polling when switching to the native Camera app. Although we fall back to IMU dead-reckoning, tracking will slowly drift.
+                                • **Standby Optical Pro Mode (48MP HEIC / Apple ProRAW DNG):** When AR tracking is stopped, the hardware camera pipeline unlocks full 48MP HEIC and native Bayer DNG Raw capture with manual ISO and Shutter Speed controls.
                                 
-                                • **Solutions to Eliminate Drift:**
-                                  1. **Hot-Shoe Rig Mounting:** Mount the phone on your DSLR. Leave Abu Track active in the foreground while you shoot with the DSLR normally.
-                                  2. **In-App Shutter Shutter:** In our upcoming version, shoot photos directly inside Abu Track using the ARKit high-res shutter—retaining absolute VIO truth!
+                                • **Hot-Shoe Rig Mode (iPhone + DSLR/Mirrorless):** Mount the iPhone onto your DSLR hot-shoe, photograph the **Abu Clock Slate** once for sub-millisecond clock offset calibration, and shoot raw photos on your DSLR while Abu Track logs 60Hz VIO + LiDAR.
                                 """
                             )
                             
                             LessonDisclosureGroup(
-                                title: "2. DSLR Lever-Arm Offset Calibration",
-                                icon: "camera.aperture",
+                                title: "2. Abu Clock SMPTE ST 2059-2 & Optical Slate",
+                                icon: "clock.badge.checkmark.fill",
                                 color: .yellow,
                                 content: """
-                                • **The Problem:** When mounting your iPhone onto a mirrorless/DSLR hot-shoe, the iPhone sensor and the DSLR lens center reside at different coordinates.
+                                • **2-State Kalman Filter PLL:** Disciplines the iPhone's Mach continuous clock against the Abu Clock Master (`UDP 50320`) to eliminate crystal frequency drift.
                                 
-                                • **The 3D Quaternion Formula:** The app rotates your physical offset vector (dx, dy, dz) dynamically using the iPhone's unit quaternion rotation matrix:
-                                  P_corrected = P_phone + Q * d_offset * Q_inverse
+                                • **Full-Screen Digital Clapper Slate:** Tap the top-bar **SLATE** button to open the SMPTE timecode clapper with a Frame-00 White Peak Flash Marker and 10-segment Sub-Frame Phase Sweep Bar (`φ ∈ [0.0, 1.0)`).
                                 
-                                • **Measuring Offsets (Calibration Tab):**
-                                  1. **dx (Lateral):** Measured from the phone's center axis to the DSLR lens center (Positive = Right).
-                                  2. **dy (Vertical):** Measured from the phone's center to the DSLR lens center (Positive = Up).
-                                  3. **dz (Longitudinal):** Measured from the phone's center to the DSLR lens node center (Positive = Forward).
+                                • **Future-Time Capture Barrier (UDP 50319):** Supports `SCHEDULE_CAPTURE_AT` multi-rig hardware spinlock triggers so every iPhone and PC camera fires within `< 50 µs` of the target TAI nanosecond.
                                 """
                             )
                             
                             LessonDisclosureGroup(
-                                title: "3. Image Syncing & Post-Processing",
-                                icon: "arrow.triangle.2.circlepath.camera",
+                                title: "3. DSLR Lever-Arm & Single-Source-of-Truth Guard",
+                                icon: "ruler.fill",
                                 color: .green,
                                 content: """
-                                • **Timestamp Matching:** Matches DSLR or iPhone camera images to the logged spatial coordinates using sub-second epoch millisecond timestamps.
+                                • **3D Quaternion Lever-Arm Math:** Rotates your physical offset vector `(dx, dy, dz)` from the iPhone Rear Main (1x) lens to the DSLR focal plane mark (`⌀`) using the live unit quaternion:
+                                  `P_camera = P_phone - R(q) · d_lever`
                                 
-                                • **In-App Photo Library Matcher:** Inside the "Sessions" tab, tap "SYNC CAMERA IMAGES" to match photos in your iPhone's photo library automatically.
-                                
-                                • **Desktop Post-Processing (New GUI):** Run our standalone GUI desktop control panel (`DesktopSync/camtrack_desktop_gui.py`) on Windows to browse directories, set clock offsets, and georeference raw DSLR images instantly!
+                                • **Double-Compensation Guard:** When Lever-Arm or Stage World Origin offsets are configured on iOS (`Setup → Rig & Optics`), outgoing UDP packets automatically carry `"leverArmApplied": true` and `"originApplied": true`. The Windows Workstation automatically bypasses duplicate offsets and displays an indicator so your pose is never shifted twice.
                                 """
                             )
                             
                             LessonDisclosureGroup(
-                                title: "4. Agisoft Metashape Reference Import",
+                                title: "4. Unified Ecosystem Port Topology",
+                                icon: "network",
+                                color: .orange,
+                                content: """
+                                • **UDP 8080 (Primary Telemetry):** iOS → Windows Workstation (`Live Link JSON`, `FreeD D1 37B`, `FreeD-TC D2 41B`, or `OpenTrackIO JSON`).
+                                • **UDP 8081 (Workstation Forwarder):** Windows Workstation → Unreal Engine 5 (`LiveLinkAbuTrack` plugin). Allows both apps to run on the same PC without port conflicts.
+                                • **UDP 5004 (RTP Video Stream):** Hardware H.264/HEVC video with RFC 5285 (`0xBEDE`) 16-byte SMPTE BCD + TAI header extensions.
+                                • **UDP 50320 & 50319 (Abu Clock):** `ABU_ECO_V1` auto-discovery + Stratum-1 SNTP (`50320`) and Future-Time Multi-Sensor Capture Barrier (`50319`).
+                                • **UDP 53530 (UE5 Discovery):** `ABU_UE5_DISCOVER_V1` zero-config handshake between Windows and Unreal Engine 5.
+                                """
+                            )
+                            
+                            LessonDisclosureGroup(
+                                title: "5. Metashape, COLMAP & .abuscan.json Exports",
                                 icon: "arrow.up.doc.fill",
                                 color: .purple,
                                 content: """
-                                • **CSV Column Layout:** The exported `metashape_cameras.csv` contains:
-                                  - Column 1: `label` (Matched image filename)
-                                  - Columns 2-4: Metric coordinate `local_x`, `local_y`, `local_z` (VIO meters)
-                                  - Column 5: `baro_altitude` (Barometric altitude)
-                                  - Columns 6-8: Absolute `gps_latitude`, `gps_longitude`, `gps_altitude` (GPS degrees)
-                                  - Columns 9-11: Attitude `yaw`, `pitch`, `roll`
-                                
-                                • **Crucial Rules for Metashape Import:**
-                                  1. **Delimiter:** In the Import CSV window, choose **Comma** (uncheck Tab).
-                                  2. **If GPS is ENABLED:** Set the Coordinate System to **WGS 84 (EPSG::4326)** and map X, Y, Z coordinates to columns 6, 7, and 8.
-                                  3. **If GPS is DISABLED (Indoor Mode):** The CSV still prints GPS headers, but holds dummy values. You **MUST** select **Local Coordinates (m)** and map X, Y, and Z to columns 2, 3, and 4 (`local_x`, `local_y`, `local_z` VIO meters)!
+                                • **1-Click Session Exports:** Open any take in the **Sessions** tab and tap **SYNC CAMERA IMAGES (SLERP + SLATE)** to generate and share:
+                                  1. `metashape_cameras.csv` (14 columns including `smpte_timecode` & `tai_ns`)
+                                  2. `<session>.abuscan.json` (`abuscan.manifest.v1` schema with quaternions, intrinsics & LiDAR paths)
+                                  3. `images.txt` (Native COLMAP / 3D Gaussian Splatting prior pose manifest)
+                                  4. `coverage_cloud.ply` (Voxelized world-space LiDAR surface point cloud)
+                                  5. `telemetry_log.csv` (Full 24-column 60Hz trajectory log)
                                 """
                             )
                             
                             LessonDisclosureGroup(
-                                title: "5. RealityScan & EXIF Metadata Injection",
-                                icon: "circle.grid.3x3.fill",
-                                color: .orange,
-                                content: """
-                                • **The Trajectory Import Error [err:18003]:**
-                                  Clicking 'Import Trajectory' in RealityScan expects a proprietary binary trajectory format. Selecting our CSV file here will fail.
-                                
-                                • **How to Import CSV trajectories regardless of EXIF:**
-                                  In **RealityCapture (the PC app)**, select **Alignment > Import > Flight Log**. Load the CSV and map: Column 1 to Name, Column 2 to X (local) or Column 6 to Lon (GPS), Column 3 to Y (local) or Column 7 to Lat (GPS), Column 4 to Z (local) or Column 8 to Alt (GPS).
-                                
-                                • **The Bulletproof EXIF Method:**
-                                  Use our new Desktop GUI tool to inject VIO coordinates directly into your photos' EXIF tags. Then drag and drop the folder into RealityScan. It reads the trajectory natively without needing CSV files!
-                                """
-                            )
-                            
-                            LessonDisclosureGroup(
-                                title: "6. Dense ToF/LiDAR Depth Point Clouds",
-                                icon: "square.stack.3d.up.fill",
+                                title: "6. Unreal Engine 5 LiveLink & 1-Click Genlock",
+                                icon: "tv.and.mediabox.fill",
                                 color: .blue,
                                 content: """
-                                • **LiDAR Back-Projection Engine:**
-                                  Starting in version **0.0.5**, Abu Track now captures high-accuracy active depth maps (`frame.sceneDepth`) from the iPhone's **ToF LiDAR scanner**.
+                                • **LiveLinkAbuTrack UE5 Plugin:** Receives 6-DOF camera transforms, lens focal length, radial distortion (`K1/K2`), and SMPTE ST 2059-2 timecode directly in Unreal Engine 5.
                                 
-                                • **How it Works:**
-                                  We back-project depth pixels using the camera intrinsics and 3D transform into world space coordinates. Decimation filters are applied to decimate points (e.g. sampling grids) to keep performance high and fluid.
-                                
-                                • **The Result:**
-                                  You get a dense, watertight 3D surface point cloud (previewed live and exported as `.ply`) showing real geometry (walls, tables, objects) completely free of visual-inertial parallax noise and spikes!
-                                """
-                            )
-                            
-                            LessonDisclosureGroup(
-                                title: "7. Custom Initial Origin Overrides",
-                                icon: "arrow.triangle.branch",
-                                color: .purple,
-                                content: """
-                                • **Origin Offset Overrides (meters):**
-                                  Allows virtual production supervisors to offset and re-orient the initial tracking coordinates `(0, 0, 0)` dynamically using settings inputs for translation (X, Y, and Z in meters) and Yaw rotation (degrees).
-                                
-                                • **Dynamic Rotation Math:**
-                                  P_corrected = P_phone + T_offset
-                                  We automatically rotate double-precision quaternions using a custom yaw offset rotation matrix, ensuring absolute pose parity across network streams and 3D UI visualizers.
-                                
-                                • **Point Cloud Alignment:**
-                                  Applies the identical translation and yaw rotation transformation to all voxelized LiDAR point cloud coordinates in real-time, keeping the scanned tracking space perfectly aligned.
-                                """
-                            )
-                            
-                            LessonDisclosureGroup(
-                                title: "8. Live Telemetry & Firewall Configuration",
-                                icon: "network",
-                                color: .red,
-                                content: """
-                                • **Dynamic Live Sockets:**
-                                  Broadcasts live telemetry frames at up to 60Hz. Standard socket receivers must bind to port 8080 to listen for incoming tracking packets.
-                                
-                                • **Windows Defender Firewall Exception:**
-                                  Every compiled binary requires separate whitelisting. Click the 'FIX WINDOWS FIREWALL (8080)' button in the Windows app to add inbound rules automatically.
-                                
-                                • **Socket Buffer Requirements:**
-                                  LiDAR depth mesh scans package and transmit hundreds of active points per frame. The workstation receiver socket buffer is maximized to 65535 bytes to prevent packet drops (WinError 10040).
+                                • **1-Click Timecode & Genlock Setup:** In UE5's Live Link panel, click **1-Click Setup Timecode & Genlock** to bind `UAbuClockTimecodeProvider` and `UAbuClockGenlockCustomTimeStep` to `GEngine` with instant toast confirmation and live UDP stream health monitoring.
                                 """
                             )
                         }
                         .padding(.horizontal)
                         
-                        Spacer()
+                        Spacer(minLength: 20)
                     }
                 }
             }
-            .navigationTitle("ACADEMY HUB")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarHidden(true)
         }
     }
 }
 
-// Custom disclosure group styling for premium sci-fi design
+// Custom disclosure group styling aligned with ProTheme
 struct LessonDisclosureGroup: View {
     let title: String
     let icon: String
@@ -215,38 +158,38 @@ struct LessonDisclosureGroup: View {
                     Text(title)
                         .font(.footnote)
                         .fontWeight(.black)
-                        .foregroundColor(.white)
+                        .foregroundColor(ProTheme.textPrimary)
                     
                     Spacer()
                     
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.gray)
+                        .foregroundColor(ProTheme.textSecondary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
-                .padding()
+                .padding(14)
             }
             
             if isExpanded {
                 VStack(alignment: .leading, spacing: 10) {
                     Divider()
-                        .background(Color.gray.opacity(0.2))
-                        .padding(.horizontal)
+                        .background(ProTheme.borderSubtle)
+                        .padding(.horizontal, 14)
                     
-                    Text(content)
-                        .font(.caption2)
-                        .foregroundColor(.gray)
+                    Text(.init(content))
+                        .font(.caption)
+                        .foregroundColor(ProTheme.textSecondary)
                         .lineSpacing(4)
-                        .padding()
+                        .padding(14)
                 }
-                .background(Color.black.opacity(0.15))
+                .background(Color.black.opacity(0.2))
             }
         }
-        .background(Color(red: 0.04, green: 0.06, blue: 0.12))
+        .background(ProTheme.cardBackground)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isExpanded ? color.opacity(0.3) : Color.gray.opacity(0.15), lineWidth: 1)
+                .stroke(isExpanded ? color.opacity(0.45) : ProTheme.borderSubtle, lineWidth: 1)
         )
     }
 }

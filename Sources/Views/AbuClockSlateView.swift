@@ -46,12 +46,12 @@ struct AbuClockSlateView: View {
                                 .fill(clockBridge.lockState.contains("Locked") ? Color.green : Color.orange)
                                 .frame(width: 9, height: 9)
                             Text("ABU CLOCK // \(clockBridge.lockState.uppercased())")
-                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
                                 .foregroundColor(.cyan)
                         }
                         Spacer()
                         Text("BCD \(clockBridge.liveBcdHex)")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .foregroundColor(.yellow)
                     }
 
@@ -65,11 +65,11 @@ struct AbuClockSlateView: View {
 
                     HStack {
                         Text("TAI: \(clockBridge.liveTaiNanoseconds) ns")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                             .foregroundColor(.gray)
                         Spacer()
                         Text(String(format: "PHASE φ: %.4f  |  DRIFT: %+.1f ppb", clockBridge.liveSubframePhase, clockBridge.driftPpb))
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                             .foregroundColor(.cyan)
                     }
                 }
@@ -98,7 +98,7 @@ struct AbuClockSlateView: View {
                                 clockBridge.dropFrame = preset.df
                             }) {
                                 Text(preset.label)
-                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                                     .foregroundColor(selectedFpsPreset == preset.label ? .black : .white)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
@@ -127,7 +127,7 @@ struct AbuClockSlateView: View {
                             Image(systemName: "antenna.radiowaves.left.and.right")
                             Text("AUTO-SYNC (50320)")
                         }
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -142,7 +142,7 @@ struct AbuClockSlateView: View {
                             Image(systemName: "bolt.fill")
                             Text("CLAP / FLASH SLATE")
                         }
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -152,7 +152,7 @@ struct AbuClockSlateView: View {
                 }
 
                 Text(discoveryStatusText)
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                     .foregroundColor(.gray)
 
                 Spacer(minLength: 0)
@@ -169,7 +169,7 @@ struct AbuClockSlateView: View {
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundColor(.white)
                 Text("SMPTE ST 12-1 / ST 2059-2 OPTICAL & PTP GENLOCK BEACON")
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                     .foregroundColor(.cyan)
             }
             Spacer()
@@ -178,7 +178,7 @@ struct AbuClockSlateView: View {
                     Image(systemName: "xmark.circle.fill")
                     Text("EXIT SLATE")
                 }
-                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .font(.system(size: 11, weight: .black, design: .monospaced))
                 .foregroundColor(.white)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -194,7 +194,7 @@ struct AbuClockSlateView: View {
                 // Frame-00 High-Contrast Optical Flash Target
                 VStack(spacing: 2) {
                     Text(clockBridge.isFlashMarkerFrameZero || manualClapActive ? "FRAME 00 FLASH" : "OPTICAL TARGET")
-                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .font(.system(size: 10.5, weight: .black, design: .monospaced))
                         .foregroundColor(clockBridge.isFlashMarkerFrameZero || manualClapActive ? .black : .gray)
                     Text(clockBridge.isFlashMarkerFrameZero || manualClapActive ? "██ WHITE PEAK ██" : "WAIT :00")
                         .font(.system(size: 11, weight: .black, design: .monospaced))
@@ -209,11 +209,11 @@ struct AbuClockSlateView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text("SUB-FRAME SHUTTER PHASE BAR (0.0 -> 1.0)")
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                             .foregroundColor(.gray)
                         Spacer()
                         Text(String(format: "%.1f%%", clockBridge.liveSubframePhase * 100.0))
-                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .font(.system(size: 10.5, weight: .black, design: .monospaced))
                             .foregroundColor(.cyan)
                     }
 
@@ -233,7 +233,7 @@ struct AbuClockSlateView: View {
                         ForEach(0..<10, id: \.self) { idx in
                             let active = Int(clockBridge.liveSubframePhase * 10.0) == idx
                             Text("\(idx)")
-                                .font(.system(size: 8, weight: .black, design: .monospaced))
+                                .font(.system(size: 10.5, weight: .black, design: .monospaced))
                                 .foregroundColor(active ? .black : .gray)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 2)
@@ -260,11 +260,11 @@ struct AbuClockSlateView: View {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("TAKE")
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                         .foregroundColor(.gray)
                     HStack {
                         Button("-1") { clockBridge.slateTake = max(1, clockBridge.slateTake - 1) }
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
                             .foregroundColor(.cyan)
                         Spacer()
                         Text("\(clockBridge.slateTake)")
@@ -272,7 +272,7 @@ struct AbuClockSlateView: View {
                             .foregroundColor(.white)
                         Spacer()
                         Button("+1") { clockBridge.slateTake += 1 }
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
                             .foregroundColor(.cyan)
                     }
                     .padding(8)
@@ -283,7 +283,7 @@ struct AbuClockSlateView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("MASTER NODE IP")
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                         .foregroundColor(.gray)
                     Text(clockBridge.discoveredMasterIP.isEmpty ? UDPStreamingManager.getLocalIPAddress() : clockBridge.discoveredMasterIP)
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
@@ -297,10 +297,10 @@ struct AbuClockSlateView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("LAST BARRIER (50319)")
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                         .foregroundColor(.gray)
                     Text(clockBridge.lastBarrierReceiptSummary)
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                         .foregroundColor(.yellow)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -320,7 +320,7 @@ struct AbuClockSlateView: View {
     private func slateField(title: String, value: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                 .foregroundColor(.gray)
             TextField(title, text: value)
                 .font(.system(size: 11, weight: .bold, design: .monospaced))

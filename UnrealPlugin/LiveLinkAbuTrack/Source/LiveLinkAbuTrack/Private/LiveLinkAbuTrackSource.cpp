@@ -41,6 +41,8 @@ void ULiveLinkAbuTrackSourceSettings::ConfigureEngineTimecodeAndGenlock()
 		GEngine->SetCustomTimeStep(CustomTimeStep);
 	}
 
+	bEngineGenlockConfigured = true;
+
 	UE_LOG(LogTemp, Log, TEXT("[AbuTrack] 1-Click Configured UE5 TimecodeProvider & CustomTimeStep (%d/%d, DF=%d)"),
 		FrameRateNumerator, FrameRateDenominator, bDropFrame ? 1 : 0);
 }
@@ -53,6 +55,8 @@ FLiveLinkAbuTrackSource::FLiveLinkAbuTrackSource(int32 InPort)
 	, bIsRunning(false)
 	, SubjectName(TEXT("AbuTrack"))
 	, bSubjectRegistered(false)
+	, TotalReceivedPackets(0)
+	, LastPacketPlatformSeconds(0.0)
 {
 	StartReceiverThread();
 	FAbuClockRuntimeBridge::Get().RegisterNodeWithAbuClock(
@@ -112,7 +116,21 @@ FText FLiveLinkAbuTrackSource::GetSourceMachineName() const
 
 FText FLiveLinkAbuTrackSource::GetSourceStatus() const
 {
-	return bIsRunning ? FText::FromString(TEXT("Active (SMPTE ST 2059 + Multi-Protocol)")) : FText::FromString(TEXT("Disconnected"));
+	if (!bIsRunning)
+	{
+		return FText::FromString(TEXT("Disconnected"));
+	}
+	const int64 PktCount = TotalReceivedPackets.Load();
+	if (PktCount == 0)
+	{
+		return FText::FromString(FString::Printf(TEXT("Listening on UDP %d (Waiting for Stream...)"), UDPPort));
+	}
+	const double ElapsedSec = FPlatformTime::Seconds() - LastPacketPlatformSeconds.Load();
+	if (ElapsedSec <= 2.0)
+	{
+		return FText::FromString(FString::Printf(TEXT("ONLINE • Streaming (%lld pkts | SMPTE ST 2059)"), PktCount));
+	}
+	return FText::FromString(FString::Printf(TEXT("STALE / OFFLINE (No UDP packets for %.1fs)"), ElapsedSec));
 }
 
 void FLiveLinkAbuTrackSource::StartReceiverThread()
@@ -443,6 +461,12 @@ void FLiveLinkAbuTrackSource::ProcessOpenTrackIOPacket(const uint8* Data, int32 
 		SmpteString = FAbuClockRuntimeBridge::FormatSmpteString(Snap.hours, Snap.minutes, Snap.seconds, Snap.frames, Snap.drop_frame != 0, Snap.phase);
 	}
 
+	bool bLeverArm = false, bOrigin = false, bPitchOffset = false;
+	RootObj->TryGetBoolField(TEXT("leverArmApplied"), bLeverArm);
+	RootObj->TryGetBoolField(TEXT("originApplied"), bOrigin);
+	RootObj->TryGetBoolField(TEXT("pitchOffsetApplied"), bPitchOffset);
+	const bool bOffsetsApplied = (bLeverArm || bOrigin || bPitchOffset);
+
 	PushSynchronizedCameraFrame(
 		XCm, YCm, ZCm,
 		PitchDeg, YawDeg, RollDeg,
@@ -451,7 +475,8 @@ void FLiveLinkAbuTrackSource::ProcessOpenTrackIOPacket(const uint8* Data, int32 
 		TaiNs, BcdTimecode, SmpteString, SubframePhase,
 		FpsNum, FpsDen, bDropFrame,
 		LockState,
-		TEXT("OpenTrackIO (OTrk)")
+		TEXT("OpenTrackIO (OTrk)"),
+		bOffsetsApplied
 	);
 }
 
@@ -549,6 +574,12 @@ void FLiveLinkAbuTrackSource::ProcessJsonPacket(const FString& PacketData, const
 		SmpteString = FAbuClockRuntimeBridge::FormatSmpteString(Snap.hours, Snap.minutes, Snap.seconds, Snap.frames, Snap.drop_frame != 0, Snap.phase);
 	}
 
+	bool bLeverArm = false, bOrigin = false, bPitchOffset = false;
+	JsonObject->TryGetBoolField(TEXT("leverArmApplied"), bLeverArm);
+	JsonObject->TryGetBoolField(TEXT("originApplied"), bOrigin);
+	JsonObject->TryGetBoolField(TEXT("pitchOffsetApplied"), bPitchOffset);
+	const bool bOffsetsApplied = (bLeverArm || bOrigin || bPitchOffset);
+
 	PushSynchronizedCameraFrame(
 		XCm, YCm, ZCm,
 		PitchDeg, YawDeg, RollDeg,
@@ -557,7 +588,8 @@ void FLiveLinkAbuTrackSource::ProcessJsonPacket(const FString& PacketData, const
 		TaiNs, BcdTimecode, SmpteString, SubframePhase,
 		FpsNum, FpsDen, bDropFrame,
 		LockState,
-		ProtocolLabel
+		ProtocolLabel,
+		bOffsetsApplied
 	);
 }
 
@@ -580,12 +612,17 @@ void FLiveLinkAbuTrackSource::PushSynchronizedCameraFrame(
 	int32 FpsDen,
 	bool bDropFrame,
 	const FString& LockState,
-	const FString& ProtocolLabel)
+	const FString& ProtocolLabel,
+	bool bOffsetsApplied)
 {
 	if (!LiveLinkClient)
 	{
 		return;
 	}
+
+	const int64 NewPacketCount = ++TotalReceivedPackets;
+	const double NowWallSec = FPlatformTime::Seconds();
+	LastPacketPlatformSeconds.Store(NowWallSec);
 
 	if (!bSubjectRegistered)
 	{
@@ -612,7 +649,7 @@ void FLiveLinkAbuTrackSource::PushSynchronizedCameraFrame(
 	{
 		ULiveLinkAbuTrackSourceSettings* SettingsToUpdate = SavedSettings.Get();
 		const FString BcdHex = FString::Printf(TEXT("0x%08X"), BcdTimecode);
-		AsyncTask(ENamedThreads::GameThread, [SettingsToUpdate, FocalLengthMm, K1Val, K2Val, ProtocolLabel, SmpteString, BcdHex, TaiNs, SubframePhase, LockState]()
+		AsyncTask(ENamedThreads::GameThread, [SettingsToUpdate, FocalLengthMm, K1Val, K2Val, ProtocolLabel, SmpteString, BcdHex, TaiNs, SubframePhase, LockState, NewPacketCount, NowWallSec, bOffsetsApplied]()
 		{
 			if (SettingsToUpdate && SettingsToUpdate->IsValidLowLevel())
 			{
@@ -625,6 +662,9 @@ void FLiveLinkAbuTrackSource::PushSynchronizedCameraFrame(
 				SettingsToUpdate->LiveTaiNanoseconds = static_cast<int64>(TaiNs);
 				SettingsToUpdate->LiveSubframePhase = static_cast<float>(SubframePhase);
 				SettingsToUpdate->ClockLockState = LockState;
+				SettingsToUpdate->ReceivedPacketCount = NewPacketCount;
+				SettingsToUpdate->LastPacketWallTimeSec = NowWallSec;
+				SettingsToUpdate->bUpstreamOffsetsApplied = bOffsetsApplied;
 			}
 		});
 
@@ -635,7 +675,7 @@ void FLiveLinkAbuTrackSource::PushSynchronizedCameraFrame(
 	}
 
 	CameraFrameData.FocalLength = static_cast<float>(FinalFocalLength);
-	CameraFrameData.WorldTime = FLiveLinkWorldTime(FPlatformTime::Seconds());
+	CameraFrameData.WorldTime = FLiveLinkWorldTime(NowWallSec);
 
 	// Construct exact FQualifiedFrameTime for Unreal TimecodeSynchronizer / Composure / Sequencer
 	const FTimecode DecodedTc = FAbuClockRuntimeBridge::DecodeBcdTimecode(BcdTimecode, bDropFrame);
@@ -652,6 +692,7 @@ void FLiveLinkAbuTrackSource::PushSynchronizedCameraFrame(
 	CameraFrameData.MetaData.StringMetaData.Add(TEXT("Protocol"), ProtocolLabel);
 	CameraFrameData.MetaData.StringMetaData.Add(TEXT("K1"), FString::SanitizeFloat(K1Val));
 	CameraFrameData.MetaData.StringMetaData.Add(TEXT("K2"), FString::SanitizeFloat(K2Val));
+	CameraFrameData.MetaData.StringMetaData.Add(TEXT("UpstreamOffsetsApplied"), bOffsetsApplied ? TEXT("true") : TEXT("false"));
 
 	LiveLinkClient->PushSubjectFrameData_AnyThread({ SourceGuid, SubjectName }, MoveTemp(FrameData));
 }

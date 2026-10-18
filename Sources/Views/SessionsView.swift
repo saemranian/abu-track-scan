@@ -43,7 +43,7 @@ struct SessionsView: View {
                             .foregroundColor(ProTheme.textPrimary)
                         Spacer()
                         Text("\(sessions.count) Takes")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .foregroundColor(ProTheme.accentCyan)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
@@ -266,6 +266,8 @@ struct SessionDetailView: View {
     @State private var csvURL: URL?
     @State private var metashapeCSVURL: URL?
     @State private var plyURL: URL?
+    @State private var abuscanJSONURL: URL?
+    @State private var colmapImagesURL: URL?
     
     // 3D Historical Map variables
     @State private var historicalPoints: [RawPoint3D] = []
@@ -289,11 +291,11 @@ struct SessionDetailView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(red: 0.02, green: 0.03, blue: 0.08)
+                ProTheme.background
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 16) {
                         detailsCard
                         historicalMapCard
                         syncControlsCard
@@ -310,6 +312,7 @@ struct SessionDetailView: View {
                     Button("Close") {
                         dismiss()
                     }
+                    .foregroundColor(ProTheme.accentCyan)
                 }
             }
             .onAppear {
@@ -322,6 +325,7 @@ struct SessionDetailView: View {
                 Text(alertMessage)
             }
         }
+        .preferredColorScheme(.dark)
     }
     
     @ViewBuilder
@@ -331,51 +335,51 @@ struct SessionDetailView: View {
                 Text("Session Details")
                     .font(.caption)
                     .fontWeight(.black)
-                    .foregroundColor(.cyan)
+                    .foregroundColor(ProTheme.accentCyan)
                 Spacer()
             }
-            Divider().background(Color.gray.opacity(0.3))
+            Divider().background(ProTheme.borderSubtle)
             
             DetailRow(label: "Identifier", value: id)
             DetailRow(label: "Duration", value: String(format: "%.1fs", end.timeIntervalSince(start)))
             DetailRow(label: "Sensor Entries", value: "\(entries) pts")
             DetailRow(label: "GPS Tracking", value: isGPS ? "GPS + IMU Enabled" : "Pure Inertial/Baro Indoor Mode")
         }
-        .padding()
-        .background(Color(red: 0.05, green: 0.08, blue: 0.16))
-        .cornerRadius(14)
+        .padding(14)
+        .background(ProTheme.cardBackground)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
         .padding(.horizontal)
-        .padding(.top, 15)
+        .padding(.top, 8)
     }
     
     @ViewBuilder
     private var syncControlsCard: some View {
-        VStack(spacing: 15) {
+        VStack(spacing: 12) {
             Button(action: triggerPhotosSync) {
                 HStack {
                     if syncManager.isSyncing {
                         ProgressView()
-                            .tint(.white)
+                            .tint(.black)
                             .padding(.trailing, 8)
                     } else {
                         Image(systemName: "arrow.triangle.2.circlepath.camera")
                     }
-                    Text(syncManager.isSyncing ? "SYNCING..." : "SYNC CAMERA IMAGES")
-                        .fontWeight(.bold)
+                    Text(syncManager.isSyncing ? "SYNCING..." : "SYNC CAMERA IMAGES (SLERP + SLATE)")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(syncManager.isSyncing ? Color.cyan.opacity(0.4) : Color.cyan)
-                .foregroundColor(.white)
+                .padding(.vertical, 14)
+                .background(syncManager.isSyncing ? ProTheme.accentCyan.opacity(0.4) : ProTheme.accentCyan)
+                .foregroundColor(.black)
                 .cornerRadius(12)
-                .shadow(color: Color.cyan.opacity(0.2), radius: 6, x: 0, y: 3)
             }
             .disabled(syncManager.isSyncing)
             
             if !syncManager.syncMessage.isEmpty {
                 Text(syncManager.syncMessage)
                     .font(.caption2)
-                    .foregroundColor(.gray)
+                    .foregroundColor(ProTheme.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -384,56 +388,92 @@ struct SessionDetailView: View {
     
     @ViewBuilder
     private var exportLinksCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Export References")
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Export References & Manifests")
                 .font(.caption)
                 .fontWeight(.black)
-                .foregroundColor(.cyan)
+                .foregroundColor(ProTheme.accentCyan)
                 .padding(.horizontal)
             
-            HStack(spacing: 15) {
-                // Link 1: Metashape Sync Output
-                if let url = metashapeCSVURL {
-                    ShareLink(item: url) {
-                        Label("Metashape CSV", systemImage: "arrow.up.doc")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green.opacity(0.2))
-                            .foregroundColor(.green)
-                            .cornerRadius(10)
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green.opacity(0.4), lineWidth: 1))
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    // Link 1: Metashape Sync Output
+                    if let url = metashapeCSVURL {
+                        ShareLink(item: url) {
+                            Label("Metashape CSV", systemImage: "arrow.up.doc")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.green.opacity(0.18))
+                                .foregroundColor(.green)
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green.opacity(0.45), lineWidth: 1))
+                        }
+                    }
+                    
+                    // Link 2: 3D Point Cloud PLY
+                    if let url = plyURL {
+                        ShareLink(item: url) {
+                            Label("PLY Cloud", systemImage: "square.stack.3d.up.fill")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.purple.opacity(0.18))
+                                .foregroundColor(.purple)
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.purple.opacity(0.45), lineWidth: 1))
+                        }
+                    }
+                    
+                    // Link 3: Raw telemetry logs (60Hz)
+                    if let url = csvURL {
+                        ShareLink(item: url) {
+                            Label("Raw Logs", systemImage: "doc.text")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.yellow.opacity(0.18))
+                                .foregroundColor(.yellow)
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.yellow.opacity(0.45), lineWidth: 1))
+                        }
                     }
                 }
                 
-                // Link 2: 3D Point Cloud PLY
-                if let url = plyURL {
-                    ShareLink(item: url) {
-                        Label("PLY Cloud", systemImage: "square.stack.3d.up.fill")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.purple.opacity(0.2))
-                            .foregroundColor(.purple)
-                            .cornerRadius(10)
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.purple.opacity(0.4), lineWidth: 1))
-                    }
-                }
-                
-                // Link 3: Raw telemetry logs (30Hz)
-                if let url = csvURL {
-                    ShareLink(item: url) {
-                        Label("Raw Logs", systemImage: "doc.text")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.yellow.opacity(0.2))
-                            .foregroundColor(.yellow)
-                            .cornerRadius(10)
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.yellow.opacity(0.4), lineWidth: 1))
+                if abuscanJSONURL != nil || colmapImagesURL != nil {
+                    HStack(spacing: 10) {
+                        // Link 4: .abuscan.json Manifest (1-Click Export)
+                        if let url = abuscanJSONURL {
+                            ShareLink(item: url) {
+                                Label(".abuscan.json", systemImage: "curlybraces.square.fill")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(ProTheme.accentCyan.opacity(0.18))
+                                    .foregroundColor(ProTheme.accentCyan)
+                                    .cornerRadius(10)
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(ProTheme.accentCyan.opacity(0.45), lineWidth: 1))
+                            }
+                        }
+                        
+                        // Link 5: COLMAP images.txt (1-Click Export)
+                        if let url = colmapImagesURL {
+                            ShareLink(item: url) {
+                                Label("COLMAP images.txt", systemImage: "camera.metering.matrix")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.orange.opacity(0.18))
+                                    .foregroundColor(.orange)
+                                    .cornerRadius(10)
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.orange.opacity(0.45), lineWidth: 1))
+                            }
+                        }
                     }
                 }
             }
@@ -447,7 +487,7 @@ struct SessionDetailView: View {
             Text("Matched Images Grid (\(syncManager.matchedRecords.count))")
                 .font(.caption)
                 .fontWeight(.black)
-                .foregroundColor(.cyan)
+                .foregroundColor(ProTheme.accentCyan)
                 .padding(.horizontal)
             
             if syncManager.matchedRecords.isEmpty {
@@ -457,14 +497,15 @@ struct SessionDetailView: View {
                         Spacer()
                         Text("Perform sync to match default library photos")
                             .font(.caption2)
-                            .foregroundColor(.gray)
+                            .foregroundColor(ProTheme.textSecondary)
                         Spacer()
                     }
                     Spacer()
                 }
-                .frame(height: 100)
-                .background(Color.black.opacity(0.2))
+                .frame(height: 90)
+                .background(ProTheme.cardBackground)
                 .cornerRadius(10)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(ProTheme.borderSubtle, lineWidth: 1))
                 .padding(.horizontal)
             } else {
                 ScrollView {
@@ -479,14 +520,14 @@ struct SessionDetailView: View {
                                     
                                     Text(String(format: "Local VIO: %.2f, %.2f, %.2f m", rec.localX, rec.localY, rec.localZ))
                                         .font(.caption2)
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(ProTheme.textSecondary)
                                 }
                                 Spacer()
                                 
                                 VStack(alignment: .trailing, spacing: 4) {
                                     Text(String(format: "Yaw: %.1f°", rec.yaw))
                                         .font(.caption2)
-                                        .foregroundColor(.cyan)
+                                        .foregroundColor(ProTheme.accentCyan)
                                     Text(String(format: "Diff: %+.2fs", rec.timeDifferenceSec))
                                         .font(.caption2)
                                         .foregroundColor(abs(rec.timeDifferenceSec) > 0.5 ? .orange : .gray)
@@ -494,8 +535,9 @@ struct SessionDetailView: View {
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .background(Color(red: 0.04, green: 0.06, blue: 0.12))
+                            .background(ProTheme.cardBackground)
                             .cornerRadius(8)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(ProTheme.borderSubtle, lineWidth: 1))
                         }
                     }
                 }
@@ -510,7 +552,7 @@ struct SessionDetailView: View {
             Text("3D Reconstructed Map & Path")
                 .font(.caption)
                 .fontWeight(.black)
-                .foregroundColor(.cyan)
+                .foregroundColor(ProTheme.accentCyan)
                 .padding(.horizontal)
             
             if loading3DData {
@@ -524,7 +566,7 @@ struct SessionDetailView: View {
                 }
                 .frame(height: 180)
                 .frame(maxWidth: .infinity)
-                .background(Color.black.opacity(0.2))
+                .background(ProTheme.cardBackground)
                 .cornerRadius(12)
                 .padding(.horizontal)
             } else if historicalPoints.isEmpty && historicalTrajectory.isEmpty {
@@ -539,7 +581,7 @@ struct SessionDetailView: View {
                 }
                 .frame(height: 180)
                 .frame(maxWidth: .infinity)
-                .background(Color.black.opacity(0.2))
+                .background(ProTheme.cardBackground)
                 .cornerRadius(12)
                 .padding(.horizontal)
             } else {
@@ -591,14 +633,14 @@ struct SessionDetailView: View {
                                 Image(systemName: "arrow.counterclockwise")
                                 Text("RESET")
                             }
-                            .font(.system(size: 8, weight: .black))
+                            .font(.system(size: 10.5, weight: .black))
                             .foregroundColor(.red)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
                             .background(Color.black.opacity(0.6))
-                            .cornerRadius(4)
+                            .cornerRadius(5)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 5)
                                     .stroke(Color.red.opacity(0.6), lineWidth: 1)
                             )
                         }
@@ -608,14 +650,14 @@ struct SessionDetailView: View {
                                 Image(systemName: showTrajectory ? "point.topleft.down.to.point.bottomright.curvepath" : "point.topleft.down.to.point.bottomright.curvepath.fill")
                                 Text("PATH")
                             }
-                            .font(.system(size: 8, weight: .black))
+                            .font(.system(size: 10.5, weight: .black))
                             .foregroundColor(showTrajectory ? .yellow : .gray)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
                             .background(Color.black.opacity(0.6))
-                            .cornerRadius(4)
+                            .cornerRadius(5)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 5)
                                     .stroke(showTrajectory ? Color.yellow.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 1)
                             )
                         }
@@ -625,14 +667,14 @@ struct SessionDetailView: View {
                                 Image(systemName: showCamera ? "camera.fill" : "camera")
                                 Text("CAM")
                             }
-                            .font(.system(size: 8, weight: .black))
+                            .font(.system(size: 10.5, weight: .black))
                             .foregroundColor(showCamera ? .red : .gray)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
                             .background(Color.black.opacity(0.6))
-                            .cornerRadius(4)
+                            .cornerRadius(5)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 5)
                                     .stroke(showCamera ? Color.red.opacity(0.6) : Color.gray.opacity(0.3), lineWidth: 1)
                             )
                         }
@@ -731,6 +773,16 @@ struct SessionDetailView: View {
         let filePLY = sessionFolder.appendingPathComponent("coverage_cloud.ply")
         if fileManager.fileExists(atPath: filePLY.path) {
             plyURL = filePLY
+        }
+        
+        let fileAbuScan = sessionFolder.appendingPathComponent("\(id).abuscan.json")
+        if fileManager.fileExists(atPath: fileAbuScan.path) {
+            abuscanJSONURL = fileAbuScan
+        }
+        
+        let fileColmap = sessionFolder.appendingPathComponent("images.txt")
+        if fileManager.fileExists(atPath: fileColmap.path) {
+            colmapImagesURL = fileColmap
         }
     }
     

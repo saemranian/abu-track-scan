@@ -276,9 +276,11 @@ class PhotoSyncManager: ObservableObject {
             let fullCSV = header + body
             do {
                 try fullCSV.write(to: outputCSVURL, atomically: true, encoding: .utf8)
+                let sortedManifest = manifestEntries.sorted { $0.file_path < $1.file_path }
+                TelemetryLogger.shared.exportAbuScanAndColmapManifests(sessionID: sessionID, entries: sortedManifest)
                 self.matchedRecords = sortedRecords
                 self.isSyncing = false
-                completion(true, "Synced \(sortedRecords.count) photos via sub-ms AbuClock SLERP! Saved Metashape CSV.")
+                completion(true, "Synced \(sortedRecords.count) photos via sub-ms AbuClock SLERP! Saved Metashape CSV, .abuscan.json & COLMAP images.txt.")
             } catch {
                 self.isSyncing = false
                 completion(false, "Failed to write Metashape CSV: \(error.localizedDescription)")

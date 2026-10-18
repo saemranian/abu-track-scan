@@ -234,7 +234,7 @@ class TelemetryLogger {
         print("Saved PLY point cloud (\(customFilename), count: \(points.count)) to \(plyURL.path)")
     }
     
-    private func exportAbuScanAndColmapManifests(sessionID: String, entries: [AbuScanCaptureManifestEntry]) {
+    func exportAbuScanAndColmapManifests(sessionID: String, entries: [AbuScanCaptureManifestEntry]) {
         let fileManager = FileManager.default
         guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         let sessionFolderURL = documentsURL.appendingPathComponent("Sessions").appendingPathComponent(sessionID)

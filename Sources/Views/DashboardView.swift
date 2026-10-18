@@ -145,7 +145,7 @@ struct DashboardView: View {
                                         .foregroundColor(ProTheme.textPrimary)
                                     Spacer()
                                     Text(trackingManager.isTrackingActive ? "\(trackingManager.accumulatedPointCloud.count) pts" : "Standby")
-                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                                         .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusNominal : ProTheme.textSecondary)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 3)
@@ -301,61 +301,7 @@ struct DashboardView: View {
                             singleDeviceViewfinder
                         }
                         
-                        // 4. Primary Action Row (Start/Stop Capture + GPS Toggle)
-                        HStack(spacing: 10) {
-                            Button(action: {
-                                if trackingManager.isTrackingActive {
-                                    stopSession()
-                                } else {
-                                    startSession()
-                                }
-                            }) {
-                                HStack(spacing: 10) {
-                                    Image(systemName: trackingManager.isTrackingActive ? "stop.circle.fill" : "record.circle")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusCritical : ProTheme.accentCyan)
-                                    
-                                    Text(trackingManager.isTrackingActive ? "STOP CAPTURE" : "START CAPTURE")
-                                        .font(.system(size: 13, weight: .black, design: .rounded))
-                                        .foregroundColor(.white)
-                                    
-                                    Spacer()
-                                    
-                                    Text(trackingManager.isTrackingActive ? formatDuration(trackingManager.sessionDuration) : "READY")
-                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                        .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusCritical : ProTheme.textSecondary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.black.opacity(0.35))
-                                        .cornerRadius(6)
-                                }
-                                .padding(.horizontal, 14)
-                                .frame(height: 50)
-                                .background(ProTheme.cardBackground)
-                                .cornerRadius(12)
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(trackingManager.isTrackingActive ? ProTheme.statusCritical.opacity(0.6) : ProTheme.accentCyan.opacity(0.45), lineWidth: 1.2))
-                            }
-                            
-                            Button(action: {
-                                RigSettings.isGPSEnabled.toggle()
-                                locationManager.isGPSEnabled = RigSettings.isGPSEnabled
-                            }) {
-                                VStack(spacing: 2) {
-                                    Image(systemName: locationManager.isGPSEnabled ? "location.fill" : "location.slash")
-                                        .font(.system(size: 14, weight: .bold))
-                                    Text("GPS")
-                                        .font(.system(size: 8, weight: .bold, design: .rounded))
-                                }
-                                .foregroundColor(locationManager.isGPSEnabled ? ProTheme.statusNominal : ProTheme.statusWarning)
-                                .frame(width: 50, height: 50)
-                                .background(ProTheme.cardBackground)
-                                .cornerRadius(12)
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(locationManager.isGPSEnabled ? ProTheme.statusNominal.opacity(0.35) : ProTheme.statusWarning.opacity(0.35), lineWidth: 1))
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        // 5. Minimal 3-Card Live Telemetry Summary Strip + Collapsible Hardware Diagnostics
+                        // 4. Minimal 3-Card Live Telemetry Summary Strip + Collapsible Hardware Diagnostics
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
                                 createMetricPill(
@@ -390,11 +336,11 @@ struct DashboardView: View {
                                             .font(.system(size: 12, weight: .bold))
                                             .foregroundColor(ProTheme.accentCyan)
                                         Text("Hardware, Network & Clock Diagnostics")
-                                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
                                             .foregroundColor(ProTheme.textPrimary)
                                         Spacer()
                                         Text(UDPStreamingManager.getLocalIPAddress())
-                                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                             .foregroundColor(ProTheme.statusNominal)
                                         Image(systemName: showFullDiagnostics ? "chevron.up" : "chevron.down")
                                             .font(.system(size: 11, weight: .bold))
@@ -437,8 +383,83 @@ struct DashboardView: View {
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(ProTheme.borderSubtle, lineWidth: 1))
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, 16)
                     }
+                }
+                .safeAreaInset(edge: .bottom) {
+                    // Fixed Bottom Primary Action Bar (Always reachable without scrolling — IOS-UX-02)
+                    HStack(spacing: 10) {
+                        Button(action: {
+                            if trackingManager.isTrackingActive {
+                                stopSession()
+                            } else {
+                                startSession()
+                            }
+                        }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: trackingManager.isTrackingActive ? "stop.circle.fill" : "record.circle")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusCritical : ProTheme.accentCyan)
+                                
+                                Text(trackingManager.isTrackingActive ? "STOP CAPTURE" : "START CAPTURE")
+                                    .font(.system(size: 13, weight: .black, design: .rounded))
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                Text(trackingManager.isTrackingActive ? formatDuration(trackingManager.sessionDuration) : "READY")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusCritical : ProTheme.textSecondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.black.opacity(0.35))
+                                    .cornerRadius(6)
+                            }
+                            .padding(.horizontal, 14)
+                            .frame(height: 50)
+                            .background(ProTheme.cardBackground)
+                            .cornerRadius(12)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(trackingManager.isTrackingActive ? ProTheme.statusCritical.opacity(0.6) : ProTheme.accentCyan.opacity(0.45), lineWidth: 1.2))
+                        }
+
+                        if captureMode == .singleDevice {
+                            Button(action: {
+                                triggerInAppCapture()
+                            }) {
+                                VStack(spacing: 2) {
+                                    Image(systemName: "camera.shutter.button.fill")
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text("SNAP")
+                                        .font(.system(size: 10.5, weight: .black, design: .rounded))
+                                }
+                                .foregroundColor(.white)
+                                .frame(width: 58, height: 50)
+                                .background(ProTheme.statusCritical.opacity(0.85))
+                                .cornerRadius(12)
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.4), lineWidth: 1))
+                            }
+                        }
+                        
+                        Button(action: {
+                            RigSettings.isGPSEnabled.toggle()
+                            locationManager.isGPSEnabled = RigSettings.isGPSEnabled
+                        }) {
+                            VStack(spacing: 2) {
+                                Image(systemName: locationManager.isGPSEnabled ? "location.fill" : "location.slash")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text("GPS")
+                                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                            }
+                            .foregroundColor(locationManager.isGPSEnabled ? ProTheme.statusNominal : ProTheme.statusWarning)
+                            .frame(width: 52, height: 50)
+                            .background(ProTheme.cardBackground)
+                            .cornerRadius(12)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(locationManager.isGPSEnabled ? ProTheme.statusNominal.opacity(0.35) : ProTheme.statusWarning.opacity(0.35), lineWidth: 1))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(red: 0.03, green: 0.05, blue: 0.12).opacity(0.96))
                 }
             }
             .navigationBarHidden(true)
@@ -847,14 +868,14 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 10.5, weight: .bold))
                     .foregroundColor(color)
                 Text(title)
-                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
                     .foregroundColor(ProTheme.textSecondary)
             }
             Text(value)
-                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .font(.system(size: 11, weight: .black, design: .monospaced))
                 .foregroundColor(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -878,14 +899,14 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Image(systemName: icon)
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 10.5, weight: .bold))
                     Text(label)
-                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
                 }
                 .foregroundColor(isSelected ? accent : ProTheme.textSecondary)
 
                 Text(value)
-                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
                     .foregroundColor(isSelected ? accent : .white)
             }
             .padding(.horizontal, 10)
@@ -901,7 +922,16 @@ struct DashboardView: View {
     }
 
     private var singleDeviceViewfinder: some View {
-        VStack(spacing: 8) {
+        let activeFormatLabel: String = {
+            if trackingManager.isTrackingActive {
+                let arFmt = (pictureFormat == "HEIF") ? "HEIC" : "JPG"
+                return "AR \(arFmt)"
+            } else {
+                return "\(pictureFormat)\(is48MP ? " 48M" : "")"
+            }
+        }()
+
+        return VStack(spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: "camera.aperture")
                     .font(.system(size: 12, weight: .bold))
@@ -912,7 +942,7 @@ struct DashboardView: View {
                 Spacer()
                 if !shutterFeedbackMessage.isEmpty {
                     Text(shutterFeedbackMessage)
-                        .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                        .font(.system(size: 10.5, weight: .black, design: .monospaced))
                         .foregroundColor(ProTheme.statusNominal)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -924,7 +954,7 @@ struct DashboardView: View {
             .padding(.horizontal, 16)
             
             ZStack(alignment: .bottom) {
-                if isCameraReady {
+                if isCameraReady || trackingManager.isTrackingActive {
                     ZStack {
                         if trackingManager.isTrackingActive {
                             ARPreviewContainer(trackingManager: trackingManager)
@@ -937,9 +967,9 @@ struct DashboardView: View {
                             HStack {
                                 HStack(spacing: 4) {
                                     Image(systemName: "folder.fill")
-                                        .font(.system(size: 8))
-                                    Text("Sessions/\(trackingManager.activeSessionID?.suffix(8) ?? "STANDBY")")
-                                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                                        .font(.system(size: 10.5))
+                                    Text("Sessions/\(trackingManager.activeSessionID?.suffix(8) ?? "OPTICAL STANDBY")")
+                                        .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                                 }
                                 .foregroundColor(ProTheme.accentCyan)
                                 .padding(.horizontal, 7)
@@ -947,9 +977,9 @@ struct DashboardView: View {
                                 .background(Color.black.opacity(0.65))
                                 .cornerRadius(6)
                                 Spacer()
-                                Text("EXP MIDPOINT SYNC")
-                                    .font(.system(size: 8, weight: .black, design: .monospaced))
-                                    .foregroundColor(ProTheme.statusNominal)
+                                Text(trackingManager.isTrackingActive ? "HI-RES AR + 6DoF EXIF" : "OPTICAL PRO (DNG/48MP)")
+                                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                                    .foregroundColor(trackingManager.isTrackingActive ? ProTheme.statusNominal : ProTheme.accentCyan)
                                     .padding(.horizontal, 7)
                                     .padding(.vertical, 4)
                                     .background(Color.black.opacity(0.65))
@@ -979,7 +1009,7 @@ struct DashboardView: View {
                     .cornerRadius(12)
                 }
                 
-                // Tactile Circular DSLR Shutter Button overlay
+                // Tactile Circular DSLR Shutter Button overlay (Always enabled: AR Hi-Res during tracking, Optical DNG/48MP when standby — IOS-UX-01)
                 Button(action: {
                     triggerInAppCapture()
                 }) {
@@ -991,12 +1021,11 @@ struct DashboardView: View {
                             .stroke(Color.white, lineWidth: 2.5)
                             .frame(width: 50, height: 50)
                         Circle()
-                            .fill(trackingManager.isTrackingActive ? ProTheme.statusCritical : Color.gray)
+                            .fill(trackingManager.isTrackingActive ? ProTheme.statusCritical : ProTheme.accentCyan)
                             .frame(width: 40, height: 40)
                     }
                 }
                 .padding(.bottom, 10)
-                .disabled(!trackingManager.isTrackingActive)
             }
             .padding(.horizontal)
             
@@ -1008,7 +1037,7 @@ struct DashboardView: View {
                             id: "FORMAT",
                             icon: "doc.richtext",
                             label: "FORMAT",
-                            value: "\(pictureFormat)\(is48MP ? " 48M" : "")",
+                            value: activeFormatLabel,
                             accent: ProTheme.statusCritical
                         )
                         cameraDialPill(
@@ -1054,18 +1083,25 @@ struct DashboardView: View {
                 if activeCameraDial != "NONE" {
                     VStack(spacing: 10) {
                         if activeCameraDial == "FORMAT" {
-                            HStack {
-                                Picker("Format", selection: $pictureFormat) {
-                                    Text("JPG").tag("JPG")
-                                    Text("HEIF").tag("HEIF")
-                                    Text("RAW (DNG)").tag("DNG")
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Picker("Format", selection: $pictureFormat) {
+                                        Text("JPG").tag("JPG")
+                                        Text("HEIF").tag("HEIF")
+                                        Text("RAW (DNG)").tag("DNG")
+                                    }
+                                    .pickerStyle(.segmented)
+                                    Spacer(minLength: 12)
+                                    Toggle("48MP", isOn: $is48MP)
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .toggleStyle(SwitchToggleStyle(tint: ProTheme.statusCritical))
+                                        .fixedSize()
                                 }
-                                .pickerStyle(.segmented)
-                                Spacer(minLength: 12)
-                                Toggle("48MP", isOn: $is48MP)
-                                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                                    .toggleStyle(SwitchToggleStyle(tint: ProTheme.statusCritical))
-                                    .fixedSize()
+                                if trackingManager.isTrackingActive && (pictureFormat == "DNG" || is48MP) {
+                                    Text("ℹ Active ARKit 6DoF capture records zero-interruption Hi-Res \(pictureFormat == "HEIF" ? "HEIC" : "JPG") + LiDAR poses. Stop AR tracking to shoot standalone RAW (DNG) / 48MP stills.")
+                                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                                        .foregroundColor(ProTheme.statusWarning)
+                                }
                             }
                         } else if activeCameraDial == "ZOOM" {
                             VStack(spacing: 8) {
@@ -1076,7 +1112,7 @@ struct DashboardView: View {
                                             cameraManager.setZoomFactor(zoomFactor)
                                         }) {
                                             Text(String(format: "%.1fx", factor))
-                                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                                                 .foregroundColor(zoomFactor == factor ? ProTheme.accentCyan : .white)
                                                 .padding(.horizontal, 8)
                                                 .padding(.vertical, 5)
@@ -1100,7 +1136,7 @@ struct DashboardView: View {
                                             updateManualExposure()
                                         }) {
                                             Text(shutterLabels[idx])
-                                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                                                 .foregroundColor(shutterSpeedIndex == idx ? .black : .white)
                                                 .padding(.horizontal, 9)
                                                 .padding(.vertical, 6)
@@ -1118,7 +1154,7 @@ struct DashboardView: View {
                                         .foregroundColor(ProTheme.textSecondary)
                                     Spacer()
                                     Toggle("Auto ISO", isOn: $isAutoISO)
-                                        .font(.system(size: 10, weight: .bold))
+                                        .font(.system(size: 10.5, weight: .bold))
                                         .toggleStyle(SwitchToggleStyle(tint: ProTheme.accentCyan))
                                         .fixedSize()
                                         .onChange(of: isAutoISO) { _ in updateManualExposure() }
@@ -1137,7 +1173,7 @@ struct DashboardView: View {
                                         .foregroundColor(ProTheme.textSecondary)
                                     Spacer()
                                     Toggle("Auto WB", isOn: $isAutoWB)
-                                        .font(.system(size: 10, weight: .bold))
+                                        .font(.system(size: 10.5, weight: .bold))
                                         .toggleStyle(SwitchToggleStyle(tint: ProTheme.statusWarning))
                                         .fixedSize()
                                         .onChange(of: isAutoWB) { _ in updateManualExposure() }
@@ -1156,7 +1192,7 @@ struct DashboardView: View {
                                         .foregroundColor(ProTheme.textSecondary)
                                     Spacer()
                                     Toggle("Auto Focus", isOn: $isAutoFocus)
-                                        .font(.system(size: 10, weight: .bold))
+                                        .font(.system(size: 10.5, weight: .bold))
                                         .toggleStyle(SwitchToggleStyle(tint: ProTheme.statusNominal))
                                         .fixedSize()
                                         .onChange(of: isAutoFocus) { _ in updateManualFocus() }
@@ -1666,11 +1702,11 @@ struct TelemetryRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                 .foregroundColor(.gray)
             Spacer()
             Text(value)
-                .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                .font(.system(size: 11, weight: .black, design: .monospaced))
                 .foregroundColor(highlight)
         }
         .padding(.horizontal, 12)

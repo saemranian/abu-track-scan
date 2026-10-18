@@ -47,7 +47,7 @@ struct ContentView: View {
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(ProTheme.borderSubtle, lineWidth: 1))
 
                 Text(clockBridge.lockState)
-                    .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                     .foregroundColor(ProTheme.textSecondary)
                     .lineLimit(1)
 
@@ -62,10 +62,10 @@ struct ContentView: View {
                         Image(systemName: "film.stack")
                         Text("SLATE")
                     }
-                    .font(.system(size: 9.5, weight: .black, design: .rounded))
+                    .font(.system(size: 10.5, weight: .black, design: .rounded))
                     .foregroundColor(.black)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .background(ProTheme.accentCyan)
                     .cornerRadius(6)
                 }
@@ -178,12 +178,18 @@ struct RigSettings {
     }
     static var isGPSEnabled: Bool {
         get { 
+            if UserDefaults.standard.object(forKey: "isGpsEnabled") != nil {
+                return UserDefaults.standard.bool(forKey: "isGpsEnabled")
+            }
             if UserDefaults.standard.object(forKey: "isGPSEnabled") == nil {
                 return true
             }
             return UserDefaults.standard.bool(forKey: "isGPSEnabled")
         }
-        set { UserDefaults.standard.set(newValue, forKey: "isGPSEnabled") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "isGPSEnabled")
+            UserDefaults.standard.set(newValue, forKey: "isGpsEnabled")
+        }
     }
     static var lidarXSign: Double {
         get { 

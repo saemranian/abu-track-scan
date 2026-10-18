@@ -22,7 +22,7 @@ public:
 	// The UDP port used to listen for tracking packets from Abu Track (iOS / Windows).
 	UPROPERTY(EditAnywhere, Category = "01 | Connection Settings", meta = (
 		DisplayName = "UDP Telemetry Port",
-		ToolTip = "Local UDP port to receive 6DoF camera tracking packets from Abu Track & Scan (default: 8080 direct from iOS, or 8082 forwarded from Desktop Workstation).",
+		ToolTip = "Local UDP port to receive 6DoF camera tracking packets from Abu Track & Scan (default: 8080 direct from iOS, or 8081 forwarded from Desktop Workstation).",
 		ClampMin = "1024", ClampMax = "65535"))
 	int32 Port = 8080;
 
@@ -124,6 +124,22 @@ public:
 		ToolTip = "Synchronization lock status reported by the sender's Abu Clock engine (LOCKED, MASTER, HOLDOVER, or FREERUN)."))
 	FString ClockLockState = TEXT("UNKNOWN");
 
+	// Total UDP telemetry packets received since source creation.
+	UPROPERTY(VisibleAnywhere, Category = "04 | Live Telemetry Diagnostics", meta = (
+		DisplayName = "Received UDP Packets",
+		ToolTip = "Total valid 6DoF telemetry packets received on the configured UDP port."))
+	int64 ReceivedPacketCount = 0;
+
+	// Indicates whether upstream lever-arm / origin / pitch offsets were already applied by iOS or Desktop Workstation.
+	UPROPERTY(VisibleAnywhere, Category = "04 | Live Telemetry Diagnostics", meta = (
+		DisplayName = "Upstream Offsets Applied",
+		ToolTip = "True when incoming telemetry packets already carry Lever-Arm, World Origin, or Pitch Offset compensation from iOS or Desktop Workstation."))
+	bool bUpstreamOffsetsApplied = false;
+
+	// Non-serialized runtime heartbeat timestamp (FPlatformTime::Seconds) and Genlock status
+	double LastPacketWallTimeSec = 0.0;
+	bool bEngineGenlockConfigured = false;
+
 	/**
 	 * 1-Click helper that instantiates and assigns UAbuClockTimecodeProvider and
 	 * UAbuClockCustomTimeStep onto GEngine so Unreal Engine's master Timecode & Genlock
@@ -188,7 +204,8 @@ private:
 		int32 FpsDen,
 		bool bDropFrame,
 		const FString& LockState,
-		const FString& ProtocolLabel
+		const FString& ProtocolLabel,
+		bool bOffsetsApplied = false
 	);
 
 	static int32 UnpackFreeD24(const uint8* Bytes3);
@@ -206,6 +223,8 @@ private:
 	
 	FName SubjectName;
 	bool bSubjectRegistered;
+	TAtomic<int64> TotalReceivedPackets;
+	TAtomic<double> LastPacketPlatformSeconds;
 
 	TWeakObjectPtr<ULiveLinkAbuTrackSourceSettings> SavedSettings;
 };

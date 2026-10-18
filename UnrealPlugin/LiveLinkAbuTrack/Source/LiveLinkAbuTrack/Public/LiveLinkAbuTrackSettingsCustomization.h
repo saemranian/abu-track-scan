@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "IDetailCustomization.h"
 #include "Input/Reply.h"
+#include "Styling/SlateColor.h"
 #include "UObject/WeakObjectPtr.h"
 
 class IDetailLayoutBuilder;
@@ -16,8 +17,8 @@ class ULiveLinkAbuTrackSourceSettings;
  * Custom Slate Details Panel header for ULiveLinkAbuTrackSourceSettings in the Unreal Engine 5
  * Live Link panel. Renders:
  *  - Live Abu Clock SMPTE ST 12-1 / ST 2059-2 Timecode HUD banner + sub-frame phase progress bar
- *  - Active wire protocol & clock lock badge
- *  - 1-Click "[Configure UE5 TimecodeProvider & Genlock]" button
+ *  - Active wire protocol, clock lock badge, and real-time UDP Stream Heartbeat / Stale indicator
+ *  - 1-Click "[Configure UE5 TimecodeProvider & Genlock]" button with FSlateNotificationManager toast
  *  - Collapsible Quick Start Virtual Production Setup Guide
  */
 class FLiveLinkAbuTrackSettingsCustomization : public IDetailCustomization
@@ -32,6 +33,9 @@ private:
 	FReply OnConfigureEngineTimecodeClicked();
 	FText GetLiveTimecodeText() const;
 	FText GetProtocolAndLockText() const;
+	FText GetStreamHealthText() const;
+	FSlateColor GetStreamHealthColor() const;
+	FText GetOneClickButtonText() const;
 	TOptional<float> GetSubframePhaseValue() const;
 
 	TWeakObjectPtr<ULiveLinkAbuTrackSourceSettings> EditingSettings;

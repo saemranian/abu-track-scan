@@ -18,7 +18,7 @@ struct UEMonitorView: View {
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(ProTheme.textPrimary)
                         Text("Wireless Director's Return Feed & Pixel Streaming")
-                            .font(.system(size: 9.5, weight: .medium))
+                            .font(.system(size: 10.5, weight: .medium))
                             .foregroundColor(ProTheme.textSecondary)
                     }
                     Spacer()
@@ -28,7 +28,7 @@ struct UEMonitorView: View {
                             .fill(ProTheme.statusNominal)
                             .frame(width: 6, height: 6)
                         Text("READY")
-                            .font(.system(size: 8.5, weight: .black, design: .monospaced))
+                            .font(.system(size: 10.5, weight: .black, design: .monospaced))
                             .foregroundColor(ProTheme.statusNominal)
                     }
                     .padding(.horizontal, 7)
@@ -51,14 +51,14 @@ struct UEMonitorView: View {
             // Connection panel
             HStack(spacing: 8) {
                 Text("URL:")
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
                     .foregroundColor(.gray)
                 
                 TextField("http://<UE-IP-Address>:80", text: $urlString, onCommit: {
                     saveURL()
                 })
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .padding(6)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .padding(7)
                 .background(Color.black.opacity(0.4))
                 .cornerRadius(4)
                 .foregroundColor(.white)
@@ -74,10 +74,10 @@ struct UEMonitorView: View {
                         Image(systemName: "arrow.clockwise")
                         Text("LOAD")
                     }
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .font(.system(size: 10.5, weight: .black, design: .monospaced))
                     .foregroundColor(.cyan)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
+                    .padding(.vertical, 8)
                     .background(Color.cyan.opacity(0.15))
                     .cornerRadius(4)
                     .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.cyan.opacity(0.4), lineWidth: 0.5))
@@ -99,7 +99,7 @@ struct UEMonitorView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                         Text("INVALID MONITOR URL")
                     }
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundColor(.red)
                 }
             }
