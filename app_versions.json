@@ -1,9 +1,9 @@
 {
   "desktop": {
-    "version": "0.1.0.8",
-    "build": 101,
-    "last_build_time": "2026-10-18 03:01:24",
-    "last_task": "Phase 4 Verification Fix: Unify CollapsibleCard keyword arguments (expanded, badge_text, tooltip_title/body, .body, .set_badge) and verify headless CamTrackDesktopApp instantiation"
+    "version": "0.1.0.9",
+    "build": 102,
+    "last_build_time": "2026-10-18 09:28:39",
+    "last_task": "Fix PyInstaller optimize=2 docstring stripping crash (argument docstring of add_docstring should be a str) by setting optimize=1 in camtrack_desktop_gui.spec and adding --self-test verification"
   },
   "ios": {
     "version": "0.0.7.9",
@@ -206,6 +206,15 @@
       "version": "0.1.0.8",
       "build": 101,
       "task": "Phase 4 Verification Fix: Unify CollapsibleCard keyword arguments (expanded, badge_text, tooltip_title/body, .body, .set_badge) and verify headless CamTrackDesktopApp instantiation"
+    },
+    {
+      "timestamp": "2026-10-18 09:28:39",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.0.8",
+      "version": "0.1.0.9",
+      "build": 102,
+      "task": "Fix PyInstaller optimize=2 docstring stripping crash (argument docstring of add_docstring should be a str) by setting optimize=1 in camtrack_desktop_gui.spec and adding --self-test verification"
     }
   ]
 }

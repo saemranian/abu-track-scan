@@ -10,13 +10,17 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['jinja2', 'markupsafe', 'setuptools', 'unittest', 'pydoc', 'doctest', 'sqlite3', 'test'],
+    excludes=['jinja2', 'markupsafe', 'setuptools', 'PIL._avif'],
     noarchive=False,
-    optimize=2,
+    optimize=1,
 )
+a.binaries = [
+    b for b in a.binaries
+    if not b[0].startswith('PIL\\_avif')
+]
 a.datas = [
     d for d in a.datas
-    if not d[0].startswith(('_tcl_data\\tzdata', '_tcl_data\\msgs', '_tk_data\\msgs'))
+    if not d[0].startswith(('_tcl_data\\tzdata', '_tcl_data\\msgs', '_tk_data\\msgs', 'matplotlib\\mpl-data\\sample_data'))
 ]
 pyz = PYZ(a.pure)
 

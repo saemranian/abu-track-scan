@@ -20,7 +20,7 @@ This document provides the complete walkthrough of:
   ```
 - **Current Component Versions**:
   - **iOS App (`ios`)**: `v0.0.7.9` (Build `#103`) — `Sources/Version.swift` & `project.yml`
-  - **Windows Workstation (`win`)**: `v0.1.0.8` (Build `#101`) — `DesktopSync/version_info.py` & `dist/abu_track_desktop.exe`
+  - **Windows Workstation (`win`)**: `v0.1.0.9` (Build `#102`) — `DesktopSync/version_info.py` & `dist/abu_track_desktop.exe`
   - **UE5 Plugin (`ue`)**: `v0.0.0.3` (Build `#3`) — `LiveLinkAbuTrack.uplugin` & `LiveLinkAbuTrackVersion.h`
 
 ### 1.2 Complete Commit & Version Audit Table
@@ -48,6 +48,7 @@ This document provides the complete walkthrough of:
 | `4cad5a6` | **Windows (`win`)** | `v0.1.0.7` | `#100` | **UI/UX Phase 2 Step 2.3**: Rebuild standalone `dist/abu_track_desktop.exe` (`98.62 MB`) with `v0.1.0.7` minimalist UI/UX redesign. |
 | `8ee00c6` | **UE5 Plugin (`ue`)** | `v0.0.0.3` | `#3` | **UI/UX Phase 3 Step 3.1**: Add rich `DisplayName` / `ToolTip` `UPROPERTY` metadata and implement `FLiveLinkAbuTrackSettingsCustomization` (`IDetailCustomization`) with Live SMPTE Timecode HUD card, 1-Click `[Configure UE5 TimecodeProvider & Genlock]` button, and collapsible Quick Guide card. |
 | `4559a73` | **Windows (`win`)** | `v0.1.0.8` | `#101` | **UI/UX Phase 4 Verification Fix**: Unify `CollapsibleCard` keyword arguments (`expanded`, `badge_text`, `tooltip_title`/`tooltip_body`, `.body`, `.set_badge`), verify headless `CamTrackDesktopApp` UI instantiation, and rebuild `dist/abu_track_desktop.exe`. |
+| `HEAD` | **Windows (`win`)** | `v0.1.0.9` | `#102` | **Frozen EXE Startup Fix**: Fix Python 3.13 `optimize=2` docstring stripping crash (`add_docstring`), keep stdlib `unittest` required by `pyparsing`/`matplotlib`, guard `sys.executable -m pip` against frozen recursive spawning, preserve parent bootloader PID in `kill_zombie_processes()`, and verify frozen EXE with `--self-test`. |
 
 ---
 

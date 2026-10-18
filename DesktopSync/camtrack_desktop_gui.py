@@ -40,11 +40,17 @@ logger.info(f"Executable Mode: {'PyInstaller Bundle' if getattr(sys, 'frozen', F
 logger.info(f"Log directory configured at: {LOG_DIR}")
 logger.info("=" * 60)
 
-# Auto-bootstrap necessary libraries for EXIF byte operations and 3D visualizer
+# Guard against recursive subprocess invocation when bundled as a PyInstaller executable
+if getattr(sys, 'frozen', False) and len(sys.argv) > 1 and sys.argv[1] == "-m":
+    sys.exit(1)
+
+# Auto-bootstrap necessary libraries for EXIF byte operations and 3D visualizer (script mode only)
 try:
     from PIL import Image, ImageTk
     import piexif
 except ImportError:
+    if getattr(sys, 'frozen', False):
+        raise
     print("Initializing industrial sync dependencies (pillow, piexif)...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pillow", "piexif"])
     from PIL import Image, ImageTk
@@ -57,6 +63,8 @@ try:
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
     from mpl_toolkits.mplot3d import Axes3D
 except ImportError:
+    if getattr(sys, 'frozen', False):
+        raise
     print("Installing 3D visualizer dependencies (matplotlib)...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "matplotlib"])
     import matplotlib
@@ -5598,6 +5606,8 @@ def kill_zombie_processes():
     import subprocess
     try:
         current_pid = os.getpid()
+        parent_pid = os.getppid() if hasattr(os, "getppid") else -1
+        protected_pids = {current_pid, parent_pid}
         for proc_name in ["abu_track_desktop.exe", "camtrack_desktop_gui.exe"]:
             cmd = f'tasklist /FI "IMAGENAME eq {proc_name}" /FO CSV /NH'
             res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -5608,7 +5618,7 @@ def kill_zombie_processes():
                         pid_str = parts[1].strip('"')
                         try:
                             pid = int(pid_str)
-                            if pid != current_pid:
+                            if pid not in protected_pids:
                                 subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True)
                         except ValueError:
                             pass
@@ -5616,7 +5626,16 @@ def kill_zombie_processes():
         pass
 
 if __name__ == "__main__":
+    if "--self-test" in sys.argv:
+        root = tk.Tk()
+        root.withdraw()
+        app = CamTrackDesktopApp(root)
+        root.update_idletasks()
+        logger.info("Frozen EXE --self-test completed successfully.")
+        root.destroy()
+        sys.exit(0)
     kill_zombie_processes()
     root = tk.Tk()
     app = CamTrackDesktopApp(root)
     root.mainloop()
+
