@@ -32,3 +32,6 @@ Every code edit to the **Windows Workstation (`win`)**, **iOS App (`ios`)**, or 
 | `2026-10-18 11:23:10` | **iOS App (Abu Track & Scan)** | `v0.0.8.0` | `#104` | Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5 |
 | `2026-10-18 11:23:10` | **UE5 Plugin (LiveLinkAbuTrack)** | `v0.0.0.4` | `#4` | Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5 |
 | `2026-10-18 12:29:27` | **Windows Workstation (DesktopSync)** | `v0.1.1.1` | `#104` | Complete Abu Studio UI & UX ground-up rebrand (zero Win95 widgets, Left Studio Navigation Rail, 1-row 6DoF HUD ribbon, 2x3 Bento KPI grid, 1-click copy LAN IP pill, collapsible Packet Log drawer) |
+| `2026-10-18 13:45:35` | **Windows Workstation (DesktopSync)** | `v0.1.1.2` | `#105` | Fix 4K High-DPI window/font/button scaling to match Abu Clock and unify green 'A' app icon across Desktop, UE5, and iOS |
+| `2026-10-18 13:45:35` | **iOS App (Abu Track & Scan)** | `v0.0.8.1` | `#105` | Fix 4K High-DPI window/font/button scaling to match Abu Clock and unify green 'A' app icon across Desktop, UE5, and iOS |
+| `2026-10-18 13:45:35` | **UE5 Plugin (LiveLinkAbuTrack)** | `v0.0.0.5` | `#5` | Fix 4K High-DPI window/font/button scaling to match Abu Clock and unify green 'A' app icon across Desktop, UE5, and iOS |

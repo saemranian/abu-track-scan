@@ -5,7 +5,10 @@ a = Analysis(
     ['DesktopSync\\camtrack_desktop_gui.py'],
     pathex=['DesktopSync'],
     binaries=[],
-    datas=[],
+    datas=[
+        ('DesktopSync\\assets\\abu_icon.ico', 'assets'),
+        ('DesktopSync\\assets\\abu_icon.png', 'assets'),
+    ],
     hiddenimports=['abu_clock_bridge'],
     hookspath=[],
     hooksconfig={},
@@ -43,4 +46,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='DesktopSync\\assets\\abu_icon.ico',
 )

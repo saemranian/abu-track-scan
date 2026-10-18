@@ -32,6 +32,16 @@ struct ContentView: View {
         VStack(spacing: 0) {
             // Minimalist Abu Clock SMPTE ST 12-1 / ST 2059-2 Timecode & Quick-Action Top Bar
             HStack(spacing: 8) {
+                // Unified Abu Studio Green 'A' App Icon Badge
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color(red: 0.204, green: 0.827, blue: 0.600))
+                        .frame(width: 24, height: 24)
+                    Text("A")
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(Color(red: 0.067, green: 0.094, blue: 0.153))
+                }
+
                 HStack(spacing: 6) {
                     Circle()
                         .fill(clockBridge.lockState.contains("Locked") ? ProTheme.statusNominal : ProTheme.statusWarning)
