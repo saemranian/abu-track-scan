@@ -1,9 +1,9 @@
 {
   "desktop": {
-    "version": "0.1.1.0",
-    "build": 103,
-    "last_build_time": "2026-10-18 11:23:10",
-    "last_task": "Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5"
+    "version": "0.1.1.1",
+    "build": 104,
+    "last_build_time": "2026-10-18 12:29:27",
+    "last_task": "Complete Abu Studio UI & UX ground-up rebrand (zero Win95 widgets, Left Studio Navigation Rail, 1-row 6DoF HUD ribbon, 2x3 Bento KPI grid, 1-click copy LAN IP pill, collapsible Packet Log drawer)"
   },
   "ios": {
     "version": "0.0.8.0",
@@ -242,6 +242,15 @@
       "version": "0.0.0.4",
       "build": 4,
       "task": "Implement full UI & UX Brutal Investigation Remediation across Windows, iOS, and UE5"
+    },
+    {
+      "timestamp": "2026-10-18 12:29:27",
+      "component": "desktop",
+      "component_label": "Windows Workstation (DesktopSync)",
+      "previous_version": "0.1.1.0",
+      "version": "0.1.1.1",
+      "build": 104,
+      "task": "Complete Abu Studio UI & UX ground-up rebrand (zero Win95 widgets, Left Studio Navigation Rail, 1-row 6DoF HUD ribbon, 2x3 Bento KPI grid, 1-click copy LAN IP pill, collapsible Packet Log drawer)"
     }
   ]
 }

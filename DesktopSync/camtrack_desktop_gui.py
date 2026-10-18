@@ -73,17 +73,22 @@ except ImportError:
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
     from mpl_toolkits.mplot3d import Axes3D
 
-# Pro Minimal Slate Dark Palette
-BG_COLOR = "#05070B"
-CARD_BG = "#0D1017"
-FIELD_BG = "#131722"
-BORDER_COLOR = "#1D2333"
-TEXT_PRIMARY = "#FFFFFF"
-TEXT_MUTED = "#828F9F"
-ACCENT_CYAN = "#00F0FF"
-ACCENT_AMBER = "#FFC400"
-ACCENT_RED = "#FF3366"
-ACCENT_GREEN = "#10B981"
+# Abu Studio — Minimalist Precision Dark Design System (v0.1.2.0)
+BG_COLOR = "#0B0D12"        # Deep matte carbon canvas background
+SURFACE_BG = "#10131A"      # Left navigation rail & top studio header bar
+CARD_BG = "#151922"         # Elevated card surface
+FIELD_BG = "#1C2230"        # Recessed input, pill, and list surface
+HOVER_BG = "#252D3F"        # Subtle interactive hover state
+BORDER_COLOR = "#232A3B"    # Crisp 1px low-contrast hairline border
+BORDER_FOCUS = "#3B82F6"    # Active / focus ring
+TEXT_PRIMARY = "#F3F4F6"    # Soft off-white primary text
+TEXT_MUTED = "#8E9BAE"      # Calm slate-grey secondary labels
+ACCENT_PRIMARY = "#3B82F6"  # Studio Electric Blue primary accent
+ACCENT_HOVER = "#2563EB"    # Primary accent hover
+ACCENT_CYAN = "#38BDF8"     # Refined sky-blue for live telemetry & 3D frustums
+ACCENT_AMBER = "#F59E0B"    # Warm amber for rotation angles & warnings
+ACCENT_RED = "#EF4444"      # Coral red for stop actions & critical alerts
+ACCENT_GREEN = "#10B981"    # Emerald green for live / locked states
 
 
 class UEMonitorThread:
@@ -101,12 +106,12 @@ class UEMonitorThread:
             import cv2
         except ImportError:
             logger.error("UE Monitor: OpenCV ('opencv-python') package not installed. Local stream decoder disabled.")
-            self.app.rx_log("UE MONITOR // ERROR: 'opencv-python' package not found!")
+            self.app.rx_log("UE Monitor: 'opencv-python' package not found.")
             self.app.root.after(0, lambda: self.canvas.delete("all"))
             self.app.root.after(0, lambda: self.canvas.create_text(
                 400, 225, 
-                text="LOCAL DECODER FAILED // 'opencv-python' NOT INSTALLED\nRUN: pip install opencv-python", 
-                fill=ACCENT_RED, font=("Consolas", 12, "bold"), justify="center"
+                text="Local Decoder Unavailable — 'opencv-python' Not Installed\nRun: pip install opencv-python", 
+                fill=ACCENT_RED, font=("Segoe UI", 11, "bold"), justify="center"
             ))
             self.app.root.after(0, self.app.stop_ue_monitor)
             return
@@ -118,8 +123,8 @@ class UEMonitorThread:
             self.app.root.after(0, lambda: self.canvas.delete("all"))
             self.app.root.after(0, lambda: self.canvas.create_text(
                 400, 225, 
-                text=f"CONNECTION FAILED // CANNOT OPEN SOURCE:\n{self.url}", 
-                fill=ACCENT_RED, font=("Consolas", 12, "bold"), justify="center"
+                text=f"Unable to Connect to Stream Source\n{self.url}", 
+                fill=ACCENT_RED, font=("Segoe UI", 11, "bold"), justify="center"
             ))
             self.app.root.after(0, self.app.stop_ue_monitor)
             return
@@ -183,7 +188,7 @@ class UEMonitorThread:
 
 
 class HoverTooltip:
-    """Modern dark studio floating tooltip with title, description, and pro recommendation."""
+    """Minimalist floating dark studio tooltip with title, description, and recommendation."""
 
     def __init__(self, widget, title: str, body: str, recommendation: str = ""):
         self.widget = widget
@@ -198,7 +203,7 @@ class HoverTooltip:
 
     def _schedule_show(self, _event=None):
         self._cancel()
-        self._after_id = self.widget.after(280, self._show)
+        self._after_id = self.widget.after(260, self._show)
 
     def _cancel(self):
         if self._after_id is not None:
@@ -212,7 +217,7 @@ class HoverTooltip:
         if self.tip_window is not None:
             return
         try:
-            x = self.widget.winfo_rootx() + 16
+            x = self.widget.winfo_rootx() + 14
             y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
         except Exception:
             return
@@ -220,17 +225,17 @@ class HoverTooltip:
         self.tip_window = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_attributes("-topmost", True)
-        tw.configure(bg=ACCENT_CYAN, padx=1, pady=1)
+        tw.configure(bg=BORDER_FOCUS, padx=1, pady=1)
 
-        inner = tk.Frame(tw, bg="#0D1322", padx=12, pady=10)
+        inner = tk.Frame(tw, bg=SURFACE_BG, padx=12, pady=10)
         inner.pack(fill="both", expand=True)
 
         tk.Label(
             inner,
-            text=f"ⓘ  {self.title}",
-            bg="#0D1322",
-            fg=ACCENT_CYAN,
-            font=("Segoe UI", 10, "bold"),
+            text=self.title,
+            bg=SURFACE_BG,
+            fg=TEXT_PRIMARY,
+            font=("Segoe UI Semibold", 10, "bold"),
             anchor="w",
             justify="left",
         ).pack(fill="x", pady=(0, 4))
@@ -238,10 +243,10 @@ class HoverTooltip:
         tk.Label(
             inner,
             text=self.body,
-            bg="#0D1322",
-            fg=TEXT_PRIMARY,
+            bg=SURFACE_BG,
+            fg=TEXT_MUTED,
             font=("Segoe UI", 9),
-            wraplength=340,
+            wraplength=330,
             anchor="w",
             justify="left",
         ).pack(fill="x")
@@ -249,11 +254,11 @@ class HoverTooltip:
         if self.recommendation:
             tk.Label(
                 inner,
-                text=f"✓ {self.recommendation}",
-                bg="#0D1322",
-                fg=ACCENT_GREEN,
+                text=f"Tip: {self.recommendation}",
+                bg=SURFACE_BG,
+                fg=ACCENT_CYAN,
                 font=("Segoe UI", 9, "bold"),
-                wraplength=340,
+                wraplength=330,
                 anchor="w",
                 justify="left",
             ).pack(fill="x", pady=(6, 0))
@@ -279,8 +284,8 @@ class HoverTooltip:
             self.tip_window = None
 
 
-class CollapsibleCard(ttk.Frame):
-    """Minimalist studio card with clickable ▾/▸ disclosure header, optional live badge, and ⓘ tooltip."""
+class CollapsibleCard(tk.Frame):
+    """Minimalist 1px-bordered dark card with clean disclosure header, subtle badge pill, and info tooltip."""
 
     def __init__(
         self,
@@ -296,7 +301,15 @@ class CollapsibleCard(ttk.Frame):
         help_body: str = "",
         help_rec: str = "",
     ):
-        super().__init__(parent, style="Card.TFrame", padding=10)
+        super().__init__(
+            parent,
+            bg=CARD_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            highlightcolor=BORDER_COLOR,
+            padx=14,
+            pady=12,
+        )
         is_expanded = default_open if expanded is None else expanded
         self.is_open = is_expanded
         self.title_text = title
@@ -310,10 +323,10 @@ class CollapsibleCard(ttk.Frame):
             self.header_frame,
             text="▾" if is_expanded else "▸",
             bg=CARD_BG,
-            fg=ACCENT_CYAN,
+            fg=TEXT_MUTED,
             font=("Segoe UI", 10, "bold"),
             padx=2,
-            pady=3,
+            pady=2,
         )
         self.arrow_lbl.grid(row=0, column=0, padx=(0, 6))
 
@@ -321,24 +334,25 @@ class CollapsibleCard(ttk.Frame):
             self.header_frame,
             text=title,
             bg=CARD_BG,
-            fg=ACCENT_CYAN,
-            font=("Segoe UI", 9, "bold"),
+            fg=TEXT_PRIMARY,
+            font=("Segoe UI Semibold", 10, "bold"),
             anchor="w",
-            pady=3,
+            pady=2,
         )
         self.title_lbl.grid(row=0, column=1, sticky="w")
 
         self.badge_var = badge_var if badge_var is not None else tk.StringVar(value=badge_text)
+        has_badge = bool(badge_text or badge_var is not None)
         self.badge_lbl = tk.Label(
             self.header_frame,
             textvariable=self.badge_var,
-            bg=FIELD_BG if (badge_text or badge_var is not None) else CARD_BG,
-            fg=ACCENT_GREEN,
+            bg=FIELD_BG if has_badge else CARD_BG,
+            fg=ACCENT_CYAN,
             font=("Consolas", 9, "bold"),
-            padx=8 if (badge_text or badge_var is not None) else 0,
-            pady=3,
+            padx=8 if has_badge else 0,
+            pady=2,
         )
-        self.badge_lbl.grid(row=0, column=2, padx=(6, 6))
+        self.badge_lbl.grid(row=0, column=2, padx=(6, 4))
         self.badge_lbl.bind("<Button-1>", self.toggle)
 
         eff_title = tooltip_title or help_title or title
@@ -346,12 +360,12 @@ class CollapsibleCard(ttk.Frame):
         if eff_body:
             self.info_badge = tk.Label(
                 self.header_frame,
-                text=" ⓘ ",
+                text=" ? ",
                 bg=FIELD_BG,
-                fg=ACCENT_CYAN,
+                fg=TEXT_MUTED,
                 font=("Segoe UI", 9, "bold"),
-                padx=6,
-                pady=3,
+                padx=5,
+                pady=2,
                 cursor="question_arrow",
             )
             self.info_badge.grid(row=0, column=3, padx=(4, 0))
@@ -363,28 +377,28 @@ class CollapsibleCard(ttk.Frame):
         self.content = ttk.Frame(self, style="Card.TFrame")
         self.body = self.content
         if is_expanded:
-            self.content.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+            self.content.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
 
     def set_badge(self, text: str, fg: str = None):
         self.badge_var.set(text)
         self.badge_lbl.configure(
             bg=FIELD_BG if text else CARD_BG,
             padx=8 if text else 0,
-            fg=fg if fg else ACCENT_GREEN,
+            fg=fg if fg else ACCENT_CYAN,
         )
 
     def toggle(self, _event=None):
         self.is_open = not self.is_open
         if self.is_open:
-            self.arrow_lbl.configure(text="▾")
-            self.content.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+            self.arrow_lbl.configure(text="▾", fg=TEXT_PRIMARY)
+            self.content.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
         else:
-            self.arrow_lbl.configure(text="▸")
+            self.arrow_lbl.configure(text="▸", fg=TEXT_MUTED)
             self.content.grid_remove()
 
 
 class ScrollableSidebarFrame(ttk.Frame):
-    """Mouse-wheel scrollable sidebar container with child-widget scroll passthrough (no global scroll hijacking)."""
+    """Minimalist scrollable sidebar container with auto-hiding dark scrollbar and child-scroll passthrough."""
 
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
@@ -392,19 +406,29 @@ class ScrollableSidebarFrame(ttk.Frame):
         self.rowconfigure(0, weight=1)
 
         self.canvas = tk.Canvas(self, bg=BG_COLOR, highlightthickness=0, bd=0)
-        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview, style="Vertical.TScrollbar")
         self.inner = ttk.Frame(self.canvas)
 
         self.inner_id = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.configure(yscrollcommand=self._on_scroll_set)
 
         self.canvas.grid(row=0, column=0, sticky="nsew")
-        self.scrollbar.grid(row=0, column=1, sticky="ns")
+        self.scrollbar.grid(row=0, column=1, sticky="ns", padx=(2, 0))
 
         self.inner.bind("<Configure>", self._on_inner_configure)
         self.canvas.bind("<Configure>", self._on_canvas_configure)
         self.canvas.bind("<Enter>", self._bind_mousewheel)
         self.canvas.bind("<Leave>", self._unbind_mousewheel)
+
+    def _on_scroll_set(self, first, last):
+        self.scrollbar.set(first, last)
+        try:
+            if float(first) <= 0.0 and float(last) >= 1.0:
+                self.scrollbar.grid_remove()
+            else:
+                self.scrollbar.grid(row=0, column=1, sticky="ns", padx=(2, 0))
+        except Exception:
+            pass
 
     def _on_inner_configure(self, _event=None):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -422,19 +446,18 @@ class ScrollableSidebarFrame(ttk.Frame):
 
     def _on_mousewheel(self, event):
         try:
-            # Do not hijack mousewheel from scrollable child widgets (Text, Listbox, Combobox) or other Toplevel modals
             w = getattr(event, "widget", None)
             if w is not None:
                 if isinstance(w, (tk.Text, tk.Listbox, ttk.Combobox)):
                     return
                 if w.winfo_toplevel() != self.winfo_toplevel():
                     return
-            # Only scroll if content exceeds canvas height
             if self.inner.winfo_reqheight() <= self.canvas.winfo_height():
                 return
             self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         except Exception:
             pass
+
 
 
 class CamTrackDesktopApp:
@@ -455,11 +478,13 @@ class CamTrackDesktopApp:
         # Load versioning information dynamically
         try:
             from version_info import VERSION, BUILD, BUILD_TIME
-            title_suffix = f" (v{VERSION} Build {BUILD} - {BUILD_TIME})"
+            self.app_version_str = f"v{VERSION}"
+            title_suffix = f" — v{VERSION} (Build {BUILD})"
         except ImportError:
-            title_suffix = " (v0.1.0.2 Build 95)"
+            self.app_version_str = "v0.1.2.0"
+            title_suffix = " — v0.1.2.0"
             
-        self.root.title(f"ABU TRACK & SCAN // 3DGS, METASHAPE & ABU CLOCK SUITE{title_suffix}")
+        self.root.title(f"Abu Studio — Track, Scan & Virtual Production Workstation{title_suffix}")
         
         # Adaptive High-DPI Window Sizing & Centered Launch Geometry (WIN-UI-01)
         try:
@@ -520,7 +545,7 @@ class CamTrackDesktopApp:
         self.selected_camera_index = None
         self.plot_point_size = 1.0
         self.selected_photo_summary_var = tk.StringVar(
-            value="Click any photo below to highlight its 3D frustum • Double-click to inspect EXIF"
+            value="Select a frame to highlight its 3D frustum • Double-click to inspect EXIF"
         )
         
         self.time_offset.trace_add("write", self._on_slider_change)
@@ -548,19 +573,21 @@ class CamTrackDesktopApp:
         self.video_decoder_running = False
         self.video_decoder_thread = None
         self.spout_sender = None
-        self.receiver_status_var = tk.StringVar(value="OFFLINE")
-        self.receiver_format_var = tk.StringVar(value="No Stream Detected")
+        self.receiver_status_var = tk.StringVar(value="Offline")
+        self.receiver_format_var = tk.StringVar(value="Waiting for stream")
         self.receiver_frames_var = tk.StringVar(value="0")
         self.receiver_hz_var = tk.StringVar(value="0.0 Hz")
-        self.receiver_raw_hz_var = tk.StringVar(value="0.0 Hz (Raw)")
-        self.receiver_real_hz_var = tk.StringVar(value="0.0 Hz (iOS Lock)")
-        self.receiver_latency_var = tk.StringVar(value="No Sync (0.0 ms)")
+        self.receiver_raw_hz_var = tk.StringVar(value="0.0 Hz")
+        self.receiver_real_hz_var = tk.StringVar(value="0.0 Hz")
+        self.receiver_latency_var = tk.StringVar(value="0.0 ms")
         self.receiver_smoothing_sec = tk.DoubleVar(value=1.0)
         self.receiver_buffer_ms = tk.DoubleVar(value=100.0)
         self.receiver_auto_calibrate = tk.BooleanVar(value=True)
         self.timeshift_history = []
         self.receiver_pc_time_var = tk.StringVar(value="00:00:00.000")
-        self.receiver_thermal_var = tk.StringVar(value="UNKNOWN")
+        self.receiver_thermal_var = tk.StringVar(value="Nominal")
+        self.latest_rx_log_summary_var = tk.StringVar(value="Ready — Click 'Start Listening' to receive UDP telemetry on port 8080")
+        self.rx_log_drawer_open = False
         self.root_exists = True
         
         # Cross-device Double-Compensation Guard state (ARCH-UX-01)
@@ -678,128 +705,368 @@ class CamTrackDesktopApp:
         self.root.after(50, self.periodic_ui_refresh)
         
     def setup_styles(self):
+        # Global Tk option-database dark defaults (eliminates white Combobox popdowns & native grey leaks)
+        try:
+            self.root.option_add("*TCombobox*Listbox.background", CARD_BG)
+            self.root.option_add("*TCombobox*Listbox.foreground", TEXT_PRIMARY)
+            self.root.option_add("*TCombobox*Listbox.selectBackground", ACCENT_PRIMARY)
+            self.root.option_add("*TCombobox*Listbox.selectForeground", "#FFFFFF")
+            self.root.option_add("*TCombobox*Listbox.font", ("Segoe UI", 9))
+            self.root.option_add("*Listbox.background", FIELD_BG)
+            self.root.option_add("*Listbox.foreground", TEXT_PRIMARY)
+        except Exception:
+            pass
+
         style = ttk.Style()
         style.theme_use("clam")
         
-        # Base backgrounds
+        # Base & Surface Frames
         style.configure("TFrame", background=BG_COLOR)
+        style.configure("Surface.TFrame", background=SURFACE_BG, relief="flat", borderwidth=0)
         style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
+        style.configure("Field.TFrame", background=FIELD_BG, relief="flat", borderwidth=0)
         
-        # Tab Notebook Style (Segoe UI 10pt bold for high-DPI clarity)
-        style.configure("TNotebook", background=BG_COLOR, borderwidth=0)
+        # Dark LabelFrame override (prevents any ttk.LabelFrame from rendering Win95 #DCDAD5 grey)
         style.configure(
-            "TNotebook.Tab",
+            "TLabelframe",
             background=CARD_BG,
             foreground=TEXT_MUTED,
-            borderwidth=1,
             bordercolor=BORDER_COLOR,
-            font=("Segoe UI", 10, "bold"),
-            padding=(14, 8),
+            lightcolor=BORDER_COLOR,
+            darkcolor=BORDER_COLOR,
+            borderwidth=1,
+            relief="solid",
         )
-        style.map(
-            "TNotebook.Tab",
-            background=[("selected", FIELD_BG), ("active", ACCENT_CYAN)],
-            foreground=[("selected", ACCENT_CYAN), ("active", BG_COLOR)],
+        style.configure(
+            "TLabelframe.Label",
+            background=CARD_BG,
+            foreground=TEXT_MUTED,
+            font=("Segoe UI Semibold", 9, "bold"),
         )
         
-        # Core Labels (Raised from 8pt/9pt to 9pt/10pt floor — WIN-UI-02)
-        style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 10))
-        style.configure("Header.TLabel", background=CARD_BG, foreground=ACCENT_CYAN, font=("Segoe UI", 10, "bold"))
+        # Hidden top tabs & borderless client area on Workspace Notebook (navigation is driven by the Left Studio Rail)
+        style.configure(
+            "TNotebook",
+            background=BG_COLOR,
+            bordercolor=BG_COLOR,
+            lightcolor=BG_COLOR,
+            darkcolor=BG_COLOR,
+            borderwidth=0,
+            tabmargins=0,
+        )
+        style.layout("TNotebook", [("Notebook.client", {"sticky": "nswe"})])
+        style.layout("TNotebook.Tab", [])
+        
+        # Typography Hierarchy (Sentence Case, Clean, Calm)
+        style.configure("TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 9))
+        style.configure("Header.TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI Semibold", 10, "bold"))
+        style.configure("Subheader.TLabel", background=CARD_BG, foreground=ACCENT_CYAN, font=("Segoe UI Semibold", 9, "bold"))
         style.configure("Muted.TLabel", background=CARD_BG, foreground=TEXT_MUTED, font=("Segoe UI", 9))
         style.configure("Mono.TLabel", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Consolas", 10))
         
-        # Checkbuttons
-        style.configure("TCheckbutton", background=CARD_BG, foreground=TEXT_PRIMARY, font=("Segoe UI", 10))
-        style.map("TCheckbutton", background=[("active", CARD_BG)], foreground=[("active", ACCENT_CYAN)])
+        # Dark Checkbuttons (Zero white square indicator boxes)
+        style.configure(
+            "TCheckbutton",
+            background=CARD_BG,
+            foreground=TEXT_PRIMARY,
+            indicatorbackground=FIELD_BG,
+            indicatorforeground="#FFFFFF",
+            indicatorrelief="flat",
+            upperbordercolor=BORDER_COLOR,
+            lowerbordercolor=BORDER_COLOR,
+            lightcolor=BORDER_COLOR,
+            darkcolor=BORDER_COLOR,
+            bordercolor=BORDER_COLOR,
+            focuscolor=CARD_BG,
+            indicatormargin=(0, 2, 6, 2),
+            font=("Segoe UI", 9),
+        )
+        style.map(
+            "TCheckbutton",
+            background=[("active", CARD_BG)],
+            foreground=[("active", TEXT_PRIMARY)],
+            indicatorbackground=[("selected", ACCENT_PRIMARY), ("active", HOVER_BG)],
+            indicatorforeground=[("selected", "#FFFFFF")],
+        )
         
-        # Sleek Minimal Buttons with >=28px touch/click padding (WIN-UI-05)
-        style.configure("TButton", background=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Segoe UI", 9, "bold"), padding=(8, 4))
+        # Sleek Studio Buttons (>=28px hit target height)
+        style.configure(
+            "TButton",
+            background=FIELD_BG,
+            foreground=TEXT_PRIMARY,
+            bordercolor=BORDER_COLOR,
+            lightcolor=FIELD_BG,
+            darkcolor=FIELD_BG,
+            focuscolor=FIELD_BG,
+            borderwidth=1,
+            relief="flat",
+            font=("Segoe UI Semibold", 9),
+            padding=(10, 5),
+        )
         style.map(
             "TButton",
-            background=[("active", ACCENT_CYAN), ("pressed", BORDER_COLOR)],
-            foreground=[("active", BG_COLOR)],
+            background=[("active", HOVER_BG), ("pressed", BORDER_COLOR), ("disabled", CARD_BG)],
+            foreground=[("active", "#FFFFFF"), ("disabled", TEXT_MUTED)],
         )
         
-        style.configure("Action.TButton", background=ACCENT_CYAN, foreground=BG_COLOR, font=("Segoe UI", 10, "bold"), borderwidth=0, relief="flat", padding=(10, 5))
+        style.configure(
+            "Action.TButton",
+            background=ACCENT_PRIMARY,
+            foreground="#FFFFFF",
+            bordercolor=ACCENT_PRIMARY,
+            lightcolor=ACCENT_PRIMARY,
+            darkcolor=ACCENT_PRIMARY,
+            focuscolor=ACCENT_PRIMARY,
+            font=("Segoe UI Semibold", 9, "bold"),
+            borderwidth=0,
+            relief="flat",
+            padding=(12, 6),
+        )
         style.map(
             "Action.TButton",
-            background=[("active", ACCENT_AMBER)],
-            foreground=[("active", BG_COLOR)],
+            background=[("active", ACCENT_HOVER), ("pressed", "#1D4ED8"), ("disabled", FIELD_BG)],
+            foreground=[("active", "#FFFFFF"), ("disabled", TEXT_MUTED)],
         )
         
-        style.configure("TEntry", fieldbackground=FIELD_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat", font=("Consolas", 10))
-        style.configure("Horizontal.TProgressbar", thickness=8, troughcolor=BG_COLOR, background=ACCENT_CYAN, borderwidth=0)
+        style.configure(
+            "Danger.TButton",
+            background="#2C1219",
+            foreground=ACCENT_RED,
+            bordercolor="#4C1D29",
+            lightcolor="#2C1219",
+            darkcolor="#2C1219",
+            focuscolor="#2C1219",
+            font=("Segoe UI Semibold", 9, "bold"),
+            borderwidth=1,
+            relief="flat",
+            padding=(10, 5),
+        )
+        style.map(
+            "Danger.TButton",
+            background=[("active", ACCENT_RED), ("disabled", CARD_BG)],
+            foreground=[("active", "#FFFFFF"), ("disabled", TEXT_MUTED)],
+        )
+        
+        # Dark Entries
+        style.configure(
+            "TEntry",
+            fieldbackground=FIELD_BG,
+            foreground=TEXT_PRIMARY,
+            insertcolor=ACCENT_CYAN,
+            bordercolor=BORDER_COLOR,
+            lightcolor=FIELD_BG,
+            darkcolor=FIELD_BG,
+            borderwidth=1,
+            relief="flat",
+            padding=(6, 4),
+            font=("Consolas", 10),
+        )
+        style.map(
+            "TEntry",
+            fieldbackground=[("readonly", FIELD_BG), ("disabled", CARD_BG)],
+            bordercolor=[("focus", BORDER_FOCUS)],
+        )
+        
+        # Dark Comboboxes (Eliminates white readonly fieldbackground in clam)
+        style.configure(
+            "TCombobox",
+            fieldbackground=FIELD_BG,
+            background=FIELD_BG,
+            foreground=TEXT_PRIMARY,
+            arrowcolor=TEXT_MUTED,
+            bordercolor=BORDER_COLOR,
+            lightcolor=FIELD_BG,
+            darkcolor=FIELD_BG,
+            selectbackground=FIELD_BG,
+            selectforeground=TEXT_PRIMARY,
+            borderwidth=1,
+            relief="flat",
+            padding=(6, 4),
+            font=("Segoe UI", 9),
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", FIELD_BG), ("disabled", CARD_BG)],
+            background=[("active", HOVER_BG), ("readonly", FIELD_BG)],
+            foreground=[("readonly", TEXT_PRIMARY), ("disabled", TEXT_MUTED)],
+            selectbackground=[("readonly", FIELD_BG)],
+            selectforeground=[("readonly", TEXT_PRIMARY)],
+            arrowcolor=[("active", ACCENT_CYAN), ("readonly", TEXT_MUTED)],
+        )
+        
+        # Dark Flat Sliders (Horizontal.TScale — eliminates Win95 grey bevel track)
+        style.configure(
+            "Horizontal.TScale",
+            background=ACCENT_PRIMARY,
+            troughcolor=FIELD_BG,
+            bordercolor=BORDER_COLOR,
+            lightcolor=BORDER_COLOR,
+            darkcolor=BORDER_COLOR,
+            troughrelief="flat",
+            sliderrelief="flat",
+            sliderlength=18,
+            sliderthickness=10,
+            borderwidth=1,
+            relief="flat",
+        )
+        style.map(
+            "Horizontal.TScale",
+            background=[("active", ACCENT_CYAN), ("!disabled", ACCENT_PRIMARY)],
+        )
+        
+        # Arrowless Minimalist Dark Scrollbars (eliminates Win95 white/grey scrollbars)
+        style.layout(
+            "Vertical.TScrollbar",
+            [("Vertical.Scrollbar.trough", {"children": [("Vertical.Scrollbar.thumb", {"expand": "1", "sticky": "nswe"})], "sticky": "ns"})],
+        )
+        style.configure(
+            "Vertical.TScrollbar",
+            troughcolor=BG_COLOR,
+            background=BORDER_COLOR,
+            bordercolor=BG_COLOR,
+            lightcolor=BORDER_COLOR,
+            darkcolor=BORDER_COLOR,
+            arrowsize=0,
+            borderwidth=0,
+            relief="flat",
+            width=6,
+        )
+        style.map(
+            "Vertical.TScrollbar",
+            background=[("active", ACCENT_PRIMARY), ("pressed", ACCENT_CYAN)],
+        )
+        
+        # Subtle 1px Separators & Progressbar
+        style.configure("TSeparator", background=BORDER_COLOR)
+        style.configure(
+            "Horizontal.TProgressbar",
+            thickness=6,
+            troughcolor=FIELD_BG,
+            background=ACCENT_PRIMARY,
+            bordercolor=FIELD_BG,
+            lightcolor=ACCENT_PRIMARY,
+            darkcolor=ACCENT_PRIMARY,
+            borderwidth=0,
+        )
 
-    def create_workflow_banner(self, parent, steps_text: str, guide_title: str, guide_body: str):
-        """Creates a slim 1-2-3 visual workflow banner at the top of a workspace tab."""
-        banner = tk.Frame(parent, bg="#0B1324", highlightthickness=1, highlightbackground="#1B2A4A", padx=12, pady=6)
-        banner.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
-        
-        badge = tk.Label(
-            banner,
-            text="WORKFLOW",
-            bg="#13223D",
-            fg=ACCENT_CYAN,
-            font=("Segoe UI", 9, "bold"),
-            padx=8,
-            pady=3,
+    def create_studio_card(self, parent, title: str = "", subtitle: str = "", pad_x: int = 14, pad_y: int = 12):
+        """Creates a modern 1px-bordered matte dark studio card with optional Sentence-Case header."""
+        outer = tk.Frame(
+            parent,
+            bg=CARD_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            highlightcolor=BORDER_COLOR,
+            padx=pad_x,
+            pady=pad_y,
         )
-        badge.pack(side="left", padx=(0, 10))
+        outer.columnconfigure(0, weight=1)
+        if title:
+            hdr = tk.Frame(outer, bg=CARD_BG)
+            hdr.grid(row=0, column=0, columnspan=10, sticky="ew", pady=(0, 8 if not subtitle else 2))
+            tk.Label(
+                hdr,
+                text=title,
+                bg=CARD_BG,
+                fg=TEXT_PRIMARY,
+                font=("Segoe UI Semibold", 10, "bold"),
+                anchor="w",
+            ).pack(side="left")
+            if subtitle:
+                tk.Label(
+                    outer,
+                    text=subtitle,
+                    bg=CARD_BG,
+                    fg=TEXT_MUTED,
+                    font=("Segoe UI", 9),
+                    anchor="w",
+                ).grid(row=1, column=0, columnspan=10, sticky="w", pady=(0, 8))
+        return outer
+
+    def create_workflow_banner(self, parent, title_text: str, subtitle_text: str, guide_title: str, guide_body: str = ""):
+        """Creates a clean, minimal Workspace Header bar (Title + concise subtitle + contextual Help pill)."""
+        eff_body = guide_body or subtitle_text
+        header = tk.Frame(parent, bg=BG_COLOR, padx=2, pady=2)
+        header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         
-        lbl = tk.Label(
-            banner,
-            text=steps_text,
-            bg="#0B1324",
+        left_col = tk.Frame(header, bg=BG_COLOR)
+        left_col.pack(side="left", fill="x", expand=True)
+        
+        tk.Label(
+            left_col,
+            text=title_text,
+            bg=BG_COLOR,
             fg=TEXT_PRIMARY,
+            font=("Segoe UI Semibold", 13, "bold"),
+            anchor="w",
+        ).pack(side="left", padx=(0, 12))
+        
+        tk.Label(
+            left_col,
+            text=subtitle_text,
+            bg=BG_COLOR,
+            fg=TEXT_MUTED,
             font=("Segoe UI", 9),
             anchor="w",
-        )
-        lbl.pack(side="left", fill="x", expand=True)
+        ).pack(side="left", fill="x", expand=True)
         
         help_btn = tk.Button(
-            banner,
-            text="ⓘ Quick Help",
-            bg="#13223D",
-            fg=ACCENT_CYAN,
-            activebackground=ACCENT_CYAN,
-            activeforeground=BG_COLOR,
-            font=("Segoe UI", 9, "bold"),
+            header,
+            text="Workspace Guide",
+            bg=CARD_BG,
+            fg=TEXT_MUTED,
+            activebackground=HOVER_BG,
+            activeforeground=TEXT_PRIMARY,
+            font=("Segoe UI Semibold", 9),
             bd=0,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
             padx=10,
             pady=4,
             cursor="hand2",
-            command=lambda: self.show_quick_guide_modal(guide_title, guide_body),
+            command=lambda: self.show_quick_guide_modal(guide_title, eff_body),
         )
         help_btn.pack(side="right", padx=(8, 0))
-        HoverTooltip(help_btn, guide_title, guide_body)
-        return banner
+        HoverTooltip(help_btn, guide_title, eff_body)
+        return header
 
-    def show_quick_guide_modal(self, title: str = "Abu Track & Scan — Studio Quick Start Guide", highlight_body: str = ""):
-        """Displays a clean, minimalist dark-mode Quick Guide modal with interactive workflow cards and rig diagram."""
+    def copy_ip_to_clipboard(self, ip_str: str):
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(ip_str)
+            if hasattr(self, "header_ip_btn"):
+                orig = self.header_ip_btn.cget("text")
+                self.header_ip_btn.configure(text=f"✓ Copied {ip_str}", fg=ACCENT_GREEN)
+                self.root.after(1500, lambda: self.header_ip_btn.configure(text=orig, fg=TEXT_PRIMARY))
+        except Exception:
+            pass
+
+    def show_quick_guide_modal(self, title: str = "Abu Studio — Quick Start Guide", highlight_body: str = ""):
+        """Displays a minimalist dark-mode Quick Guide modal with interactive workflow cards and rig diagram."""
         win = tk.Toplevel(self.root)
         win.title(title)
-        win.geometry("780x650")
+        win.geometry("780x640")
         win.configure(bg=BG_COLOR)
         win.transient(self.root)
         
-        hdr = tk.Frame(win, bg="#080C14", highlightthickness=1, highlightbackground="#1B2A4A", padx=16, pady=12)
+        hdr = tk.Frame(win, bg=SURFACE_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=18, pady=12)
         hdr.pack(fill="x")
-        tk.Label(hdr, text=f"📘 {title}", bg="#080C14", fg=ACCENT_CYAN, font=("Segoe UI", 12, "bold")).pack(side="left")
-        ttk.Button(hdr, text="Close", command=win.destroy).pack(side="right", ipadx=8, ipady=2)
+        tk.Label(hdr, text=title, bg=SURFACE_BG, fg=TEXT_PRIMARY, font=("Segoe UI Semibold", 12, "bold")).pack(side="left")
+        ttk.Button(hdr, text="Close", command=win.destroy).pack(side="right")
         
-        body = tk.Frame(win, bg=BG_COLOR, padx=16, pady=12)
+        body = tk.Frame(win, bg=BG_COLOR, padx=18, pady=14)
         body.pack(fill="both", expand=True)
         
         if highlight_body:
-            ctx_card = tk.Frame(body, bg="#0F1B33", highlightthickness=1, highlightbackground=ACCENT_CYAN, padx=14, pady=10)
+            ctx_card = tk.Frame(body, bg=CARD_BG, highlightthickness=1, highlightbackground=ACCENT_PRIMARY, padx=14, pady=10)
             ctx_card.pack(fill="x", pady=(0, 12))
-            tk.Label(ctx_card, text="ACTIVE WORKSPACE GUIDE", bg="#0F1B33", fg=ACCENT_CYAN, font=("Segoe UI", 10, "bold")).pack(anchor="w")
-            tk.Label(ctx_card, text=highlight_body, bg="#0F1B33", fg=TEXT_PRIMARY, font=("Segoe UI", 9), justify="left", wraplength=720).pack(anchor="w", pady=(4, 0))
+            tk.Label(ctx_card, text="Active Workspace Overview", bg=CARD_BG, fg=ACCENT_CYAN, font=("Segoe UI Semibold", 10, "bold")).pack(anchor="w")
+            tk.Label(ctx_card, text=highlight_body, bg=CARD_BG, fg=TEXT_PRIMARY, font=("Segoe UI", 9), justify="left", wraplength=720).pack(anchor="w", pady=(4, 0))
         
         # Rig Lever-Arm Visual Diagram Card
         diag_card = tk.Frame(body, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=14, pady=10)
         diag_card.pack(fill="x", pady=(0, 12))
-        tk.Label(diag_card, text="🎥 RIG LEVER-ARM COORDINATE CONVENTION (iPhone Tracker → Cinema/DSLR Sensor)", bg=CARD_BG, fg=ACCENT_AMBER, font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
+        tk.Label(diag_card, text="Rig Lever-Arm Coordinate Convention (iPhone Tracker → Main Sensor)", bg=CARD_BG, fg=TEXT_PRIMARY, font=("Segoe UI Semibold", 10, "bold")).pack(anchor="w", pady=(0, 6))
         diagram_ascii = (
             "          [ +Y : Up (Height) ]                  • dx (Lateral cm): +Right / -Left from iPhone lens to DSLR sensor\n"
             "                  ▲                             • dy (Vertical cm): +Up / -Down from iPhone lens to DSLR sensor\n"
@@ -807,421 +1074,717 @@ class CamTrackDesktopApp:
             "      [iPhone]────┼───► [ +X : Right ]          • Boresight (rx, ry, rz °): Mechanical tilt difference between rigs\n"
             "         │        ▼                             • Front Selfie Tracking: Uses Rear Main VIO + automatic 180° Yaw flip"
         )
-        tk.Label(diag_card, text=diagram_ascii, bg="#080C14", fg=TEXT_PRIMARY, font=("Consolas", 9), justify="left", padx=10, pady=8).pack(fill="x")
+        tk.Label(diag_card, text=diagram_ascii, bg=SURFACE_BG, fg=TEXT_PRIMARY, font=("Consolas", 9), justify="left", padx=12, pady=8).pack(fill="x")
         
-        # 3 Workflow Cards
         workflows = [
             (
-                "📸 1. Scan & Photo Sync (3DGS / Metashape / RealityScan)",
-                "① Select your DSLR Image Folder and iOS CSV Telemetry Log in '📸 Scan & Photo Sync'.\n"
-                "② Enter your Rig Lever-Arm (dx, dy, dz) or click 'Auto-Solve Frame-00 Slate Flash Offset' to align shutter timestamps.\n"
-                "③ Click 'Inject EXIF & Export' and inspect your reconstructed trajectory & LiDAR cloud in '🕸 3D Spatial Map'.",
+                "1. Live Stage — Real-Time 6DoF & Virtual Production",
+                "Copy your PC LAN IP from the top bar into the iOS app (Setup → Stream & Clock). Click 'Start Listening' (UDP 8080) and enable UDP Forwarding (Port 8081) for Unreal Engine 5.",
             ),
             (
-                "📡 2. Live Virtual Production Tracking (UDP 8080 Telemetry / 8081 UE Forwarder / 5004 Video)",
-                "① Open '📡 Live Track & Stream', check your PC Local IP, and enter it in the iOS app's Setup → Stream & Clock tab.\n"
-                "② Click 'Start Listening' (UDP 8080). Optionally enable UDP Forwarding (Port 8081) to Unreal Engine (Live Link JSON, 41B FreeD-TC 0xD2, or OpenTrackIO).\n"
-                "③ In UE5 Live Link, add 'Abu Track Source' and click '⚡ Configure UE5 TimecodeProvider & Genlock' for 1-click sync.",
+                "2. Photo Sync & Spatial Map — 3DGS, Metashape & RealityScan",
+                "Select your DSLR Image Folder and iOS CSV Log in 'Photo Sync', set Lever-Arm offsets or Auto-Solve Frame-00 Slate Flash, then click 'Synchronize & Inject EXIF'. Inspect and export in 'Spatial Map'.",
             ),
             (
-                "⏱ 3. Abu Clock ST 2059-2 Master Timecode & Multi-Rig Barrier Trigger",
-                "• The persistent top bar broadcasts Abu Clock PTP/CSPTP sync across iOS, Windows, and UE5.\n"
-                "• Click '⚡ Trigger Multi-Rig (+50ms)' to schedule a deterministic future-time capture across all connected sensors.\n"
-                "• Click '🎬 Clapper Slate' to open the Frame-00 optical flash & 1kHz audio beep slate for external cameras.",
+                "3. Abu Clock ST 2059-2 Timecode & Multi-Rig Trigger",
+                "The top studio bar broadcasts deterministic PTP/CSPTP timecode. Click 'Trigger Capture (+50ms)' for synchronized multi-sensor shutters or 'Clapper Slate' for Frame-00 optical flash sync.",
             ),
         ]
         for wf_title, wf_desc in workflows:
-            c = tk.Frame(body, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=12, pady=8)
+            c = tk.Frame(body, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=14, pady=9)
             c.pack(fill="x", pady=4)
-            tk.Label(c, text=wf_title, bg=CARD_BG, fg=ACCENT_CYAN, font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            tk.Label(c, text=wf_title, bg=CARD_BG, fg=ACCENT_CYAN, font=("Segoe UI Semibold", 10, "bold")).pack(anchor="w")
             tk.Label(c, text=wf_desc, bg=CARD_BG, fg=TEXT_MUTED, font=("Segoe UI", 9), justify="left", wraplength=720).pack(anchor="w", pady=(2, 0))
+
         
+    def switch_workspace(self, index: int):
+        """Switches the active workspace tab and updates the Left Navigation Rail selection state."""
+        try:
+            tabs = self.notebook.tabs()
+            if 0 <= index < len(tabs):
+                self.notebook.select(tabs[index])
+                self._update_nav_rail_selection(index)
+        except Exception:
+            pass
+
+    def _on_notebook_tab_changed(self, _event=None):
+        try:
+            current = self.notebook.select()
+            tabs = list(self.notebook.tabs())
+            if current in tabs:
+                self._update_nav_rail_selection(tabs.index(current))
+        except Exception:
+            pass
+
+    def _update_nav_rail_selection(self, active_idx: int):
+        if not hasattr(self, "nav_rail_items"):
+            return
+        for idx, item in self.nav_rail_items.items():
+            is_active = (idx == active_idx)
+            bg = FIELD_BG if is_active else SURFACE_BG
+            fg = "#FFFFFF" if is_active else TEXT_MUTED
+            bar_col = ACCENT_PRIMARY if is_active else SURFACE_BG
+            font_spec = ("Segoe UI Semibold", 9, "bold") if is_active else ("Segoe UI", 9)
+            try:
+                item["frame"].configure(bg=bg)
+                item["bar"].configure(bg=bar_col)
+                item["btn"].configure(bg=bg, fg=fg, font=font_spec, activebackground=HOVER_BG, activeforeground="#FFFFFF")
+            except Exception:
+                pass
+
+    def toggle_rx_log_drawer(self, _event=None):
+        """Expands or collapses the bottom Live Stream Packet Log drawer so the 3D Stage Viewport stays spacious."""
+        self.rx_log_drawer_open = not getattr(self, "rx_log_drawer_open", False)
+        try:
+            if self.rx_log_drawer_open:
+                self.rx_console_body.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+                self.rx_log_chevron_lbl.configure(text="▾  Packet Log", fg=TEXT_PRIMARY)
+                self.toggle_rx_log_btn.configure(text="Hide Log")
+            else:
+                self.rx_console_body.grid_remove()
+                self.rx_log_chevron_lbl.configure(text="▸  Packet Log", fg=TEXT_MUTED)
+                self.toggle_rx_log_btn.configure(text="Show Log")
+        except Exception:
+            pass
+
+    def open_selected_photo_folder(self):
+        p = self.photo_dir.get()
+        if p and os.path.exists(p):
+            try:
+                os.startfile(p)
+            except Exception:
+                pass
+        else:
+            messagebox.showinfo("Photos Folder", "Select a valid Photos Folder first.")
+
     def build_ui(self):
-        # Persistent Top Abu Clock Master Timecode & Ecosystem Status Bar (WIN-UI-03: Zero-clipping layout)
-        self.clock_bar = tk.Frame(self.root, bg="#080C14", highlightthickness=1, highlightbackground="#1B2A4A", padx=12, pady=6)
-        self.clock_bar.pack(fill="x", side="top")
-        
-        # Left: Lock Status Indicator + Master Label
-        self.clock_led_canvas = tk.Canvas(self.clock_bar, width=12, height=12, bg="#080C14", highlightthickness=0)
-        self.clock_led_canvas.pack(side="left", padx=(0, 6))
-        self.clock_led_dot = self.clock_led_canvas.create_oval(2, 2, 10, 10, fill=ACCENT_GREEN, outline="")
-        
-        clock_title_lbl = tk.Label(self.clock_bar, text="⏱ ABU CLOCK ST 2059:", bg="#080C14", fg=TEXT_MUTED, font=("Segoe UI", 9, "bold"))
-        clock_title_lbl.pack(side="left", padx=(0, 4))
-        self.clock_lock_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_lock_var, bg="#080C14", fg=ACCENT_GREEN, font=("Consolas", 9, "bold"))
-        self.clock_lock_lbl.pack(side="left", padx=(0, 10))
-        HoverTooltip(
-            self.clock_lock_lbl,
-            "Abu Clock PTP / CSPTP Lock State",
-            "Shows whether this workstation is acting as the ST 2059-2 Master Clock or locked to an external PTP/CSPTP reference.",
+        local_ips_list = self.get_local_ips()
+        local_ips_str = ", ".join(local_ips_list)
+        primary_ip = local_ips_list[0] if local_ips_list else "127.0.0.1"
+
+        # =========================================================================
+        # 1. UNIFIED TOP STUDIO HEADER BAR (Phase 2 Step 2.1)
+        # =========================================================================
+        self.clock_bar = tk.Frame(
+            self.root,
+            bg=SURFACE_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            padx=14,
+            pady=7,
         )
-        
-        # Center-Left: Live SMPTE Timecode Readout + Compact Sub-frame Phase Bar
-        self.clock_tc_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tc_var, bg="#0D1524", fg=ACCENT_CYAN, font=("Consolas", 13, "bold"), padx=10, pady=2)
+        self.clock_bar.pack(fill="x", side="top")
+
+        # Left: Brand Mark + Studio Title + Version Pill
+        brand_frame = tk.Frame(self.clock_bar, bg=SURFACE_BG)
+        brand_frame.pack(side="left", padx=(0, 14))
+
+        tk.Label(
+            brand_frame,
+            text="ABU STUDIO",
+            bg=ACCENT_PRIMARY,
+            fg="#FFFFFF",
+            font=("Segoe UI Semibold", 9, "bold"),
+            padx=8,
+            pady=2,
+        ).pack(side="left", padx=(0, 8))
+
+        tk.Label(
+            brand_frame,
+            text="Track & Scan",
+            bg=SURFACE_BG,
+            fg=TEXT_PRIMARY,
+            font=("Segoe UI Semibold", 11, "bold"),
+        ).pack(side="left", padx=(0, 6))
+
+        tk.Label(
+            brand_frame,
+            text=getattr(self, "app_version_str", "v0.1.2.0"),
+            bg=FIELD_BG,
+            fg=TEXT_MUTED,
+            font=("Consolas", 9),
+            padx=6,
+            pady=1,
+        ).pack(side="left")
+
+        # Center-Left: Sleek Master Clock Pill (ST 2059 Timecode + Phase Bar + Lock + Nodes)
+        clock_pill = tk.Frame(
+            self.clock_bar,
+            bg=CARD_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            padx=10,
+            pady=3,
+        )
+        clock_pill.pack(side="left", padx=(0, 10))
+
+        self.clock_led_canvas = tk.Canvas(clock_pill, width=10, height=10, bg=CARD_BG, highlightthickness=0)
+        self.clock_led_canvas.pack(side="left", padx=(0, 6))
+        self.clock_led_dot = self.clock_led_canvas.create_oval(1, 1, 9, 9, fill=ACCENT_GREEN, outline="")
+
+        tk.Label(
+            clock_pill,
+            text="ST 2059",
+            bg=CARD_BG,
+            fg=TEXT_MUTED,
+            font=("Segoe UI Semibold", 9),
+        ).pack(side="left", padx=(0, 6))
+
+        self.clock_tc_lbl = tk.Label(
+            clock_pill,
+            textvariable=self.abu_clock_tc_var,
+            bg=FIELD_BG,
+            fg=ACCENT_CYAN,
+            font=("Consolas", 12, "bold"),
+            padx=8,
+            pady=1,
+        )
         self.clock_tc_lbl.pack(side="left", padx=(0, 8))
         HoverTooltip(
             self.clock_tc_lbl,
-            "Live SMPTE ST 12-1 / ST 2059-2 Timecode",
-            "Deterministic frame-accurate timecode synthesized from the Abu Clock TAI epoch. Open Clapper Slate for full 64-bit TAI & 32-bit BCD telemetry.",
+            "Master SMPTE ST 2059-2 Timecode",
+            "Frame-accurate timecode synthesized from the Abu Clock TAI epoch. Open Clapper Slate for 64-bit TAI and 32-bit BCD telemetry.",
         )
-        
-        phase_col = tk.Frame(self.clock_bar, bg="#080C14")
-        phase_col.pack(side="left", padx=(0, 10))
-        self.clock_bcd_lbl = tk.Label(phase_col, textvariable=self.abu_clock_bcd_var, bg="#080C14", fg=ACCENT_AMBER, font=("Consolas", 9, "bold"))
-        self.clock_bcd_lbl.pack(anchor="w")
-        self.clock_phase_canvas = tk.Canvas(phase_col, width=90, height=6, bg="#131B2E", highlightthickness=0)
-        self.clock_phase_canvas.pack(anchor="w", pady=(2, 0))
-        self.clock_phase_rect = self.clock_phase_canvas.create_rectangle(0, 0, 0, 6, fill=ACCENT_CYAN, outline="")
-        HoverTooltip(
+
+        phase_col = tk.Frame(clock_pill, bg=CARD_BG)
+        phase_col.pack(side="left", padx=(0, 8))
+        self.clock_bcd_lbl = tk.Label(
             phase_col,
-            "Sub-Frame Phase & BCD Timecode",
-            "Displays live sub-frame phase progress (0.0 to 1.0) within the current SMPTE frame window.",
+            textvariable=self.abu_clock_bcd_var,
+            bg=CARD_BG,
+            fg=TEXT_MUTED,
+            font=("Consolas", 9),
         )
-        
-        # Keep clock_tai_lbl as an internal reference for Clapper Slate / tooltips without crowding the top bar
-        self.clock_tai_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tai_var, bg="#080C14", fg=TEXT_MUTED, font=("Consolas", 9))
-        
-        self.clock_nodes_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_nodes_var, bg="#080C14", fg=ACCENT_GREEN, font=("Segoe UI", 9, "bold"))
-        self.clock_nodes_lbl.pack(side="left", padx=(0, 8))
+        self.clock_bcd_lbl.pack(anchor="w")
+        self.clock_phase_canvas = tk.Canvas(phase_col, width=72, height=4, bg=FIELD_BG, highlightthickness=0)
+        self.clock_phase_canvas.pack(anchor="w", pady=(1, 0))
+        self.clock_phase_rect = self.clock_phase_canvas.create_rectangle(0, 0, 0, 4, fill=ACCENT_PRIMARY, outline="")
+
+        self.clock_lock_lbl = tk.Label(
+            clock_pill,
+            textvariable=self.abu_clock_lock_var,
+            bg=CARD_BG,
+            fg=ACCENT_GREEN,
+            font=("Consolas", 9, "bold"),
+        )
+        self.clock_lock_lbl.pack(side="left", padx=(0, 8))
+        HoverTooltip(
+            self.clock_lock_lbl,
+            "PTP / CSPTP Clock Lock State",
+            "Indicates whether this workstation is acting as the Master Clock or locked to an external PTP reference.",
+        )
+
+        self.clock_nodes_lbl = tk.Label(
+            clock_pill,
+            textvariable=self.abu_clock_nodes_var,
+            bg=FIELD_BG,
+            fg=TEXT_PRIMARY,
+            font=("Segoe UI Semibold", 9),
+            padx=6,
+            pady=1,
+        )
+        self.clock_nodes_lbl.pack(side="left")
         HoverTooltip(
             self.clock_nodes_lbl,
-            "Discovered Abu Ecosystem Nodes",
-            "Count of active iOS Track & Scan devices and Unreal Engine 5 nodes discovered on the local subnet via UDP port 53530.",
+            "Discovered Studio Nodes",
+            "Active iOS Track & Scan devices and Unreal Engine 5 nodes discovered on the local subnet (UDP 53530).",
         )
-        
-        # Right: Quick Guide + Clapper Slate + Barrier Trigger + FPS Selector
-        self.guide_top_btn = ttk.Button(self.clock_bar, text="❓ Quick Guide", command=self.show_quick_guide_modal)
-        self.guide_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
+
+        # Internal reference label for TAI
+        self.clock_tai_lbl = tk.Label(self.clock_bar, textvariable=self.abu_clock_tai_var, bg=SURFACE_BG, fg=TEXT_MUTED, font=("Consolas", 9))
+
+        # 1-Click Copyable LAN IP Chip right in the top bar
+        self.header_ip_btn = tk.Button(
+            self.clock_bar,
+            text=f"LAN: {primary_ip}  📋",
+            bg=FIELD_BG,
+            fg=TEXT_PRIMARY,
+            activebackground=HOVER_BG,
+            activeforeground=ACCENT_CYAN,
+            font=("Consolas", 9, "bold"),
+            bd=0,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            padx=9,
+            pady=4,
+            cursor="hand2",
+            command=lambda: self.copy_ip_to_clipboard(primary_ip),
+        )
+        self.header_ip_btn.pack(side="left", padx=(0, 8))
+        HoverTooltip(
+            self.header_ip_btn,
+            "Workstation LAN IPv4 (Click to Copy)",
+            f"All Local IPs: {local_ips_str}\nClick to copy {primary_ip} and enter it in the iOS app under Setup → Stream & Clock → Target IP.",
+        )
+
+        # Right: Studio Action Buttons + FPS Selector
+        self.guide_top_btn = ttk.Button(self.clock_bar, text="Quick Guide", command=self.show_quick_guide_modal)
+        self.guide_top_btn.pack(side="right", padx=(6, 0))
         HoverTooltip(
             self.guide_top_btn,
             "Studio Quick Start Guide",
-            "Open the visual Quick Start Guide with rig lever-arm diagrams and step-by-step Scan, Live Track, and Timecode workflows.",
+            "View rig coordinate conventions and step-by-step workflows for Live Stage, Photo Sync, and Lens Lab.",
         )
 
-        self.slate_top_btn = ttk.Button(self.clock_bar, text="🎬 Clapper Slate", command=self.open_clapper_slate_window)
-        self.slate_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
+        self.slate_top_btn = ttk.Button(self.clock_bar, text="Clapper Slate", command=self.open_clapper_slate_window)
+        self.slate_top_btn.pack(side="right", padx=(6, 0))
         HoverTooltip(
             self.slate_top_btn,
-            "Digital Clapper Slate (Frame-00 Flash + 1kHz Beep)",
-            "Opens a high-contrast SMPTE timecode slate window that fires a 1-frame white optical flash and 1kHz tone on Frame :00 to sync non-genlocked DSLRs and cinema cameras.",
+            "Digital Clapper Slate (Frame-00 Flash)",
+            "Opens a high-contrast SMPTE timecode slate that flashes on Frame :00 to synchronize external DSLRs and cinema cameras.",
         )
-        
-        self.barrier_top_btn = ttk.Button(self.clock_bar, text="⚡ Trigger Multi-Rig (+50ms)", style="Action.TButton", command=self.trigger_global_capture_barrier)
-        self.barrier_top_btn.pack(side="right", padx=(6, 0), ipadx=6, ipady=2)
+
+        self.barrier_top_btn = ttk.Button(
+            self.clock_bar,
+            text="⚡ Trigger Capture (+50ms)",
+            style="Action.TButton",
+            command=self.trigger_global_capture_barrier,
+        )
+        self.barrier_top_btn.pack(side="right", padx=(6, 0))
         HoverTooltip(
             self.barrier_top_btn,
-            "Future-Time Multi-Sensor Capture Barrier",
-            "Broadcasts SCHEDULE_CAPTURE_AT (now + 50ms) so all connected iOS rigs and cameras fire their shutters at the exact same microsecond.",
+            "Multi-Rig Capture Barrier",
+            "Broadcasts SCHEDULE_CAPTURE_AT (now + 50ms) so all connected iOS rigs fire their shutters at the exact same microsecond.",
         )
-        
+
         fps_options = ["23.976", "24", "25", "29.97 DF", "29.97 NDF", "30", "50", "59.94 DF", "60"]
         self.clock_fps_combo = ttk.Combobox(self.clock_bar, textvariable=self.abu_clock_fps_var, values=fps_options, state="readonly", width=9)
         self.clock_fps_combo.pack(side="right", padx=(4, 6))
         self.clock_fps_combo.bind("<<ComboboxSelected>>", lambda _e: self.abu_clock.set_frame_rate(self.abu_clock_fps_var.get()))
         HoverTooltip(
             self.clock_fps_combo,
-            "Master SMPTE Frame Rate",
-            "Sets the master timecode frame rate for the entire Abu Track & Scan studio session (supports NDF and Drop-Frame standards).",
+            "Master Frame Rate",
+            "Sets the studio SMPTE frame rate across iOS, Windows, and Unreal Engine.",
         )
-        tk.Label(self.clock_bar, text="FPS:", bg="#080C14", fg=TEXT_MUTED, font=("Segoe UI", 9, "bold")).pack(side="right")
+        tk.Label(self.clock_bar, text="FPS", bg=SURFACE_BG, fg=TEXT_MUTED, font=("Segoe UI Semibold", 9)).pack(side="right")
 
-        # Notebook Tabbed System — Ordered by logical production workflow
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True)
-        
-        self.tab_sync = ttk.Frame(self.notebook, padding=10)
-        self.tab_visualizer = ttk.Frame(self.notebook, padding=10)
-        self.tab_receiver = ttk.Frame(self.notebook, padding=10)
-        self.tab_ue_monitor = ttk.Frame(self.notebook, padding=10)
-        self.tab_calibrator = ttk.Frame(self.notebook, padding=10)
-        self.tab_docs = ttk.Frame(self.notebook, padding=10)
-        
-        self.notebook.add(self.tab_sync, text="📸 Scan & Photo Sync")
-        self.notebook.add(self.tab_visualizer, text="🕸 3D Spatial Map")
-        self.notebook.add(self.tab_receiver, text="📡 Live Track & Stream")
-        self.notebook.add(self.tab_ue_monitor, text="🖥 UE & AR Monitor")
-        self.notebook.add(self.tab_calibrator, text="🎯 Lens Lab")
-        self.notebook.add(self.tab_docs, text="📘 Interactive Guide")
-        
-        # ----------------- TAB 1: SYNCHRONIZATION INTERFACE -----------------
-        self.tab_sync.columnconfigure(0, weight=4, minsize=470) # Left Panel with guaranteed minimum width
-        self.tab_sync.columnconfigure(1, weight=5) # Right Logs Panel
+        # =========================================================================
+        # 2. MAIN SHELL: LEFT NAVIGATION RAIL + WORKSPACE CONTAINER (Phase 2 Step 2.2)
+        # =========================================================================
+        self.main_shell = tk.Frame(self.root, bg=BG_COLOR)
+        self.main_shell.pack(fill="both", expand=True)
+
+        # Left Navigation Rail (195px fixed width, Linear / Raycast / DaVinci style)
+        self.nav_rail = tk.Frame(
+            self.main_shell,
+            bg=SURFACE_BG,
+            width=198,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            padx=10,
+            pady=12,
+        )
+        self.nav_rail.pack(side="left", fill="y")
+        self.nav_rail.pack_propagate(False)
+
+        # Workspace Notebook (Visual top tab bar hidden; controlled by Left Rail & programmatic .select())
+        self.notebook = ttk.Notebook(self.main_shell)
+        self.notebook.pack(side="left", fill="both", expand=True)
+
+        self.tab_sync = ttk.Frame(self.notebook, padding=(16, 12))
+        self.tab_visualizer = ttk.Frame(self.notebook, padding=(16, 12))
+        self.tab_receiver = ttk.Frame(self.notebook, padding=(16, 12))
+        self.tab_ue_monitor = ttk.Frame(self.notebook, padding=(16, 12))
+        self.tab_calibrator = ttk.Frame(self.notebook, padding=(16, 12))
+        self.tab_docs = ttk.Frame(self.notebook, padding=(16, 12))
+
+        self.notebook.add(self.tab_sync, text="Photo Sync")
+        self.notebook.add(self.tab_visualizer, text="Spatial Map")
+        self.notebook.add(self.tab_receiver, text="Live Stage")
+        self.notebook.add(self.tab_ue_monitor, text="Video Monitor")
+        self.notebook.add(self.tab_calibrator, text="Lens Lab")
+        self.notebook.add(self.tab_docs, text="Studio Guide")
+        self.notebook.bind("<<NotebookTabChanged>>", self._on_notebook_tab_changed)
+
+        # Build Grouped Navigation Items in Left Rail
+        self.nav_rail_items = {}
+
+        def add_rail_section(label_text: str, top_pad: int = 10):
+            tk.Label(
+                self.nav_rail,
+                text=label_text,
+                bg=SURFACE_BG,
+                fg=TEXT_MUTED,
+                font=("Segoe UI Semibold", 9),
+                anchor="w",
+            ).pack(fill="x", padx=6, pady=(top_pad, 4))
+
+        def add_rail_item(tab_index: int, icon: str, label_text: str, tooltip_desc: str):
+            row = tk.Frame(self.nav_rail, bg=SURFACE_BG, cursor="hand2")
+            row.pack(fill="x", pady=2)
+            bar = tk.Frame(row, bg=SURFACE_BG, width=3, height=30)
+            bar.pack(side="left", fill="y")
+            btn = tk.Button(
+                row,
+                text=f"  {icon}   {label_text}",
+                bg=SURFACE_BG,
+                fg=TEXT_MUTED,
+                activebackground=HOVER_BG,
+                activeforeground="#FFFFFF",
+                font=("Segoe UI", 9),
+                anchor="w",
+                bd=0,
+                padx=8,
+                pady=6,
+                cursor="hand2",
+                command=lambda idx=tab_index: self.switch_workspace(idx),
+            )
+            btn.pack(side="left", fill="x", expand=True)
+            HoverTooltip(btn, label_text, tooltip_desc)
+            self.nav_rail_items[tab_index] = {"frame": row, "bar": bar, "btn": btn}
+
+        add_rail_section("LIVE PRODUCTION", top_pad=2)
+        add_rail_item(2, "📡", "Live Stage", "Real-time 6DoF telemetry receiver (UDP 8080), 3D stage viewport, and Unreal Engine forwarder (UDP 8081).")
+        add_rail_item(3, "🖥", "Video Monitor", "Low-latency RTSP / SRT / HTTP video decoder and WebRTC Pixel Streaming return monitor.")
+
+        add_rail_section("3DGS & POST PIPELINE", top_pad=14)
+        add_rail_item(0, "📸", "Photo Sync", "Georeference DSLR/Mirrorless & iOS photos against 60–240Hz VIO logs and inject EXIF/XMP metadata.")
+        add_rail_item(1, "🕸", "Spatial Map", "Interactive 3D camera frustum inspector, LiDAR SOR point cloud cleaner, and 1-click Postshot/Metashape/RealityScan exports.")
+
+        add_rail_section("CALIBRATION & DOCS", top_pad=14)
+        add_rail_item(4, "🎯", "Lens Lab", "Sub-pixel checkerboard optical intrinsics and Brown-Conrady distortion solver.")
+        add_rail_item(5, "📘", "Studio Guide", "Interactive hardware mounting, timecode, and pipeline reference manual.")
+
+        # Bottom Left Rail Status & Quick Utilities Card
+        rail_footer = tk.Frame(
+            self.nav_rail,
+            bg=CARD_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            padx=10,
+            pady=10,
+        )
+        rail_footer.pack(side="bottom", fill="x", pady=(12, 0))
+
+        status_row = tk.Frame(rail_footer, bg=CARD_BG)
+        status_row.pack(fill="x", pady=(0, 6))
+        tk.Label(status_row, text="Receiver", bg=CARD_BG, fg=TEXT_MUTED, font=("Segoe UI", 9)).pack(side="left")
+        self.rail_rx_status_lbl = tk.Label(
+            status_row,
+            textvariable=self.receiver_status_var,
+            bg=FIELD_BG,
+            fg=TEXT_MUTED,
+            font=("Consolas", 9, "bold"),
+            padx=6,
+            pady=1,
+        )
+        self.rail_rx_status_lbl.pack(side="right")
+
+        ports_info_lbl = tk.Label(
+            rail_footer,
+            text="Ports: 8080 · 8081 · 5004",
+            bg=CARD_BG,
+            fg=TEXT_MUTED,
+            font=("Segoe UI", 9),
+            anchor="w",
+        )
+        ports_info_lbl.pack(fill="x", pady=(0, 8))
+        HoverTooltip(
+            ports_info_lbl,
+            "Studio UDP Port Topology",
+            "• 8080: Inbound iOS Telemetry\n• 8081: Outbound UE5 Forwarder\n• 5004: Inbound RTP H.264/HEVC Video\n• 50320: Abu Clock PTP Sync\n• 53530: Node Auto-Discovery",
+        )
+
+        ttk.Button(rail_footer, text="Fix Firewall", command=self.fix_windows_firewall).pack(fill="x", pady=(0, 4))
+        ttk.Button(rail_footer, text="Open Logs", command=self.open_logs_folder).pack(fill="x")
+
+        self._update_nav_rail_selection(0)
+
+        # =========================================================================
+        # WORKSPACE 0: PHOTO SYNC (Phase 4 Step 4.1)
+        # =========================================================================
+        self.tab_sync.columnconfigure(0, weight=4, minsize=450)
+        self.tab_sync.columnconfigure(1, weight=6)
         self.tab_sync.rowconfigure(1, weight=1)
-        
+
         self.create_workflow_banner(
             self.tab_sync,
-            "① Select DSLR Image Folder & iOS CSV Log   →   ② Set Rig Lever-Arm or Auto-Solve Frame-00 Slate   →   ③ Click Inject EXIF & Export",
-            "Scan & Photo Sync — Georeferencing & 3DGS Workflow",
+            "Photo Sync & Dataset Builder",
+            "Align external camera photos with iOS 6DoF telemetry, apply rig lever-arm offsets, and export 3DGS / Metashape datasets.",
+            "Photo Sync — Geodetic & 3DGS Pipeline",
             "Interpolates 60Hz–240Hz iOS VIO + GPS + Abu Clock TAI telemetry into external DSLR/Mirrorless photos, applies 6-axis lever-arm/boresight offsets, and exports ready-to-train datasets for Metashape, Postshot (3DGS), COLMAP, and AbuScan.",
         )
-        
+
         self.sync_left_scroll = ScrollableSidebarFrame(self.tab_sync)
-        self.sync_left_scroll.grid(row=1, column=0, sticky="nsew", padx=(0, 6))
+        self.sync_left_scroll.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
         left_panel = self.sync_left_scroll.inner
         left_panel.columnconfigure(0, weight=1)
-        
+
         try:
             from version_info import VERSION, BUILD
             version_text = f"Version {VERSION} (Build #{BUILD}) • 3DGS, Metashape & Abu Clock ST 2059-2 Ready"
         except ImportError:
-            version_text = "Version 0.1.0.9 • 3DGS, Metashape & Abu Clock ST 2059-2 Ready"
-        
-        # Card 1: Data Directories (Starts at row 0 without redundant duplicate window title banner — WIN-UI-06)
-        io_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
+            version_text = "Version 0.1.2.0 • 3DGS, Metashape & Abu Clock ST 2059-2 Ready"
+
+        # Card 1: Session Inputs
+        io_card = self.create_studio_card(left_panel, "Session Inputs", "Select your captured photo directory, iOS telemetry CSV, and optional LiDAR/lens files")
         io_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         io_card.columnconfigure(1, weight=1)
-        
-        ttk.Label(io_card, text="📂 01 // SESSION DIRECTORIES & LENS PROFILE", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
-        
-        img_lbl = ttk.Label(io_card, text="Image Folder:")
-        img_lbl.grid(row=1, column=0, sticky="w", pady=4)
+
+        ttk.Label(io_card, text="Photos Folder").grid(row=2, column=0, sticky="w", pady=4)
         photo_entry = ttk.Entry(io_card, textvariable=self.photo_dir)
-        photo_entry.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
-        photo_btn = ttk.Button(io_card, text="📂 Browse", command=self.browse_photos)
-        photo_btn.grid(row=1, column=2, pady=4, ipady=2, ipadx=6)
-        HoverTooltip(photo_entry, "DSLR / Cinema / iOS Image Folder", "Directory containing JPEG, HEIC, TIFF, or DNG frames to be georeferenced and pose-matched against the Abu Track CSV log.")
-        
-        csv_lbl = ttk.Label(io_card, text="Telemetry Log:")
-        csv_lbl.grid(row=2, column=0, sticky="w", pady=4)
+        photo_entry.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
+        photo_btn = ttk.Button(io_card, text="Browse", command=self.browse_photos)
+        photo_btn.grid(row=2, column=2, pady=4)
+        HoverTooltip(photo_entry, "Photos Directory", "Folder containing JPEG, HEIC, or TIFF frames to be synchronized with the iOS tracking log.")
+
+        ttk.Label(io_card, text="Telemetry CSV").grid(row=3, column=0, sticky="w", pady=4)
         csv_entry = ttk.Entry(io_card, textvariable=self.csv_path)
-        csv_entry.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
-        csv_btn = ttk.Button(io_card, text="📄 Browse", command=self.browse_csv)
-        csv_btn.grid(row=2, column=2, pady=4, ipady=2, ipadx=6)
-        HoverTooltip(csv_entry, "iOS Session Telemetry CSV", "High-rate tracking log recorded by the Abu Track & Scan iOS app (includes TAI nanosecond timestamps, SMPTE timecode, 6DoF pose, and GNSS).")
-        
-        ply_lbl = ttk.Label(io_card, text="Point Cloud PLY:")
-        ply_lbl.grid(row=3, column=0, sticky="w", pady=4)
+        csv_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
+        csv_btn = ttk.Button(io_card, text="Browse", command=self.browse_csv)
+        csv_btn.grid(row=3, column=2, pady=4)
+        HoverTooltip(csv_entry, "iOS Telemetry Log (.csv)", "High-rate tracking CSV recorded by the iOS app (includes TAI timestamps, SMPTE timecode, 6DoF pose, and GNSS).")
+
+        ttk.Label(io_card, text="Point Cloud (.ply)").grid(row=4, column=0, sticky="w", pady=4)
         ply_entry = ttk.Entry(io_card, textvariable=self.ply_path)
-        ply_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
-        ply_btn = ttk.Button(io_card, text="🧊 Browse", command=self.browse_ply)
-        ply_btn.grid(row=3, column=2, pady=4, ipady=2, ipadx=6)
-        HoverTooltip(ply_entry, "Optional LiDAR / 3rd-Party PLY Cloud", "Optional external .ply point cloud to merge or auto-discover alongside session LiDAR depth maps.")
-        
-        atlp_lbl = ttk.Label(io_card, text="Lens Profile:")
-        atlp_lbl.grid(row=4, column=0, sticky="w", pady=4)
+        ply_entry.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
+        ply_btn = ttk.Button(io_card, text="Browse", command=self.browse_ply)
+        ply_btn.grid(row=4, column=2, pady=4)
+        HoverTooltip(ply_entry, "Optional LiDAR Point Cloud (.ply)", "Optional .ply point cloud to load alongside synchronized camera frustums.")
+
+        ttk.Label(io_card, text="Lens Profile (.atlp)").grid(row=5, column=0, sticky="w", pady=4)
         atlp_entry = ttk.Entry(io_card, textvariable=self.atlp_path)
-        atlp_entry.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
-        atlp_btn = ttk.Button(io_card, text="🎯 Browse", command=self.browse_atlp)
-        atlp_btn.grid(row=4, column=2, pady=4, ipady=2, ipadx=6)
-        HoverTooltip(atlp_entry, "Custom Optical Calibration (.ATLP)", "Optional Brown-Conrady lens calibration profile exported from the 🎯 Lens Lab tab.")
-        
-        # Card 2: Collapsible DSLR Rig Lever-Arm & Boresight Offsets
+        atlp_entry.grid(row=5, column=1, sticky="ew", padx=8, pady=4)
+        atlp_btn = ttk.Button(io_card, text="Browse", command=self.browse_atlp)
+        atlp_btn.grid(row=5, column=2, pady=4)
+        HoverTooltip(atlp_entry, "Optical Calibration Profile (.atlp)", "Optional Brown-Conrady lens distortion profile exported from Lens Lab.")
+
+        # Card 2: Rig Lever-Arm & Boresight
         self.sync_rig_drawer = CollapsibleCard(
             left_panel,
-            title="📐 02 // RIG LEVER-ARM & BORESIGHT",
+            title="Rig Lever-Arm & Boresight",
             badge_text="cm / deg",
             expanded=True,
-            tooltip_title="Physical Camera Rig Offset Compensation",
-            tooltip_body="Compensates for the physical 3D translation (cm) and angular boresight difference (°) between the iPhone tracker lens and your main DSLR/cinema sensor.",
+            tooltip_title="Physical Rig Offset Compensation",
+            tooltip_body="Compensates for the 3D translation (cm) and rotational boresight difference (°) between the iPhone tracker lens and main camera sensor.",
         )
         self.sync_rig_drawer.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         rig_card = self.sync_rig_drawer.body
         rig_card.columnconfigure(0, weight=1)
         rig_card.columnconfigure(1, weight=1)
         rig_card.columnconfigure(2, weight=1)
-        
-        rig_hdr_row = ttk.Frame(rig_card)
+
+        rig_hdr_row = ttk.Frame(rig_card, style="Card.TFrame")
         rig_hdr_row.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 6))
-        ttk.Label(rig_hdr_row, text="LEVER-ARM TRANSLATION (cm)", style="Muted.TLabel").pack(side="left")
+        ttk.Label(rig_hdr_row, text="Translation Offset (cm)", style="Muted.TLabel").pack(side="left")
         diag_btn = tk.Button(
             rig_hdr_row,
-            text="📐 View Rig Diagram",
-            bg="#13223D",
+            text="View Rig Diagram",
+            bg=FIELD_BG,
             fg=ACCENT_CYAN,
-            activebackground=ACCENT_CYAN,
-            activeforeground=BG_COLOR,
-            font=("Segoe UI", 9, "bold"),
+            activebackground=HOVER_BG,
+            activeforeground="#FFFFFF",
+            font=("Segoe UI Semibold", 9),
             bd=0,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
             padx=10,
-            pady=4,
+            pady=3,
             cursor="hand2",
             command=lambda: self.show_quick_guide_modal("Rig Lever-Arm & Boresight Coordinate Guide"),
         )
         diag_btn.pack(side="right")
-        
-        self.add_offset_input(rig_card, "dx (Lateral cm)", self.dx, 0, row=1, tooltip_title="dx — Lateral Rig Offset (cm)", tooltip_body="Horizontal distance from iPhone lens to DSLR sensor (+Right / -Left).")
-        self.add_offset_input(rig_card, "dy (Vertical cm)", self.dy, 1, row=1, tooltip_title="dy — Vertical Rig Offset (cm)", tooltip_body="Vertical height from iPhone lens to DSLR sensor (+Up / -Down).")
-        self.add_offset_input(rig_card, "dz (Depth cm)", self.dz, 2, row=1, tooltip_title="dz — Optical Axis Depth Offset (cm)", tooltip_body="Forward/backward distance along the optical axis (+Forward / -Behind).")
-        
-        ttk.Label(rig_card, text="ROTATIONAL BORESIGHT (°)", style="Muted.TLabel").grid(row=2, column=0, columnspan=3, sticky="w", pady=(8, 4))
-        self.add_offset_input(rig_card, "rx (Roll °)", self.rot_roll, 0, row=3, tooltip_title="rx — Roll Boresight (°)", tooltip_body="Mechanical roll angle difference around the forward optical axis.")
-        self.add_offset_input(rig_card, "ry (Pitch °)", self.rot_pitch, 1, row=3, tooltip_title="ry — Pitch Boresight (°)", tooltip_body="Mechanical tilt/pitch difference between the iPhone mount and DSLR lens.")
-        self.add_offset_input(rig_card, "rz (Yaw °)", self.rot_yaw, 2, row=3, tooltip_title="rz — Yaw Boresight (°)", tooltip_body="Mechanical pan/yaw difference (use 180° when tracking with Rear Main while filming with Front camera).")
-        
-        # Card 3: Clock Sync + Sync Button
-        action_card = ttk.Frame(left_panel, style="Card.TFrame", padding=12)
+
+        self.add_offset_input(rig_card, "dx (Lateral cm)", self.dx, 0, row=1, tooltip_title="dx — Lateral Offset (cm)", tooltip_body="Horizontal distance from iPhone lens to main sensor (+Right / -Left).")
+        self.add_offset_input(rig_card, "dy (Vertical cm)", self.dy, 1, row=1, tooltip_title="dy — Vertical Offset (cm)", tooltip_body="Vertical distance from iPhone lens to main sensor (+Up / -Down).")
+        self.add_offset_input(rig_card, "dz (Depth cm)", self.dz, 2, row=1, tooltip_title="dz — Depth Offset (cm)", tooltip_body="Forward/backward distance along the optical axis (+Forward / -Behind).")
+
+        ttk.Label(rig_card, text="Rotational Boresight (°)", style="Muted.TLabel").grid(row=2, column=0, columnspan=3, sticky="w", pady=(8, 4))
+        self.add_offset_input(rig_card, "rx (Roll °)", self.rot_roll, 0, row=3, tooltip_title="rx — Roll Boresight (°)", tooltip_body="Mechanical roll angle difference around the optical axis.")
+        self.add_offset_input(rig_card, "ry (Pitch °)", self.rot_pitch, 1, row=3, tooltip_title="ry — Pitch Boresight (°)", tooltip_body="Mechanical pitch/tilt difference between rigs.")
+        self.add_offset_input(rig_card, "rz (Yaw °)", self.rot_yaw, 2, row=3, tooltip_title="rz — Yaw Boresight (°)", tooltip_body="Mechanical yaw/pan difference (use 180° for rear tracker + front camera).")
+
+        # Card 3: Clock Sync & Export Action
+        action_card = self.create_studio_card(left_panel, "Clock Alignment & Export", "Fine-tune shutter time offset or auto-solve from a Frame-00 Clapper Slate flash photo")
         action_card.grid(row=2, column=0, sticky="nsew")
         action_card.columnconfigure(0, weight=1)
-        
-        ttk.Label(action_card, text="⏱ 03 // ABU CLOCK OFFSET & EXIF INJECTION", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 2))
-        ttk.Label(action_card, text="Align DSLR clock drift manually or auto-solve from Frame-00 Clapper Slate flash.", style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 8))
-        
-        slider_frame = ttk.Frame(action_card)
+
+        slider_frame = ttk.Frame(action_card, style="Card.TFrame")
         slider_frame.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         slider_frame.columnconfigure(0, weight=1)
-        
+
         slider = ttk.Scale(slider_frame, from_=-300.0, to=300.0, variable=self.time_offset, orient="horizontal")
-        slider.grid(row=0, column=0, sticky="ew", padx=(0, 12))
-        HoverTooltip(slider, "Shutter Time Offset (seconds)", "Fine-tune the time difference between DSLR internal EXIF clock and Abu Clock TAI telemetry.")
-        
+        slider.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        HoverTooltip(slider, "Shutter Time Offset (seconds)", "Fine-tunes the clock delta between camera EXIF timestamps and Abu Clock TAI telemetry.")
+
         self.time_entry = ttk.Entry(slider_frame, textvariable=self.time_entry_var, font=("Consolas", 10), justify="center", width=8)
-        self.time_entry.grid(row=0, column=1, padx=(8, 2))
+        self.time_entry.grid(row=0, column=1, padx=(4, 4))
         ttk.Label(slider_frame, text="sec", style="Muted.TLabel").grid(row=0, column=2, sticky="w")
-        
+
         self.slate_solve_btn = ttk.Button(action_card, text="⚡ Auto-Solve Frame-00 Slate Flash Offset", command=self.solve_slate_flash_offset)
-        self.slate_solve_btn.grid(row=3, column=0, sticky="ew", ipady=4, pady=(2, 6))
+        self.slate_solve_btn.grid(row=3, column=0, sticky="ew", pady=(2, 8))
         HoverTooltip(
             self.slate_solve_btn,
             "Automatic Frame-00 Optical Slate Solver",
-            "Scans the image folder for the Frame-00 Clapper Slate flash photo and automatically computes the sub-frame time offset against the CSV log.",
+            "Scans the photos folder for the Frame-00 Clapper Slate flash and calculates the exact sub-frame time offset.",
         )
-        
-        self.sync_btn = ttk.Button(action_card, text="🚀 INJECT EXIF & EXPORT METASHAPE / ABUSCAN / COLMAP", style="Action.TButton", command=self.run_synchronization)
-        self.sync_btn.grid(row=4, column=0, sticky="ew", ipady=8, pady=(2, 0))
+
+        self.sync_btn = ttk.Button(
+            action_card,
+            text="Synchronize Photos & Export Manifests",
+            style="Action.TButton",
+            command=self.run_synchronization,
+        )
+        self.sync_btn.grid(row=4, column=0, sticky="ew", ipady=4, pady=(2, 0))
         HoverTooltip(
             self.sync_btn,
-            "Run Geodetic EXIF Injection & Multi-Format Export",
-            "Interpolates exact camera pose for every photo, writes GPS/XMP EXIF metadata, loads the 3D Spatial Map, and generates Metashape, COLMAP, and AbuScan manifests.",
+            "Run Geodetic EXIF Sync & Multi-Format Export",
+            "Writes interpolated 6DoF & GPS EXIF metadata, populates the 3D Spatial Map, and generates Metashape, COLMAP, and AbuScan manifests.",
         )
-        
+
         self.progress = ttk.Progressbar(action_card, orient="horizontal", mode="determinate")
         self.progress.grid(row=5, column=0, sticky="ew", pady=(10, 0))
-        
-        # Right Terminal Logs
-        right_panel = ttk.Frame(self.tab_sync, padding=4)
+
+        # Right Column: Pipeline Activity Console + Quick Transition Bar
+        right_panel = self.create_studio_card(self.tab_sync, pad_x=14, pad_y=12)
         right_panel.grid(row=1, column=1, sticky="nsew")
         right_panel.columnconfigure(0, weight=1)
         right_panel.rowconfigure(1, weight=1)
-        
-        ttk.Label(right_panel, text="🖥 PIPELINE TELEMETRY LOGS & INTEGRITY ANALYSIS", font=("Segoe UI", 10, "bold"), background=BG_COLOR, foreground=ACCENT_CYAN).grid(row=0, column=0, sticky="w", pady=(0, 8))
-        
-        self.log_box = tk.Text(right_panel, wrap="word", bg=CARD_BG, fg=TEXT_PRIMARY, insertbackground=ACCENT_CYAN, font=("Consolas", 10), bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=ACCENT_CYAN, padx=12, pady=12)
+
+        log_hdr = tk.Frame(right_panel, bg=CARD_BG)
+        log_hdr.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        tk.Label(log_hdr, text="Pipeline Activity & Output Console", bg=CARD_BG, fg=TEXT_PRIMARY, font=("Segoe UI Semibold", 10, "bold")).pack(side="left")
+
+        ttk.Button(log_hdr, text="Open Spatial Map →", style="Action.TButton", command=lambda: self.switch_workspace(1)).pack(side="right", padx=(6, 0))
+        ttk.Button(log_hdr, text="Open Photos Folder", command=self.open_selected_photo_folder).pack(side="right")
+
+        self.log_box = tk.Text(
+            right_panel,
+            wrap="word",
+            bg=FIELD_BG,
+            fg=TEXT_PRIMARY,
+            insertbackground=ACCENT_CYAN,
+            font=("Consolas", 10),
+            bd=0,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            highlightcolor=BORDER_FOCUS,
+            padx=12,
+            pady=12,
+        )
         self.log_box.grid(row=1, column=0, sticky="nsew")
-        
-        scroll = ttk.Scrollbar(right_panel, orient="vertical", command=self.log_box.yview)
-        scroll.grid(row=1, column=1, sticky="ns")
+
+        scroll = ttk.Scrollbar(right_panel, orient="vertical", command=self.log_box.yview, style="Vertical.TScrollbar")
+        scroll.grid(row=1, column=1, sticky="ns", padx=(2, 0))
         self.log_box.configure(yscrollcommand=scroll.set)
-        
-        self.log("SYSTEM ACTIVE // ABU TRACK & SCAN GEODETIC SYNCHRONIZER")
+
+        self.log("Abu Studio — Geodetic & 3DGS Synchronizer Ready")
         self.log(f"{version_text}")
-        self.log("Ready for 3DGS, Metashape, RealityScan & Abu Clock ST 2059-2 workflows.\n")
-        
-        # ----------------- TAB 2: 3D SPATIAL WORKSTATION -----------------
-        self.tab_visualizer.columnconfigure(0, weight=5) # 3D Plot Canvas
-        self.tab_visualizer.columnconfigure(1, weight=3, minsize=420) # Side photography controller
+        self.log("Select a Photos Folder and Telemetry CSV on the left to begin.\n")
+
+        # =========================================================================
+        # WORKSPACE 1: 3D SPATIAL MAP (Phase 4 Step 4.2)
+        # =========================================================================
+        self.tab_visualizer.columnconfigure(0, weight=6)
+        self.tab_visualizer.columnconfigure(1, weight=3, minsize=410)
         self.tab_visualizer.rowconfigure(1, weight=1)
-        
+
         self.create_workflow_banner(
             self.tab_visualizer,
-            "① Inspect synced camera frustums & LiDAR point cloud   →   ② Clean outliers (SOR)   →   ③ Select Lens Profile & Export to Postshot / Metashape / RealityScan",
-            "3D Spatial Map & Multi-Target Export Guide",
-            "After running EXIF Sync in Tab 1, your camera trajectory and LiDAR point cloud appear here. Click any photo in the Photography Controller list to highlight its 3D frustum (double-click to open snapshot), run Statistical Outlier Removal (SOR), and export ready-to-train scenes.",
+            "3D Spatial Map & Scene Export",
+            "Inspect synchronized camera frustums and LiDAR point clouds, filter noise outliers, and export to Postshot, Metashape, or RealityScan.",
+            "Spatial Map & Multi-Target Export Guide",
+            "Click any camera frame in the right panel to highlight its 3D frustum (double-click to inspect photo & EXIF), run Statistical Outlier Removal (SOR), and export ready-to-train scenes.",
         )
-        
-        # Left: Matplotlib 3D Viewport + Unified Camera Toolbar (WIN-UX-03)
-        self.view_frame = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=10)
-        self.view_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
 
+        # Left: 3D Matplotlib Viewport Card
+        self.view_frame = self.create_studio_card(self.tab_visualizer, pad_x=12, pad_y=12)
+        self.view_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
         self.view_frame.columnconfigure(0, weight=1)
         self.view_frame.rowconfigure(1, weight=1)
-        
-        map_toolbar = ttk.Frame(self.view_frame, style="Card.TFrame")
+
+        map_toolbar = tk.Frame(self.view_frame, bg=CARD_BG)
         map_toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        ttk.Label(map_toolbar, text="🕸 INTERACTIVE 3D SPATIAL MAP", style="Header.TLabel").pack(side="left")
-        
-        ttk.Button(map_toolbar, text="➖ Pt", width=5, command=lambda: self.adjust_3d_point_size(0.7)).pack(side="right", padx=(2, 0), ipady=2)
-        ttk.Button(map_toolbar, text="➕ Pt", width=5, command=lambda: self.adjust_3d_point_size(1.4)).pack(side="right", padx=2, ipady=2)
-        ttk.Button(map_toolbar, text="📐 Top", width=6, command=lambda: self.set_3d_camera_preset(90, -90)).pack(side="right", padx=2, ipady=2)
-        ttk.Button(map_toolbar, text="📐 Side", width=6, command=lambda: self.set_3d_camera_preset(0, -90)).pack(side="right", padx=2, ipady=2)
-        ttk.Button(map_toolbar, text="🎥 Iso", width=6, command=lambda: self.set_3d_camera_preset(30, -60)).pack(side="right", padx=2, ipady=2)
-        ttk.Button(map_toolbar, text="🔄 Reset", width=7, command=self.render_3d_scene).pack(side="right", padx=2, ipady=2)
-        
-        # Create empty Matplotlib figure inside Tkinter
+        tk.Label(map_toolbar, text="3D Trajectory & Point Cloud Viewport", bg=CARD_BG, fg=TEXT_PRIMARY, font=("Segoe UI Semibold", 10, "bold")).pack(side="left")
+
+        ttk.Button(map_toolbar, text="- Pt", width=5, command=lambda: self.adjust_3d_point_size(0.7)).pack(side="right", padx=(2, 0))
+        ttk.Button(map_toolbar, text="+ Pt", width=5, command=lambda: self.adjust_3d_point_size(1.4)).pack(side="right", padx=2)
+        ttk.Button(map_toolbar, text="Top", width=5, command=lambda: self.set_3d_camera_preset(90, -90)).pack(side="right", padx=2)
+        ttk.Button(map_toolbar, text="Side", width=5, command=lambda: self.set_3d_camera_preset(0, -90)).pack(side="right", padx=2)
+        ttk.Button(map_toolbar, text="Iso", width=5, command=lambda: self.set_3d_camera_preset(30, -60)).pack(side="right", padx=2)
+        ttk.Button(map_toolbar, text="Reset", width=6, command=self.render_3d_scene).pack(side="right", padx=2)
+
         self.fig = plt.figure(facecolor=BG_COLOR)
         self.ax = self.fig.add_subplot(111, projection='3d', facecolor=BG_COLOR)
         self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         self.setup_3d_axes()
-        
+
         self.canvas_3d = FigureCanvasTkAgg(self.fig, master=self.view_frame)
         self.canvas_3d.get_tk_widget().grid(row=1, column=0, sticky="nsew")
         self.fig.canvas.mpl_connect('button_press_event', self.on_canvas_click)
 
-        # Right Control Panel
-        side_panel = ttk.Frame(self.tab_visualizer, style="Card.TFrame", padding=15)
+        # Right: Camera Frame Inspector & Exports Card
+        side_panel = self.create_studio_card(self.tab_visualizer, "Synchronized Camera Frames", "Click to highlight frustum • Double-click to inspect EXIF")
         side_panel.grid(row=1, column=1, sticky="nsew")
         side_panel.columnconfigure(0, weight=1)
-        side_panel.rowconfigure(1, weight=1)
-        
-        ttk.Label(side_panel, text="📸 PHOTOGRAPHY CONTROLLER", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
-        
-        # Listbox containing photography frames (Single-click highlights frustum; Double-click opens snapshot — WIN-UX-04)
-        self.photo_listbox = tk.Listbox(side_panel, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 10), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
-        self.photo_listbox.grid(row=1, column=0, sticky="nsew", pady=(0, 6))
+        side_panel.rowconfigure(2, weight=1)
+
+        self.photo_listbox = tk.Listbox(
+            side_panel,
+            bg=FIELD_BG,
+            fg=TEXT_PRIMARY,
+            font=("Consolas", 10),
+            selectbackground=ACCENT_PRIMARY,
+            selectforeground="#FFFFFF",
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            bd=0,
+        )
+        self.photo_listbox.grid(row=2, column=0, sticky="nsew", pady=(0, 6))
         self.photo_listbox.bind("<<ListboxSelect>>", self._on_listbox_select)
         self.photo_listbox.bind("<Double-Button-1>", self.open_selected_photo_dialog)
-        
-        scroll_list = ttk.Scrollbar(side_panel, orient="vertical", command=self.photo_listbox.yview)
-        scroll_list.grid(row=1, column=1, sticky="ns", pady=(0, 6))
+
+        scroll_list = ttk.Scrollbar(side_panel, orient="vertical", command=self.photo_listbox.yview, style="Vertical.TScrollbar")
+        scroll_list.grid(row=2, column=1, sticky="ns", pady=(0, 6), padx=(2, 0))
         self.photo_listbox.configure(yscrollcommand=scroll_list.set)
-        
-        # Inline Selected Photo Inspector Summary Bar
+
         self.photo_summary_lbl = tk.Label(
             side_panel,
             textvariable=self.selected_photo_summary_var,
-            bg="#0B1324",
+            bg=FIELD_BG,
             fg=ACCENT_CYAN,
             font=("Consolas", 9),
             anchor="w",
             justify="left",
-            padx=8,
+            wraplength=375,
+            padx=10,
             pady=6,
         )
-        self.photo_summary_lbl.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 8))
-        
-        # Processing & Inspection Buttons
-        btn_frame = ttk.Frame(side_panel)
-        btn_frame.grid(row=3, column=0, columnspan=2, sticky="ew")
+        self.photo_summary_lbl.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+
+        btn_frame = ttk.Frame(side_panel, style="Card.TFrame")
+        btn_frame.grid(row=4, column=0, columnspan=2, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
-        
-        self.inspect_photo_btn = ttk.Button(btn_frame, text="🔍 Inspect Photo & EXIF", command=self.open_selected_photo_dialog)
-        self.inspect_photo_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4), ipady=5)
-        HoverTooltip(
-            self.inspect_photo_btn,
-            "Inspect Selected Camera Snapshot",
-            "Opens a non-blocking preview window with image thumbnail, interpolated 6DoF pose, GPS coordinates, and SMPTE timecode.",
-        )
-        
-        self.clean_btn = ttk.Button(btn_frame, text="🧹 Clean Cloud (SOR)", command=self.clean_point_cloud_sor)
-        self.clean_btn.grid(row=0, column=1, sticky="ew", padx=(4, 0), ipady=5)
-        HoverTooltip(
-            self.clean_btn,
-            "Statistical Outlier Removal (SOR)",
-            "Removes floating noise and stray depth points from the merged LiDAR point cloud using k-nearest neighbor distance filtering.",
-        )
-        
-        # 06 // CALIBRATION & MULTI-TARGET EXPORTS
-        export_frame = ttk.Frame(side_panel)
-        export_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+
+        self.inspect_photo_btn = ttk.Button(btn_frame, text="Inspect Photo & EXIF", command=self.open_selected_photo_dialog)
+        self.inspect_photo_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        HoverTooltip(self.inspect_photo_btn, "Inspect Selected Snapshot", "Opens a preview window with image thumbnail, 6DoF pose, GPS coordinates, and SMPTE timecode.")
+
+        self.clean_btn = ttk.Button(btn_frame, text="Clean Point Cloud (SOR)", command=self.clean_point_cloud_sor)
+        self.clean_btn.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        HoverTooltip(self.clean_btn, "Statistical Outlier Removal (SOR)", "Removes floating noise and depth outliers from the LiDAR point cloud.")
+
+        export_frame = ttk.Frame(side_panel, style="Card.TFrame")
+        export_frame.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(14, 0))
         export_frame.columnconfigure(0, weight=1)
         export_frame.columnconfigure(1, weight=1)
         export_frame.columnconfigure(2, weight=1)
-        
-        ttk.Label(export_frame, text="📦 LENS PROFILE & 1-CLICK EXPORTS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
-        
-        # Profile Dropdown
+
+        ttk.Label(export_frame, text="Optical Preset & 1-Click Scene Exports", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+
         profiles = [
-            "iPhone 16 Pro Max Main (24mm)", 
-            "iPhone 16 Pro Max Ultra Wide (13mm)", 
+            "iPhone 16 Pro Max Main (24mm)",
+            "iPhone 16 Pro Max Ultra Wide (13mm)",
             "iPhone 16 Pro Max Telephoto (120mm)",
-            "iPhone 15 Pro Max Main (24mm)", 
-            "iPhone 15 Pro Max Ultra Wide (13mm)", 
+            "iPhone 15 Pro Max Main (24mm)",
+            "iPhone 15 Pro Max Ultra Wide (13mm)",
             "iPhone 15 Pro Max Telephoto (120mm)",
-            "iPhone 14 Pro Max Main (24mm)", 
-            "iPhone 14 Pro Max Ultra Wide (13mm)", 
+            "iPhone 14 Pro Max Main (24mm)",
+            "iPhone 14 Pro Max Ultra Wide (13mm)",
             "iPhone 14 Pro Max Telephoto (77mm)",
-            "iPhone 17 Pro Max Main (24mm)", 
-            "iPhone 17 Pro Max Ultra Wide (13mm)", 
+            "iPhone 17 Pro Max Main (24mm)",
+            "iPhone 17 Pro Max Ultra Wide (13mm)",
             "iPhone 17 Pro Max Telephoto (120mm)",
             "Sony FE 24-70mm GM II (24mm)",
             "Sony FE 24-70mm GM II (70mm)",
@@ -1231,617 +1794,419 @@ class CamTrackDesktopApp:
             "Canon RF 24-70mm f/2.8L (70mm)",
             "Canon RF 15-35mm f/2.8L (15mm)",
             "Canon RF 15-35mm f/2.8L (35mm)",
-            "Standard DSLR / Flat Lens"
+            "Standard DSLR / Flat Lens",
         ]
         self.profile_combo = ttk.Combobox(export_frame, textvariable=self.lens_profile, values=profiles, state="readonly")
-        self.profile_combo.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 10))
-        HoverTooltip(
-            self.profile_combo,
-            "Optical Intrinsic Preset",
-            "Select a factory lens preset or load a custom .atlp profile solved in the 🎯 Lens Lab tab.",
-        )
-        
-        # Three target export buttons
-        self.postshot_btn = ttk.Button(export_frame, text="✨ Postshot (3DGS)", command=self.export_for_postshot)
-        self.postshot_btn.grid(row=2, column=0, sticky="ew", padx=(0, 4), ipady=6)
-        HoverTooltip(self.postshot_btn, "Export for Jawset Postshot (3DGS)", "Exports COLMAP/transforms.json camera poses and cleaned PLY point cloud ready for 3D Gaussian Splatting.")
-        
-        self.metashape_btn = ttk.Button(export_frame, text="🗺 Metashape (Z-Up)", command=self.export_for_metashape)
-        self.metashape_btn.grid(row=2, column=1, sticky="ew", padx=2, ipady=6)
-        HoverTooltip(self.metashape_btn, "Export for Agisoft Metashape", "Exports Z-Up georeferenced camera reference CSV and lens calibration XML for Agisoft Metashape.")
-        
-        self.realityscan_btn = ttk.Button(export_frame, text="🏛 RealityScan", command=self.export_for_realityscan)
-        self.realityscan_btn.grid(row=2, column=2, sticky="ew", padx=(4, 0), ipady=6)
-        HoverTooltip(self.realityscan_btn, "Export for Epic RealityScan / RealityCapture", "Exports flight log and XMP camera priors compatible with RealityScan / RealityCapture.")
-        
-        # ----------------- TAB 3: OPTICAL LENS CALIBRATION & SOLVER -----------------
-        self.tab_calibrator.columnconfigure(0, weight=4, minsize=460) # Left controls panel
-        self.tab_calibrator.columnconfigure(1, weight=5) # Right preview panel
-        self.tab_calibrator.rowconfigure(1, weight=1)
-        
-        self.create_workflow_banner(
-            self.tab_calibrator,
-            "① Enter Checkerboard Inner Corners & Square Size (mm)   →   ② Load Board Photos & Run Optical Solver   →   ③ Apply to Project or Export (.ATLP / XML / JSON)",
-            "Optical Lens Calibration & Distortion Solver",
-            "Solves sub-pixel Brown-Conrady focal length (fx, fy), principal point (cx, cy), radial (k1, k2, k3), and tangential (p1, p2) distortion coefficients from 10–25 checkerboard photos.",
-        )
-        
-        # Left Panel: Controls Card
-        calib_left = ttk.Frame(self.tab_calibrator, padding=6)
-        calib_left.grid(row=1, column=0, sticky="nsew")
-        calib_left.columnconfigure(0, weight=1)
-        calib_left.rowconfigure(1, weight=1) # Let listbox expand
-        
-        # Card 1: Grid settings
-        calib_io_card = ttk.Frame(calib_left, style="Card.TFrame", padding=12)
-        calib_io_card.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        calib_io_card.columnconfigure(1, weight=1)
-        
-        ttk.Label(calib_io_card, text="🎯 CHECKERBOARD PARAMETERS", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
-        
-        # Grid Size (Width x Height)
-        ttk.Label(calib_io_card, text="Grid Size (W x H corners):").grid(row=1, column=0, sticky="w", pady=4)
-        grid_dim_frame = ttk.Frame(calib_io_card)
-        grid_dim_frame.grid(row=1, column=1, columnspan=2, sticky="w", pady=4)
-        
-        self.width_entry = ttk.Entry(grid_dim_frame, textvariable=self.calib_board_width, width=5, justify="center")
-        self.width_entry.pack(side="left", padx=(5, 2))
-        ttk.Label(grid_dim_frame, text="x").pack(side="left", padx=2)
-        self.height_entry = ttk.Entry(grid_dim_frame, textvariable=self.calib_board_height, width=5, justify="center")
-        self.height_entry.pack(side="left", padx=2)
-        ttk.Label(grid_dim_frame, text=" inner corners").pack(side="left", padx=2)
-        HoverTooltip(grid_dim_frame, "Checkerboard Inner Corners (W × H)", "Count the interior intersections where black and white squares meet (do not count the outer border edges).")
-        
-        # Square physical size
-        ttk.Label(calib_io_card, text="Square Dimension (mm):").grid(row=2, column=0, sticky="w", pady=4)
-        sq_frame = ttk.Frame(calib_io_card)
-        sq_frame.grid(row=2, column=1, columnspan=2, sticky="w", pady=4)
-        self.sq_entry = ttk.Entry(sq_frame, textvariable=self.calib_square_size, width=8, justify="center")
-        self.sq_entry.pack(side="left", padx=(5, 2))
-        ttk.Label(sq_frame, text=" mm").pack(side="left", padx=2)
-        
-        # Photo path
-        ttk.Label(calib_io_card, text="Chessboard Folder:").grid(row=3, column=0, sticky="w", pady=4)
-        calib_entry = ttk.Entry(calib_io_card, textvariable=self.calib_photo_dir)
-        calib_entry.grid(row=3, column=1, sticky="ew", padx=8, pady=4)
-        ttk.Button(calib_io_card, text="📂 Browse", command=self.browse_calib_photos).grid(row=3, column=2, pady=4, ipady=2, ipadx=6)
-        
-        # Card 2: Calib Images Listbox
-        calib_list_card = ttk.Frame(calib_left, style="Card.TFrame", padding=12)
-        calib_list_card.grid(row=1, column=0, sticky="nsew", pady=(0, 12))
-        calib_list_card.columnconfigure(0, weight=1)
-        calib_list_card.rowconfigure(1, weight=1)
-        
-        ttk.Label(calib_list_card, text="🖼 BOARD CAPTURE SERIES", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
-        
-        self.calib_listbox = tk.Listbox(calib_list_card, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 10), selectbackground=ACCENT_CYAN, selectforeground=BG_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR, bd=0)
-        self.calib_listbox.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
-        self.calib_listbox.bind("<<ListboxSelect>>", self.on_calib_listbox_select)
-        
-        scroll_calib = ttk.Scrollbar(calib_list_card, orient="vertical", command=self.calib_listbox.yview)
-        scroll_calib.grid(row=1, column=1, sticky="ns", pady=(0, 10))
-        self.calib_listbox.configure(yscrollcommand=scroll_calib.set)
-        
-        # Controls Frame under Listbox
-        calib_actions = ttk.Frame(calib_left, style="Card.TFrame", padding=12)
-        calib_actions.grid(row=2, column=0, sticky="ew")
-        calib_actions.columnconfigure(0, weight=1)
-        calib_actions.columnconfigure(1, weight=1)
-        calib_actions.columnconfigure(2, weight=1)
-        
-        ttk.Label(calib_actions, text="⚙ SOLVER & PROFILE EXPORT", style="Header.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
-        
-        self.solve_calib_btn = ttk.Button(calib_actions, text="▶ RUN OPTICAL SOLVER", style="Action.TButton", command=self.solve_lens_calibration)
-        self.solve_calib_btn.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 8), ipady=6)
-        
-        self.apply_calib_btn = ttk.Button(calib_actions, text="✓ Apply to Active Project", command=self.apply_calibration_to_project)
-        self.apply_calib_btn.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(0, 12), ipady=4)
-        
-        self.export_atlp_btn = ttk.Button(calib_actions, text="💾 .ATLP Profile", command=self.export_atlp_profile)
-        self.export_atlp_btn.grid(row=3, column=0, sticky="ew", padx=(0, 2), ipady=4)
-        
-        self.export_meta_xml_btn = ttk.Button(calib_actions, text="💾 Metashape XML", command=self.export_metashape_calibration_xml)
-        self.export_meta_xml_btn.grid(row=3, column=1, sticky="ew", padx=2, ipady=4)
-        
-        self.export_post_json_btn = ttk.Button(calib_actions, text="💾 Postshot JSON", command=self.export_postshot_calibration_json)
-        self.export_post_json_btn.grid(row=3, column=2, sticky="ew", padx=(2, 0), ipady=4)
-        
-        # Right Panel: Visualizer & Real-time Logs
-        right_panel = ttk.Frame(self.tab_calibrator, padding=6)
-        right_panel.grid(row=1, column=1, sticky="nsew")
-        right_panel.columnconfigure(0, weight=1)
-        right_panel.rowconfigure(0, weight=6) # 3D/Photo canvas
-        right_panel.rowconfigure(1, weight=4) # Logs
-        
-        # Photo/Grid display
-        self.calib_fig = plt.figure(facecolor=BG_COLOR)
-        self.calib_ax = self.calib_fig.add_subplot(111)
-        self.calib_ax.set_facecolor(BG_COLOR)
-        self.calib_ax.axis('off')
-        
-        self.calib_canvas = FigureCanvasTkAgg(self.calib_fig, master=right_panel)
-        self.calib_canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew", pady=(0, 10))
-        
-        # Log terminal
-        calib_log_card = ttk.Frame(right_panel, style="Card.TFrame", padding=12)
-        calib_log_card.grid(row=1, column=0, sticky="nsew")
-        calib_log_card.columnconfigure(0, weight=1)
-        calib_log_card.rowconfigure(1, weight=1)
-        
-        ttk.Label(calib_log_card, text="🖥 OPTICAL SOLVER CONSOLE", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
-        
-        self.calib_console = tk.Text(calib_log_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 10), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
-        self.calib_console.grid(row=1, column=0, sticky="nsew")
-        
-        scroll_console = ttk.Scrollbar(calib_log_card, orient="vertical", command=self.calib_console.yview)
-        scroll_console.grid(row=1, column=1, sticky="ns")
-        self.calib_console.configure(yscrollcommand=scroll_console.set)
-        
-        # ----------------- TAB 4: LIVE TELEMETRY CHECKER -----------------
-        self.tab_receiver.columnconfigure(0, weight=4, minsize=470) # Left Controls Panel with guaranteed width (WIN-UI-04)
-        self.tab_receiver.columnconfigure(1, weight=6) # Right Panel
+        self.profile_combo.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 8))
+        HoverTooltip(self.profile_combo, "Optical Intrinsic Preset", "Select a factory lens preset or load a custom .atlp profile solved in Lens Lab.")
+
+        self.postshot_btn = ttk.Button(export_frame, text="Postshot 3DGS", style="Action.TButton", command=self.export_for_postshot)
+        self.postshot_btn.grid(row=2, column=0, sticky="ew", padx=(0, 3))
+        HoverTooltip(self.postshot_btn, "Export for Jawset Postshot (3DGS)", "Exports camera poses and colorized PLY point cloud ready for 3D Gaussian Splatting.")
+
+        self.metashape_btn = ttk.Button(export_frame, text="Metashape", command=self.export_for_metashape)
+        self.metashape_btn.grid(row=2, column=1, sticky="ew", padx=3)
+        HoverTooltip(self.metashape_btn, "Export for Agisoft Metashape", "Exports Z-Up georeferenced camera reference CSV and lens calibration XML.")
+
+        self.realityscan_btn = ttk.Button(export_frame, text="RealityScan", command=self.export_for_realityscan)
+        self.realityscan_btn.grid(row=2, column=2, sticky="ew", padx=(3, 0))
+        HoverTooltip(self.realityscan_btn, "Export for Epic RealityScan", "Exports camera priors and point cloud compatible with RealityScan / RealityCapture.")
+
+        # =========================================================================
+        # WORKSPACE 2: LIVE STAGE & VIRTUAL PRODUCTION (Phase 3 Step 3.1 - 3.4)
+        # =========================================================================
+        self.tab_receiver.columnconfigure(0, weight=4, minsize=430)
+        self.tab_receiver.columnconfigure(1, weight=7)
         self.tab_receiver.rowconfigure(1, weight=1)
-        
+
         self.create_workflow_banner(
             self.tab_receiver,
-            "① Enter PC Local IP on iOS (UDP 8080) & Start Listening   →   ② Optional: Forward to UE5 (Port 8081)   →   ③ Monitor 6DoF Pose, Timecode & 3D Stage",
-            "Live Track & Stream — Real-Time 6DoF & Virtual Production Hub",
+            "Live Stage & Virtual Production",
+            "Receive real-time 6DoF tracking & RTP video from iOS (UDP 8080/5004) and forward calibrated telemetry to Unreal Engine 5 (Port 8081).",
+            "Live Stage — Virtual Production Hub",
             "Port Topology: iOS → PC Telemetry (UDP 8080) | iOS → PC RTP Video (UDP 5004) | PC → UE5 Forwarder (UDP 8081) | Abu Clock PTP (UDP 50320) | Discovery (UDP 53530).",
         )
-        
-        # Scrollable Left Sidebar so all 5 cards fit on 13"–15" laptop screens without clipping
+
+        # Left Control Sidebar
         self.rx_left_scroll = ScrollableSidebarFrame(self.tab_receiver)
-        self.rx_left_scroll.grid(row=1, column=0, sticky="nsew", padx=(0, 6))
+        self.rx_left_scroll.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
         rx_left = self.rx_left_scroll.inner
         rx_left.columnconfigure(0, weight=1)
-        
-        # Card 1: Receiver Configuration (Always Visible)
-        rx_config_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_config_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+
+        # Card 1: Stream Receiver
+        rx_config_card = self.create_studio_card(rx_left, "Stream Receiver", "Inbound UDP telemetry & low-latency RTP camera video", pad_y=8)
+        rx_config_card.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         rx_config_card.columnconfigure(0, weight=1)
         rx_config_card.columnconfigure(1, weight=1)
-        
-        ttk.Label(rx_config_card, text="📡 01 // UDP LISTENER & VIDEO STREAM", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
-        
-        ttk.Label(rx_config_card, text="UDP Telemetry Port:").grid(row=1, column=0, sticky="w", pady=3)
-        port_entry = ttk.Entry(rx_config_card, textvariable=self.receiver_port, width=10)
-        port_entry.grid(row=1, column=1, sticky="w", pady=3)
-        HoverTooltip(port_entry, "UDP Telemetry Listener Port", "Local UDP port to receive 6DoF tracking packets from iOS (default: 8080). Must match the Target Port set in the iOS app.")
-        
-        ttk.Label(rx_config_card, text="RTP H.264/HEVC Port:").grid(row=2, column=0, sticky="w", pady=3)
-        video_port_entry = ttk.Entry(rx_config_card, textvariable=self.video_stream_port, width=10)
-        video_port_entry.grid(row=2, column=1, sticky="w", pady=3)
-        HoverTooltip(video_port_entry, "RTP Live Video Stream Port", "UDP port for receiving low-latency RTP H.264/HEVC camera video packets from iOS (default: 5004).")
-        
-        video_chk = ttk.Checkbutton(rx_config_card, text="Enable RTP Camera Video Stream", variable=self.is_video_stream_enabled)
-        video_chk.grid(row=3, column=0, columnspan=2, sticky="w", pady=2)
-        HoverTooltip(video_chk, "Decode Incoming Camera Feed", "When enabled, decodes the live iOS camera video stream for 3D Cockpit background preview or Spout GPU sharing.")
-        
-        spout_chk = ttk.Checkbutton(rx_config_card, text="Enable DirectX Spout GPU Sharing", variable=self.is_spout_enabled)
-        spout_chk.grid(row=4, column=0, columnspan=2, sticky="w", pady=2)
-        HoverTooltip(spout_chk, "Zero-Copy Spout Texture Sender", "Shares the decoded iOS camera feed directly to Unreal Engine, TouchDesigner, or OBS via DirectX Spout.")
-        
-        # Primary Start/Stop Action Buttons
-        self.start_rx_btn = ttk.Button(rx_config_card, text="▶ START LISTENING", style="Action.TButton", command=self.start_receiver)
-        self.start_rx_btn.grid(row=5, column=0, sticky="ew", padx=(0, 3), pady=(8, 4), ipady=4)
-        
-        self.stop_rx_btn = ttk.Button(rx_config_card, text="■ STOP", state="disabled", command=self.stop_receiver)
-        self.stop_rx_btn.grid(row=5, column=1, sticky="ew", padx=(3, 0), pady=(8, 4), ipady=4)
-        
-        # Restored 1-Click Firewall Whitelist & Logs Utility Row (WIN-UX-05)
-        self.firewall_btn = ttk.Button(rx_config_card, text="🛡 Fix Firewall (8080/5004)", command=self.fix_windows_firewall)
-        self.firewall_btn.grid(row=6, column=0, sticky="ew", padx=(0, 3), pady=(2, 0), ipady=3)
-        HoverTooltip(
-            self.firewall_btn,
-            "1-Click Windows Defender Firewall Rule",
-            "Requests Administrator elevation to whitelist inbound UDP ports 8080 (Telemetry), 5004 (RTP Video), 50320 (Abu Clock), and 53530 (Discovery).",
-        )
-        
-        self.open_logs_btn = ttk.Button(rx_config_card, text="📂 Open Logs Folder", command=self.open_logs_folder)
-        self.open_logs_btn.grid(row=6, column=1, sticky="ew", padx=(3, 0), pady=(2, 0), ipady=3)
-        HoverTooltip(
-            self.open_logs_btn,
-            "Open Diagnostic Logs Directory",
-            "Opens the local AppData log folder containing abu_track_desktop.log for network and solver diagnostics.",
-        )
-        
-        # Card 2: Dynamic UDP Forwarder Server Settings (Always Visible)
-        rx_forward_card = ttk.Frame(rx_left, style="Card.TFrame", padding=12)
-        rx_forward_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+
+        ports_grid = ttk.Frame(rx_config_card, style="Card.TFrame")
+        ports_grid.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 4))
+        ports_grid.columnconfigure(1, weight=1)
+        ports_grid.columnconfigure(3, weight=1)
+
+        ttk.Label(ports_grid, text="Telemetry Port").grid(row=0, column=0, sticky="w", pady=1)
+        port_entry = ttk.Entry(ports_grid, textvariable=self.receiver_port, width=8, justify="center")
+        port_entry.grid(row=0, column=1, sticky="w", padx=(6, 14), pady=1)
+        HoverTooltip(port_entry, "UDP Telemetry Port (8080)", "Local UDP port for receiving 6DoF tracking packets from iOS.")
+
+        ttk.Label(ports_grid, text="RTP Video Port").grid(row=0, column=2, sticky="w", pady=1)
+        video_port_entry = ttk.Entry(ports_grid, textvariable=self.video_stream_port, width=8, justify="center")
+        video_port_entry.grid(row=0, column=3, sticky="w", padx=(6, 0), pady=1)
+        HoverTooltip(video_port_entry, "RTP Video Port (5004)", "Local UDP port for receiving H.264/HEVC camera video stream from iOS.")
+
+        video_chk = ttk.Checkbutton(rx_config_card, text="Decode RTP Camera Video Stream", variable=self.is_video_stream_enabled)
+        video_chk.grid(row=3, column=0, columnspan=2, sticky="w", pady=1)
+        HoverTooltip(video_chk, "Decode Incoming Camera Feed", "Decodes the live iOS camera video stream for 3D Cockpit background preview or Spout GPU sharing.")
+
+        spout_chk = ttk.Checkbutton(rx_config_card, text="Share Video via DirectX Spout GPU", variable=self.is_spout_enabled)
+        spout_chk.grid(row=4, column=0, columnspan=2, sticky="w", pady=1)
+        HoverTooltip(spout_chk, "Zero-Copy Spout Texture Sender", "Shares decoded camera frames directly to Unreal Engine, TouchDesigner, or OBS via DirectX Spout.")
+
+        self.start_rx_btn = ttk.Button(rx_config_card, text="▶ Start Listening", style="Action.TButton", command=self.start_receiver)
+        self.start_rx_btn.grid(row=5, column=0, sticky="ew", padx=(0, 4), pady=(6, 3))
+
+        self.stop_rx_btn = ttk.Button(rx_config_card, text="■ Stop", style="Danger.TButton", state="disabled", command=self.stop_receiver)
+        self.stop_rx_btn.grid(row=5, column=1, sticky="ew", padx=(4, 0), pady=(6, 3))
+
+        self.firewall_btn = ttk.Button(rx_config_card, text="Fix Firewall (8080/5004)", command=self.fix_windows_firewall)
+        self.firewall_btn.grid(row=6, column=0, sticky="ew", padx=(0, 4), pady=(2, 0))
+        HoverTooltip(self.firewall_btn, "Whitelist Studio UDP Ports", "Adds Windows Defender Firewall inbound rules for UDP ports 8080, 5004, 50320, and 53530.")
+
+        self.open_logs_btn = ttk.Button(rx_config_card, text="Open Logs Folder", command=self.open_logs_folder)
+        self.open_logs_btn.grid(row=6, column=1, sticky="ew", padx=(4, 0), pady=(2, 0))
+        HoverTooltip(self.open_logs_btn, "Open Diagnostic Logs", "Opens the local log directory containing abu_track_desktop.log.")
+
+        # Card 2: Unreal & FreeD Forwarder
+        rx_forward_card = self.create_studio_card(rx_left, "Unreal & FreeD Forwarder", "Re-broadcast calibrated 6DoF & timecode to UE5 or broadcast engines", pad_y=8)
+        rx_forward_card.grid(row=1, column=0, sticky="ew", pady=(0, 8))
         rx_forward_card.columnconfigure(1, weight=1)
-        
-        ttk.Label(rx_forward_card, text="🔀 02 // UNREAL / FREED / OPENTRACKIO FORWARDER", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
-        
+
         forward_chk = ttk.Checkbutton(rx_forward_card, text="Enable Target UDP Forwarding", variable=self.forward_enabled, command=self.toggle_forwarding)
-        forward_chk.grid(row=1, column=0, columnspan=2, sticky="w", pady=2)
-        HoverTooltip(forward_chk, "Re-Broadcast Calibrated Telemetry", "Forwards buffered, coordinate-aligned, and lever-arm compensated poses + Abu Clock timecode to Unreal Engine or disguise/vizrt.")
-        
-        ttk.Label(rx_forward_card, text="Target IP / Host:").grid(row=2, column=0, sticky="w", pady=3)
-        host_entry = ttk.Entry(rx_forward_card, textvariable=self.forward_host, width=15)
-        host_entry.grid(row=2, column=1, sticky="w", pady=3)
-        HoverTooltip(host_entry, "Destination IP Address", "IP address of the Unreal Engine workstation (use 127.0.0.1 if Unreal Engine is running on this same PC).")
-        
-        ttk.Label(rx_forward_card, text="Target Port:").grid(row=3, column=0, sticky="w", pady=3)
-        tgt_port_entry = ttk.Entry(rx_forward_card, textvariable=self.forward_port, width=10)
-        tgt_port_entry.grid(row=3, column=1, sticky="w", pady=3)
-        HoverTooltip(tgt_port_entry, "Destination UDP Port", "UDP port configured in the Unreal Engine Live Link Abu Track Source (default: 8081 when forwarding on same PC).")
-        
-        ttk.Label(rx_forward_card, text="Protocol Format:").grid(row=4, column=0, sticky="w", pady=3)
-        proto_combo = ttk.Combobox(rx_forward_card, textvariable=self.forward_protocol, values=["Live Link JSON", "SMPTE FreeD-TC (0xD2 - 41B)", "FreeD Binary", "OpenTrackIO JSON"], state="readonly", width=24)
-        proto_combo.grid(row=4, column=1, sticky="w", pady=3)
+        forward_chk.grid(row=2, column=0, columnspan=2, sticky="w", pady=(0, 3))
+        HoverTooltip(forward_chk, "Re-Broadcast Calibrated Telemetry", "Forwards buffered, coordinate-aligned, and lever-arm compensated poses to Unreal Engine.")
+
+        dest_row = ttk.Frame(rx_forward_card, style="Card.TFrame")
+        dest_row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=2)
+        dest_row.columnconfigure(1, weight=1)
+
+        ttk.Label(dest_row, text="Target IP").grid(row=0, column=0, sticky="w")
+        host_entry = ttk.Entry(dest_row, textvariable=self.forward_host, width=13)
+        host_entry.grid(row=0, column=1, sticky="ew", padx=(6, 12))
+        HoverTooltip(host_entry, "Destination IP Address", "IP of the Unreal Engine workstation (use 127.0.0.1 when running on this same PC).")
+
+        ttk.Label(dest_row, text="Port").grid(row=0, column=2, sticky="w")
+        tgt_port_entry = ttk.Entry(dest_row, textvariable=self.forward_port, width=7, justify="center")
+        tgt_port_entry.grid(row=0, column=3, sticky="e", padx=(6, 0))
+        HoverTooltip(tgt_port_entry, "Destination UDP Port (8081)", "Port configured in the Unreal Engine Live Link Abu Track Source.")
+
+        ttk.Label(rx_forward_card, text="Protocol").grid(row=4, column=0, sticky="w", pady=2)
+        proto_combo = ttk.Combobox(
+            rx_forward_card,
+            textvariable=self.forward_protocol,
+            values=["Live Link JSON", "SMPTE FreeD-TC (0xD2 - 41B)", "FreeD Binary", "OpenTrackIO JSON"],
+            state="readonly",
+        )
+        proto_combo.grid(row=4, column=1, sticky="ew", padx=(8, 0), pady=2)
         HoverTooltip(
             proto_combo,
             "Output Telemetry Protocol",
-            "• Live Link JSON: Full 6DoF + intrinsics + LiDAR + Abu Clock ST 2059 metadata\n"
-            "• SMPTE FreeD-TC (0xD2 - 41B): Extended 41-byte FreeD with 32-bit BCD Timecode & TAI ns\n"
-            "• FreeD Binary: Standard 29-byte 0xD1 broadcast FreeD\n"
-            "• OpenTrackIO JSON: SMPTE RIS OpenTrackIO virtual production payload",
+            "• Live Link JSON: Full 6DoF + intrinsics + LiDAR + Abu Clock ST 2059\n"
+            "• SMPTE FreeD-TC (0xD2 - 41B): Extended 41-byte FreeD with 32-bit BCD Timecode\n"
+            "• FreeD Binary: Standard 29-byte 0xD1 FreeD\n"
+            "• OpenTrackIO JSON: SMPTE RIS OpenTrackIO payload",
         )
-        
+
         pitch_offset_chk = ttk.Checkbutton(rx_forward_card, text="Apply -90° UE Pitch Horizon Offset", variable=self.forward_apply_pitch_offset)
-        pitch_offset_chk.grid(row=5, column=0, columnspan=2, sticky="w", pady=(4, 0))
-        HoverTooltip(
-            pitch_offset_chk,
-            "ARKit-to-UE5 -90° Pitch Horizon Alignment",
-            "Applies -90° pitch rotation when forwarding to UE5. If enabled here, uncheck 'Apply -90° Pitch Offset' in the UE5 LiveLink Details panel to avoid double rotation.",
-        )
-        
-        # Card 3: Collapsible Workstation Calibration & Offsets (Collapsed by default to reduce clutter)
+        pitch_offset_chk.grid(row=5, column=0, columnspan=2, sticky="w", pady=(2, 0))
+        HoverTooltip(pitch_offset_chk, "ARKit-to-UE5 Horizon Alignment", "Applies -90° pitch rotation when forwarding to UE5.")
+
+        # Card 3: Stage Origin & Lever-Arm (Collapsible)
         self.rx_offset_drawer = CollapsibleCard(
             rx_left,
-            title="📐 03 // STAGE ORIGIN & LEVER-ARM",
+            title="Stage Origin & Lever-Arm",
             badge_text="6-Axis",
             expanded=False,
-            tooltip_title="Workstation Stage Origin & Lever-Arm Overrides",
-            tooltip_body="Click to expand 6-axis studio floor origin offsets (X, Y, Z, Yaw, Pitch, Roll) and real-time camera lever-arm translation (cm).",
+            tooltip_title="Stage Origin & Lever-Arm Overrides",
+            tooltip_body="Configure 6-axis studio floor origin offsets (m / °) and camera rig lever-arm translation (cm).",
         )
-        self.rx_offset_drawer.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        self.rx_offset_drawer.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         rx_offset_card = self.rx_offset_drawer.body
         rx_offset_card.columnconfigure(1, weight=1)
         rx_offset_card.columnconfigure(3, weight=1)
-        
-        # Cross-device Double-Compensation Warning Banner (ARCH-UX-01)
+
         self.double_comp_warn_lbl = tk.Label(
             rx_offset_card,
             textvariable=self.double_comp_warn_var,
-            bg="#261B0A",
+            bg="#2A1E08",
             fg=ACCENT_AMBER,
-            font=("Segoe UI", 9, "bold"),
-            wraplength=400,
+            font=("Segoe UI Semibold", 9),
+            wraplength=370,
             justify="left",
             padx=8,
             pady=4,
         )
-        
-        # Section A: Initial Origin Offsets (6-Axis)
-        ttk.Label(rx_offset_card, text="STAGE ORIGIN OFFSETS (m / deg)", style="Muted.TLabel").grid(row=1, column=0, columnspan=4, sticky="w", pady=(0, 4))
-        
-        ttk.Label(rx_offset_card, text="Origin X (m):").grid(row=2, column=0, sticky="w", pady=2)
-        ox_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_x, width=8)
-        ox_ent.grid(row=2, column=1, sticky="w", pady=2)
-        HoverTooltip(ox_ent, "Stage Origin X Offset (m)", "Shifts the world origin along the X axis in meters.")
-        
-        ttk.Label(rx_offset_card, text="Origin Y (m):").grid(row=2, column=2, sticky="w", pady=2)
-        oy_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_y, width=8)
-        oy_ent.grid(row=2, column=3, sticky="w", pady=2)
-        HoverTooltip(oy_ent, "Stage Origin Y Offset (m)", "Shifts the world origin along the Y axis in meters.")
-        
-        ttk.Label(rx_offset_card, text="Origin Z (m):").grid(row=3, column=0, sticky="w", pady=2)
-        oz_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_z, width=8)
-        oz_ent.grid(row=3, column=1, sticky="w", pady=2)
-        HoverTooltip(oz_ent, "Stage Origin Z Offset (m)", "Shifts the world origin height/depth along the Z axis in meters.")
-        
-        ttk.Label(rx_offset_card, text="Origin Yaw (°):").grid(row=3, column=2, sticky="w", pady=2)
-        oyaw_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_yaw, width=8)
-        oyaw_ent.grid(row=3, column=3, sticky="w", pady=2)
-        HoverTooltip(oyaw_ent, "Stage Origin Yaw Rotation (°)", "Rotates the entire tracking coordinate system around the vertical axis.")
-        
-        ttk.Label(rx_offset_card, text="Origin Pitch(°):").grid(row=4, column=0, sticky="w", pady=2)
-        opitch_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_pitch, width=8)
-        opitch_ent.grid(row=4, column=1, sticky="w", pady=2)
-        
-        ttk.Label(rx_offset_card, text="Origin Roll (°):").grid(row=4, column=2, sticky="w", pady=2)
-        oroll_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_roll, width=8)
-        oroll_ent.grid(row=4, column=3, sticky="w", pady=2)
-        
-        # Separator line
-        ttk.Separator(rx_offset_card, orient="horizontal").grid(row=5, column=0, columnspan=4, sticky="ew", pady=6)
-        
-        # Section B: Camera Lever Arm Offsets
-        ttk.Label(rx_offset_card, text="RIG LEVER-ARM OVERRIDE (cm)", style="Muted.TLabel").grid(row=6, column=0, columnspan=4, sticky="w", pady=(0, 4))
-        
-        ttk.Label(rx_offset_card, text="Lever X (cm):").grid(row=7, column=0, sticky="w", pady=2)
-        lx_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_x, width=8)
-        lx_ent.grid(row=7, column=1, sticky="w", pady=2)
-        HoverTooltip(lx_ent, "Workstation Lever-Arm X (cm)", "Lateral offset from iPhone tracker to main cinema sensor (+Right / -Left).")
-        
-        ttk.Label(rx_offset_card, text="Lever Y (cm):").grid(row=7, column=2, sticky="w", pady=2)
-        ly_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_y, width=8)
-        ly_ent.grid(row=7, column=3, sticky="w", pady=2)
-        HoverTooltip(ly_ent, "Workstation Lever-Arm Y (cm)", "Vertical offset from iPhone tracker to main cinema sensor (+Up / -Down).")
-        
-        ttk.Label(rx_offset_card, text="Lever Z (cm):").grid(row=8, column=0, sticky="w", pady=2)
-        lz_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_z, width=8)
-        lz_ent.grid(row=8, column=1, sticky="w", pady=2)
-        HoverTooltip(lz_ent, "Workstation Lever-Arm Z (cm)", "Forward/depth offset from iPhone tracker to main cinema nodal point (+Forward / -Behind).")
-        
-        # Card 4: Collapsible Coordinate System & LiDAR Alignment (Collapsed by default with active Preset Badge)
+
+        ttk.Label(rx_offset_card, text="Stage Origin Offsets (m / deg)", style="Muted.TLabel").grid(row=1, column=0, columnspan=4, sticky="w", pady=(0, 4))
+
+        ttk.Label(rx_offset_card, text="Origin X (m)").grid(row=2, column=0, sticky="w", pady=2)
+        ox_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_x, width=7, justify="center")
+        ox_ent.grid(row=2, column=1, sticky="w", padx=4, pady=2)
+
+        ttk.Label(rx_offset_card, text="Origin Y (m)").grid(row=2, column=2, sticky="w", pady=2)
+        oy_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_y, width=7, justify="center")
+        oy_ent.grid(row=2, column=3, sticky="w", padx=4, pady=2)
+
+        ttk.Label(rx_offset_card, text="Origin Z (m)").grid(row=3, column=0, sticky="w", pady=2)
+        oz_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_z, width=7, justify="center")
+        oz_ent.grid(row=3, column=1, sticky="w", padx=4, pady=2)
+
+        ttk.Label(rx_offset_card, text="Origin Yaw (°)").grid(row=3, column=2, sticky="w", pady=2)
+        oyaw_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_yaw, width=7, justify="center")
+        oyaw_ent.grid(row=3, column=3, sticky="w", padx=4, pady=2)
+
+        ttk.Label(rx_offset_card, text="Origin Pitch (°)").grid(row=4, column=0, sticky="w", pady=2)
+        opitch_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_pitch, width=7, justify="center")
+        opitch_ent.grid(row=4, column=1, sticky="w", padx=4, pady=2)
+
+        ttk.Label(rx_offset_card, text="Origin Roll (°)").grid(row=4, column=2, sticky="w", pady=2)
+        oroll_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_origin_roll, width=7, justify="center")
+        oroll_ent.grid(row=4, column=3, sticky="w", padx=4, pady=2)
+
+        ttk.Separator(rx_offset_card, orient="horizontal").grid(row=5, column=0, columnspan=4, sticky="ew", pady=8)
+        ttk.Label(rx_offset_card, text="Rig Lever-Arm Override (cm)", style="Muted.TLabel").grid(row=6, column=0, columnspan=4, sticky="w", pady=(0, 4))
+
+        ttk.Label(rx_offset_card, text="Lever X (cm)").grid(row=7, column=0, sticky="w", pady=2)
+        lx_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_x, width=7, justify="center")
+        lx_ent.grid(row=7, column=1, sticky="w", padx=4, pady=2)
+
+        ttk.Label(rx_offset_card, text="Lever Y (cm)").grid(row=7, column=2, sticky="w", pady=2)
+        ly_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_y, width=7, justify="center")
+        ly_ent.grid(row=7, column=3, sticky="w", padx=4, pady=2)
+
+        ttk.Label(rx_offset_card, text="Lever Z (cm)").grid(row=8, column=0, sticky="w", pady=2)
+        lz_ent = ttk.Entry(rx_offset_card, textvariable=self.ws_lever_z, width=7, justify="center")
+        lz_ent.grid(row=8, column=1, sticky="w", padx=4, pady=2)
+
+        # Card 4: Coordinate & LiDAR Remap (Collapsible)
         self.rx_align_drawer = CollapsibleCard(
             rx_left,
-            title="🧭 04 // AXIS & LIDAR REMAP",
+            title="Coordinate & LiDAR Remap",
             badge_text=f"Preset: {self.pc_align_preset.get()}",
             expanded=False,
             tooltip_title="Coordinate Handedness & LiDAR Axis Remapping",
-            tooltip_body="Remaps incoming ARKit (Right-Handed Y-Up) axes to Unreal Engine (Left-Handed Z-Up), Metashape, or custom studio conventions.",
+            tooltip_body="Remaps incoming ARKit (Right-Handed Y-Up) axes to Unreal Engine (Left-Handed Z-Up), Metashape, or custom conventions.",
         )
-        self.rx_align_drawer.grid(row=3, column=0, sticky="ew", pady=(0, 10))
+        self.rx_align_drawer.grid(row=3, column=0, sticky="ew", pady=(0, 8))
         rx_alignment_card = self.rx_align_drawer.body
         rx_alignment_card.columnconfigure(1, weight=1)
         rx_alignment_card.columnconfigure(3, weight=1)
-        
-        # Preset dropdown
-        ttk.Label(rx_alignment_card, text="Preset Profile:").grid(row=0, column=0, sticky="w", pady=4)
+
+        ttk.Label(rx_alignment_card, text="Preset Profile").grid(row=0, column=0, sticky="w", pady=4)
         preset_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_align_preset, values=["Default", "Unreal Engine", "Metashape", "Custom"], state="readonly", width=15)
         preset_combo.grid(row=0, column=1, columnspan=3, sticky="ew", pady=4)
         preset_combo.bind("<<ComboboxSelected>>", self.on_align_preset_changed)
-        
-        # Custom position mapping
-        ttk.Label(rx_alignment_card, text="PC Pos X:").grid(row=1, column=0, sticky="w", pady=2)
-        x_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_x_sign, values=[1, -1], state="readonly", width=3)
-        x_sign_combo.grid(row=1, column=1, sticky="w", pady=2)
-        x_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_x_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        x_src_combo.grid(row=1, column=2, sticky="w", pady=2)
-        
-        ttk.Label(rx_alignment_card, text="PC Pos Y:").grid(row=2, column=0, sticky="w", pady=2)
-        y_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_y_sign, values=[1, -1], state="readonly", width=3)
-        y_sign_combo.grid(row=2, column=1, sticky="w", pady=2)
-        y_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_y_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        y_src_combo.grid(row=2, column=2, sticky="w", pady=2)
-        
-        ttk.Label(rx_alignment_card, text="PC Pos Z:").grid(row=3, column=0, sticky="w", pady=2)
-        z_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_z_sign, values=[1, -1], state="readonly", width=3)
-        z_sign_combo.grid(row=3, column=1, sticky="w", pady=2)
-        z_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_z_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        z_src_combo.grid(row=3, column=2, sticky="w", pady=2)
-        
+
+        ttk.Label(rx_alignment_card, text="PC Pos X").grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_x_sign, values=[1, -1], state="readonly", width=4).grid(row=1, column=1, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_x_src, values=["X", "Y", "Z"], state="readonly", width=4).grid(row=1, column=2, sticky="w", pady=2)
+
+        ttk.Label(rx_alignment_card, text="PC Pos Y").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_y_sign, values=[1, -1], state="readonly", width=4).grid(row=2, column=1, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_y_src, values=["X", "Y", "Z"], state="readonly", width=4).grid(row=2, column=2, sticky="w", pady=2)
+
+        ttk.Label(rx_alignment_card, text="PC Pos Z").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_z_sign, values=[1, -1], state="readonly", width=4).grid(row=3, column=1, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_z_src, values=["X", "Y", "Z"], state="readonly", width=4).grid(row=3, column=2, sticky="w", pady=2)
+
         ttk.Separator(rx_alignment_card, orient="horizontal").grid(row=4, column=0, columnspan=4, sticky="ew", pady=6)
-        
-        # LiDAR Cloud Custom Translation Mapping Heading
-        ttk.Label(rx_alignment_card, text="LiDAR Point Cloud Axis Mapping:", style="Muted.TLabel").grid(row=5, column=0, columnspan=4, sticky="w", pady=(0, 4))
-        
-        # LiDAR X Mapping
-        ttk.Label(rx_alignment_card, text="LiDAR X:").grid(row=6, column=0, sticky="w", pady=2)
-        lx_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_x_sign, values=[1, -1], state="readonly", width=3)
-        lx_sign_combo.grid(row=6, column=1, sticky="w", pady=2)
-        lx_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_x_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        lx_src_combo.grid(row=6, column=2, sticky="w", pady=2)
-        
-        # LiDAR Y Mapping
-        ttk.Label(rx_alignment_card, text="LiDAR Y:").grid(row=7, column=0, sticky="w", pady=2)
-        ly_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_y_sign, values=[1, -1], state="readonly", width=3)
-        ly_sign_combo.grid(row=7, column=1, sticky="w", pady=2)
-        ly_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_y_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        ly_src_combo.grid(row=7, column=2, sticky="w", pady=2)
-        
-        # LiDAR Z Mapping
-        ttk.Label(rx_alignment_card, text="LiDAR Z:").grid(row=8, column=0, sticky="w", pady=2)
-        lz_sign_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_z_sign, values=[1, -1], state="readonly", width=3)
-        lz_sign_combo.grid(row=8, column=1, sticky="w", pady=2)
-        lz_src_combo = ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_z_src, values=["X", "Y", "Z"], state="readonly", width=3)
-        lz_src_combo.grid(row=8, column=2, sticky="w", pady=2)
-        
-        # Card 5: Collapsible PC Network & Stream Diagnostics (Expanded by default so IP & Hz are visible)
-        local_ips_list = self.get_local_ips()
-        local_ips_str = ", ".join(local_ips_list)
-        primary_ip = local_ips_list[0] if local_ips_list else "127.0.0.1"
+        ttk.Label(rx_alignment_card, text="LiDAR Point Cloud Axis Mapping", style="Muted.TLabel").grid(row=5, column=0, columnspan=4, sticky="w", pady=(0, 4))
+
+        ttk.Label(rx_alignment_card, text="LiDAR X").grid(row=6, column=0, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_x_sign, values=[1, -1], state="readonly", width=4).grid(row=6, column=1, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_x_src, values=["X", "Y", "Z"], state="readonly", width=4).grid(row=6, column=2, sticky="w", pady=2)
+
+        ttk.Label(rx_alignment_card, text="LiDAR Y").grid(row=7, column=0, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_y_sign, values=[1, -1], state="readonly", width=4).grid(row=7, column=1, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_y_src, values=["X", "Y", "Z"], state="readonly", width=4).grid(row=7, column=2, sticky="w", pady=2)
+
+        ttk.Label(rx_alignment_card, text="LiDAR Z").grid(row=8, column=0, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_z_sign, values=[1, -1], state="readonly", width=4).grid(row=8, column=1, sticky="w", pady=2)
+        ttk.Combobox(rx_alignment_card, textvariable=self.pc_lidar_z_src, values=["X", "Y", "Z"], state="readonly", width=4).grid(row=8, column=2, sticky="w", pady=2)
+
+        # Card 5: Stream Health & Jitter Buffer (Clean 2x3 Bento KPI Grid + Jitter Controls — Phase 3 Step 3.4)
         self.rx_diag_drawer = CollapsibleCard(
             rx_left,
-            title="📊 05 // STREAM & CLOCK DIAGNOSTICS",
+            title="Stream Health & Jitter Buffer",
             badge_text=primary_ip,
             expanded=True,
-            tooltip_title="Network Telemetry, Jitter Buffer & Thermal Diagnostics",
-            tooltip_body="Monitors incoming packet rate (Hz), playout buffer smoothing, Abu Clock latency shift, and iPhone thermal state.",
+            tooltip_title="Network Telemetry & Jitter Buffer",
+            tooltip_body="Real-time stream status, packet cadence, clock latency shift, and playout buffer smoothing.",
         )
-        self.rx_diag_drawer.grid(row=4, column=0, sticky="ew", pady=(0, 6))
+        self.rx_diag_drawer.grid(row=4, column=0, sticky="ew", pady=(0, 4))
         rx_diag_card = self.rx_diag_drawer.body
+        rx_diag_card.columnconfigure(0, weight=1)
         rx_diag_card.columnconfigure(1, weight=1)
-        
-        # Local IP List (Wrapped cleanly so multi-adapter IPs never overflow horizontally — WIN-UI-04)
-        ttk.Label(rx_diag_card, text="PC Local IP(s):").grid(row=1, column=0, sticky="nw", pady=3)
-        ip_label = ttk.Label(rx_diag_card, text=local_ips_str, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"), wraplength=235, justify="right")
-        ip_label.grid(row=1, column=1, sticky="e", pady=3)
-        HoverTooltip(ip_label, "Workstation Local IPv4 Address(es)", f"All Local IPs: {local_ips_str}\nEnter your LAN IP inside the iOS app under Setup → Stream & Clock → Target IP.")
-        
-        # PC System Time
-        ttk.Label(rx_diag_card, text="PC Epoch Time:").grid(row=2, column=0, sticky="w", pady=3)
-        pc_time_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_pc_time_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        pc_time_lbl.grid(row=2, column=1, sticky="e", pady=3)
-        
-        # Status
-        ttk.Label(rx_diag_card, text="Receiver State:").grid(row=3, column=0, sticky="w", pady=3)
-        self.rx_status_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_status_var, font=("Consolas", 9, "bold"), foreground=TEXT_MUTED)
-        self.rx_status_lbl.grid(row=3, column=1, sticky="e", pady=3)
-        
-        # Detected Protocol
-        ttk.Label(rx_diag_card, text="Detected Format:").grid(row=4, column=0, sticky="w", pady=3)
-        fmt_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_format_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        fmt_lbl.grid(row=4, column=1, sticky="e", pady=3)
-        
-        # Total Frames
-        ttk.Label(rx_diag_card, text="Frames Received:").grid(row=5, column=0, sticky="w", pady=3)
-        frames_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_frames_var, font=("Consolas", 9, "bold"))
-        frames_lbl.grid(row=5, column=1, sticky="e", pady=3)
-        
-        # Real iOS Source Frequency
-        ttk.Label(rx_diag_card, text="Real Source Hz (iOS Lock):").grid(row=6, column=0, sticky="w", pady=3)
-        real_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_real_hz_var, foreground=ACCENT_GREEN, font=("Consolas", 9, "bold"))
-        real_hz_lbl.grid(row=6, column=1, sticky="e", pady=3)
-        
-        # Buffered Delivery Stable Frequency
-        ttk.Label(rx_diag_card, text="Buffered Delivery (Stable):").grid(row=7, column=0, sticky="w", pady=3)
-        hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_hz_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
-        hz_lbl.grid(row=7, column=1, sticky="e", pady=3)
-        
-        # Raw Network Frequency
-        ttk.Label(rx_diag_card, text="Network Delivery (Raw):").grid(row=8, column=0, sticky="w", pady=3)
-        raw_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_raw_hz_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        raw_hz_lbl.grid(row=8, column=1, sticky="e", pady=3)
-        
-        # Latency / Time Shift
-        ttk.Label(rx_diag_card, text="Clock Latency Shift:").grid(row=9, column=0, sticky="w", pady=3)
-        latency_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_latency_var, foreground=ACCENT_AMBER, font=("Consolas", 9, "bold"))
-        latency_lbl.grid(row=9, column=1, sticky="e", pady=3)
-        
-        # Forwarded Hz
-        ttk.Label(rx_diag_card, text="Forwarded Hz:").grid(row=10, column=0, sticky="w", pady=3)
-        forward_hz_lbl = ttk.Label(rx_diag_card, textvariable=self.forward_delivery_hz_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        forward_hz_lbl.grid(row=10, column=1, sticky="e", pady=3)
-        
-        # Forwarded Timecode
-        ttk.Label(rx_diag_card, text="Forwarded Timecode:").grid(row=11, column=0, sticky="w", pady=3)
-        forward_tc_lbl = ttk.Label(rx_diag_card, textvariable=self.forward_timecode_var, foreground=ACCENT_CYAN, font=("Consolas", 9, "bold"))
-        forward_tc_lbl.grid(row=11, column=1, sticky="e", pady=3)
-        
-        # iPhone Thermal State
-        ttk.Label(rx_diag_card, text="iPhone Thermal State:").grid(row=12, column=0, sticky="w", pady=3)
-        self.thermal_lbl = ttk.Label(rx_diag_card, textvariable=self.receiver_thermal_var, foreground=TEXT_MUTED, font=("Consolas", 9, "bold"))
-        self.thermal_lbl.grid(row=12, column=1, sticky="e", pady=3)
-        
-        # Smoothing Window Slider
-        ttk.Label(rx_diag_card, text="Hz Smoothing Window (s):").grid(row=13, column=0, sticky="w", pady=3)
-        
-        smoothing_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        smoothing_frame.grid(row=13, column=1, sticky="e", pady=3)
-        
-        smooth_slider = ttk.Scale(smoothing_frame, from_=0.1, to=5.0, value=1.0, variable=self.receiver_smoothing_sec, command=lambda v: self._update_smoothing_label())
-        smooth_slider.pack(side="left", padx=(0, 4))
-        
-        self.smooth_lbl = ttk.Label(smoothing_frame, text="1.0s", font=("Consolas", 9, "bold"))
-        self.smooth_lbl.pack(side="left")
-        
-        # Playout Buffer Slider
-        ttk.Label(rx_diag_card, text="Playout Buffer Delay (ms):").grid(row=14, column=0, sticky="w", pady=3)
-        
-        buffer_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
-        buffer_frame.grid(row=14, column=1, sticky="e", pady=3)
-        
-        buffer_slider = ttk.Scale(buffer_frame, from_=0, to=1000, value=100, variable=self.receiver_buffer_ms, command=lambda v: self._update_buffer_label())
-        buffer_slider.pack(side="left", padx=(0, 4))
-        HoverTooltip(buffer_slider, "Jitter Playout Buffer Delay (ms)", "Buffers incoming Wi-Fi packets and releases them at a rock-solid cadence synced to camera shutter timestamps.")
-        
-        self.buffer_lbl = ttk.Label(buffer_frame, text="100ms", font=("Consolas", 9, "bold"))
-        self.buffer_lbl.pack(side="left")
-        
-        auto_chk = ttk.Checkbutton(buffer_frame, text="Auto-Profile", variable=self.receiver_auto_calibrate)
-        auto_chk.pack(side="left", padx=(8, 0))
-        HoverTooltip(auto_chk, "Automatic Network Jitter Profiler", "Automatically adjusts the playout buffer delay based on measured Wi-Fi packet arrival variance.")
-        
-        # Visual Ping indicator (Canvas)
-        ttk.Label(rx_diag_card, text="Data Activity Blinker:").grid(row=15, column=0, sticky="w", pady=3)
-        self.ping_canvas = tk.Canvas(rx_diag_card, width=16, height=16, bg=CARD_BG, highlightthickness=0)
-        self.ping_canvas.grid(row=15, column=1, sticky="e", pady=3)
-        self.ping_light = self.ping_canvas.create_oval(2, 2, 14, 14, fill=FIELD_BG, outline=BORDER_COLOR)
-        
-        # Right Panel
-        rx_right = ttk.Frame(self.tab_receiver, padding=4)
+
+        # 2x3 Bento KPI Grid
+        bento = tk.Frame(rx_diag_card, bg=CARD_BG)
+        bento.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+        bento.columnconfigure(0, weight=1)
+        bento.columnconfigure(1, weight=1)
+
+        def make_kpi_cell(r: int, c: int, label_txt: str):
+            cell = tk.Frame(
+                bento,
+                bg=FIELD_BG,
+                highlightthickness=1,
+                highlightbackground=BORDER_COLOR,
+                padx=8,
+                pady=4,
+            )
+            cell.grid(row=r, column=c, sticky="nsew", padx=(0 if c == 0 else 4, 4 if c == 0 else 0), pady=2)
+            top = tk.Frame(cell, bg=FIELD_BG)
+            top.pack(fill="x")
+            tk.Label(top, text=label_txt, bg=FIELD_BG, fg=TEXT_MUTED, font=("Segoe UI", 9)).pack(side="left")
+            return cell, top
+
+        c_state, top_state = make_kpi_cell(0, 0, "State")
+        self.ping_canvas = tk.Canvas(top_state, width=10, height=10, bg=FIELD_BG, highlightthickness=0)
+        self.ping_canvas.pack(side="right", pady=2)
+        self.ping_light = self.ping_canvas.create_oval(1, 1, 9, 9, fill=CARD_BG, outline=BORDER_COLOR)
+        self.rx_status_lbl = tk.Label(c_state, textvariable=self.receiver_status_var, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 10, "bold"), anchor="w")
+        self.rx_status_lbl.pack(fill="x", pady=(1, 0))
+
+        c_proto, _ = make_kpi_cell(0, 1, "Protocol")
+        tk.Label(c_proto, textvariable=self.receiver_format_var, bg=FIELD_BG, fg=ACCENT_CYAN, font=("Consolas", 9, "bold"), anchor="w").pack(fill="x", pady=(1, 0))
+
+        c_src, _ = make_kpi_cell(1, 0, "Source Lock Rate")
+        tk.Label(c_src, textvariable=self.receiver_real_hz_var, bg=FIELD_BG, fg=ACCENT_GREEN, font=("Consolas", 10, "bold"), anchor="w").pack(fill="x", pady=(1, 0))
+
+        c_play, _ = make_kpi_cell(1, 1, "Playout Delivery")
+        tk.Label(c_play, textvariable=self.receiver_hz_var, bg=FIELD_BG, fg=ACCENT_AMBER, font=("Consolas", 10, "bold"), anchor="w").pack(fill="x", pady=(1, 0))
+
+        c_lat, _ = make_kpi_cell(2, 0, "Clock Shift")
+        tk.Label(c_lat, textvariable=self.receiver_latency_var, bg=FIELD_BG, fg=TEXT_PRIMARY, font=("Consolas", 9, "bold"), anchor="w").pack(fill="x", pady=(1, 0))
+
+        c_therm, top_therm = make_kpi_cell(2, 1, "Thermal / Frames")
+        tk.Label(top_therm, textvariable=self.receiver_frames_var, bg=FIELD_BG, fg=ACCENT_CYAN, font=("Consolas", 9, "bold")).pack(side="right")
+        self.thermal_lbl = tk.Label(c_therm, textvariable=self.receiver_thermal_var, bg=FIELD_BG, fg=ACCENT_GREEN, font=("Consolas", 10, "bold"), anchor="w")
+        self.thermal_lbl.pack(fill="x", pady=(1, 0))
+
+        # Jitter Buffer & Smoothing Sliders
+        jitter_frame = ttk.Frame(rx_diag_card, style="Card.TFrame")
+        jitter_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+        jitter_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(jitter_frame, text="Smoothing Window").grid(row=0, column=0, sticky="w", pady=2)
+        smoothing_ctrl = ttk.Frame(jitter_frame, style="Card.TFrame")
+        smoothing_ctrl.grid(row=0, column=1, sticky="ew", padx=(8, 0), pady=2)
+        smoothing_ctrl.columnconfigure(0, weight=1)
+        smooth_slider = ttk.Scale(smoothing_ctrl, from_=0.1, to=5.0, value=1.0, variable=self.receiver_smoothing_sec, command=lambda v: self._update_smoothing_label())
+        smooth_slider.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        self.smooth_lbl = ttk.Label(smoothing_ctrl, text="1.0s", font=("Consolas", 9, "bold"), width=5)
+        self.smooth_lbl.grid(row=0, column=1, sticky="e")
+
+        ttk.Label(jitter_frame, text="Playout Buffer").grid(row=1, column=0, sticky="w", pady=2)
+        buffer_ctrl = ttk.Frame(jitter_frame, style="Card.TFrame")
+        buffer_ctrl.grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=2)
+        buffer_ctrl.columnconfigure(0, weight=1)
+        buffer_slider = ttk.Scale(buffer_ctrl, from_=0, to=1000, value=100, variable=self.receiver_buffer_ms, command=lambda v: self._update_buffer_label())
+        buffer_slider.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        HoverTooltip(buffer_slider, "Jitter Playout Buffer Delay (ms)", "Buffers incoming Wi-Fi packets and releases them at a smooth, deterministic cadence.")
+        self.buffer_lbl = ttk.Label(buffer_ctrl, text="100ms", font=("Consolas", 9, "bold"), width=6)
+        self.buffer_lbl.grid(row=0, column=1, sticky="e")
+        auto_chk = ttk.Checkbutton(buffer_ctrl, text="Auto", variable=self.receiver_auto_calibrate)
+        auto_chk.grid(row=0, column=2, padx=(6, 0))
+        HoverTooltip(auto_chk, "Auto-Profile Network Jitter", "Automatically tunes buffer delay based on measured Wi-Fi packet arrival variance.")
+
+        # =========================================================================
+        # RIGHT STAGE AREA: 1-ROW 6DoF HUD RIBBON + 85% 3D STAGE + COLLAPSIBLE LOG
+        # =========================================================================
+        rx_right = ttk.Frame(self.tab_receiver)
         rx_right.grid(row=1, column=1, sticky="nsew")
         rx_right.columnconfigure(0, weight=1)
-        rx_right.rowconfigure(0, weight=2) # Large numerical indicators
-        rx_right.rowconfigure(1, weight=6) # Live 3D Projected Canvas
-        rx_right.rowconfigure(2, weight=2) # Log console
-        
-        # Card 3: Large Pose Display
-        rx_pose_card = ttk.Frame(rx_right, style="Card.TFrame", padding=10)
-        rx_pose_card.grid(row=0, column=0, sticky="nsew", pady=(0, 8))
-        rx_pose_card.columnconfigure(0, weight=1)
-        rx_pose_card.columnconfigure(1, weight=1)
-        rx_pose_card.rowconfigure(1, weight=1)
-        rx_pose_card.rowconfigure(2, weight=1)
-        
-        ttk.Label(rx_pose_card, text="🎯 LIVE 6DoF CAMERA POSE (POSITION & ORIENTATION)", style="Header.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
-        
-        # X / Y / Z Positions
-        pos_frame = ttk.LabelFrame(rx_pose_card, text=" POSITION (METERS) ", padding=8)
-        pos_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 4), pady=2)
-        pos_frame.columnconfigure(0, weight=1)
-        pos_frame.columnconfigure(1, weight=1)
-        pos_frame.columnconfigure(2, weight=1)
-        
-        ttk.Label(pos_frame, text="X (EAST)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=0, pady=1)
-        self.pos_x_lbl = ttk.Label(pos_frame, textvariable=self.pose_x_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
-        self.pos_x_lbl.grid(row=1, column=0, pady=2)
-        
-        ttk.Label(pos_frame, text="Y (NORTH)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=1, pady=1)
-        self.pos_y_lbl = ttk.Label(pos_frame, textvariable=self.pose_y_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
-        self.pos_y_lbl.grid(row=1, column=1, pady=2)
-        
-        ttk.Label(pos_frame, text="Z (HEIGHT)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=2, pady=1)
-        self.pos_z_lbl = ttk.Label(pos_frame, textvariable=self.pose_z_var, font=("Consolas", 14, "bold"), foreground=ACCENT_CYAN)
-        self.pos_z_lbl.grid(row=1, column=2, pady=2)
-        
-        # Roll / Pitch / Yaw Rotations
-        rot_frame = ttk.LabelFrame(rx_pose_card, text=" ROTATION (EULER DEGREES) ", padding=8)
-        rot_frame.grid(row=1, column=1, sticky="nsew", padx=(4, 0), pady=2)
-        rot_frame.columnconfigure(0, weight=1)
-        rot_frame.columnconfigure(1, weight=1)
-        rot_frame.columnconfigure(2, weight=1)
-        
-        ttk.Label(rot_frame, text="ROLL (X°)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=0, pady=1)
-        self.rot_roll_lbl = ttk.Label(rot_frame, textvariable=self.pose_roll_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
-        self.rot_roll_lbl.grid(row=1, column=0, pady=2)
-        
-        ttk.Label(rot_frame, text="PITCH (Y°)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=1, pady=1)
-        self.rot_pitch_lbl = ttk.Label(rot_frame, textvariable=self.pose_pitch_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
-        self.rot_pitch_lbl.grid(row=1, column=1, pady=2)
-        
-        ttk.Label(rot_frame, text="YAW (Z°)", font=("Segoe UI", 9, "bold"), foreground=TEXT_MUTED).grid(row=0, column=2, pady=1)
-        self.rot_yaw_lbl = ttk.Label(rot_frame, textvariable=self.pose_yaw_var, font=("Consolas", 14, "bold"), foreground=ACCENT_AMBER)
-        self.rot_yaw_lbl.grid(row=1, column=2, pady=2)
-        
-        # Card 3.5: Workstation Live 3D Projected Canvas
-        rx_canvas_card = ttk.Frame(rx_right, style="Card.TFrame", padding=10)
-        rx_canvas_card.grid(row=1, column=0, sticky="nsew", pady=(0, 8))
+        rx_right.rowconfigure(0, weight=0)  # Sleek 1-Row 6DoF Telemetry HUD Ribbon
+        rx_right.rowconfigure(1, weight=1)  # Full-height 3D Stage Viewport (85%+ height!)
+        rx_right.rowconfigure(2, weight=0)  # Collapsible bottom stream log drawer
+
+        # 1. Single-Row 6DoF Telemetry HUD Ribbon (Zero Win95 ttk.LabelFrame grey boxes! — Phase 3 Step 3.1)
+        rx_pose_card = tk.Frame(
+            rx_right,
+            bg=CARD_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            padx=12,
+            pady=8,
+        )
+        rx_pose_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        for col_idx in range(6):
+            rx_pose_card.columnconfigure(col_idx, weight=1)
+
+        def create_pose_pill(col: int, axis_title: str, text_var: tk.StringVar, value_color: str):
+            pill = tk.Frame(
+                rx_pose_card,
+                bg=FIELD_BG,
+                highlightthickness=1,
+                highlightbackground=BORDER_COLOR,
+                padx=10,
+                pady=5,
+            )
+            pill.grid(row=0, column=col, sticky="ew", padx=(0 if col == 0 else 3, 3 if col < 5 else 0))
+            tk.Label(pill, text=axis_title, bg=FIELD_BG, fg=TEXT_MUTED, font=("Segoe UI Semibold", 9), anchor="w").pack(fill="x")
+            val_lbl = tk.Label(pill, textvariable=text_var, bg=FIELD_BG, fg=value_color, font=("Consolas", 12, "bold"), anchor="w")
+            val_lbl.pack(fill="x", pady=(1, 0))
+            return val_lbl
+
+        self.pos_x_lbl = create_pose_pill(0, "X  East", self.pose_x_var, ACCENT_CYAN)
+        self.pos_y_lbl = create_pose_pill(1, "Y  North", self.pose_y_var, ACCENT_CYAN)
+        self.pos_z_lbl = create_pose_pill(2, "Z  Height", self.pose_z_var, ACCENT_CYAN)
+        self.rot_roll_lbl = create_pose_pill(3, "Roll  X°", self.pose_roll_var, ACCENT_AMBER)
+        self.rot_pitch_lbl = create_pose_pill(4, "Pitch  Y°", self.pose_pitch_var, ACCENT_AMBER)
+        self.rot_yaw_lbl = create_pose_pill(5, "Yaw  Z°", self.pose_yaw_var, ACCENT_AMBER)
+
+        # 2. Full-Height Live 3D Stage Viewport (Phase 3 Step 3.2)
+        rx_canvas_card = self.create_studio_card(rx_right, pad_x=12, pad_y=10)
+        rx_canvas_card.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         rx_canvas_card.columnconfigure(0, weight=1)
         rx_canvas_card.rowconfigure(1, weight=1)
-        
-        toolbar = ttk.Frame(rx_canvas_card, style="Card.TFrame")
-        toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 6))
-        
-        ttk.Label(toolbar, text="🕸 LIVE 3D STAGE VIEWPORT", style="Header.TLabel").pack(side="left")
-        
-        clear_btn = ttk.Button(toolbar, text="🗑 Clear", command=self.clear_live_data, width=7)
-        clear_btn.pack(side="right", padx=(4, 0), ipady=2)
-        HoverTooltip(clear_btn, "Clear Trajectory & Point Cloud", "Clears the accumulated 3D camera path and LiDAR point cloud from the viewport.")
-        
-        reset_btn = ttk.Button(toolbar, text="🎯 Reset", command=self.reset_live_view, width=7)
-        reset_btn.pack(side="right", padx=(4, 0), ipady=2)
-        HoverTooltip(reset_btn, "Reset 3D Camera View", "Resets orbit angles, pan offset, and zoom level (or double-left-click anywhere on the 3D canvas).")
-        
-        points_chk = ttk.Checkbutton(toolbar, text="🧊 LiDAR", variable=self.live_show_points, command=self.redraw_live_3d_canvas)
-        points_chk.pack(side="right", padx=(6, 0))
-        HoverTooltip(points_chk, "Toggle Live LiDAR Point Cloud", "Show or hide real-time 3D LiDAR depth points streamed from the iOS scanner.")
-        
-        path_chk = ttk.Checkbutton(toolbar, text="〰 Path", variable=self.live_show_path, command=self.redraw_live_3d_canvas)
-        path_chk.pack(side="right", padx=(6, 0))
-        HoverTooltip(path_chk, "Toggle Camera Trajectory Ribbon", "Show or hide the historical 3D motion path of the tracked camera.")
-        
-        follow_chk = ttk.Checkbutton(toolbar, text="📍 Follow", variable=self.live_follow, command=self.redraw_live_3d_canvas)
-        follow_chk.pack(side="right", padx=(6, 0))
-        HoverTooltip(follow_chk, "Lock Orbit Target to Active Camera", "Automatically centers the 3D viewport pivot on the live camera frustum.")
-        
-        edit_origin_chk = ttk.Checkbutton(toolbar, text="✥ Origin", variable=self.live_edit_origin, command=self.redraw_live_3d_canvas)
-        edit_origin_chk.pack(side="right", padx=(6, 0))
-        HoverTooltip(edit_origin_chk, "Interactive Stage Origin Gizmo", "Enable interactive 3D gizmo handles to drag or rotate the stage world origin directly in the viewport.")
-        
+
+        toolbar = tk.Frame(rx_canvas_card, bg=CARD_BG)
+        toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+
+        tk.Label(toolbar, text="3D Stage Viewport", bg=CARD_BG, fg=TEXT_PRIMARY, font=("Segoe UI Semibold", 10, "bold")).pack(side="left")
+
+        clear_btn = ttk.Button(toolbar, text="Clear", command=self.clear_live_data, width=6)
+        clear_btn.pack(side="right", padx=(4, 0))
+        HoverTooltip(clear_btn, "Clear Stage History", "Clears the accumulated 3D camera path and LiDAR point cloud.")
+
+        reset_btn = ttk.Button(toolbar, text="Reset View", command=self.reset_live_view, width=9)
+        reset_btn.pack(side="right", padx=(4, 0))
+        HoverTooltip(reset_btn, "Reset Camera View", "Resets orbit angles, pan offset, and zoom level (or double-click on the canvas).")
+
+        points_chk = ttk.Checkbutton(toolbar, text="LiDAR", variable=self.live_show_points, command=self.redraw_live_3d_canvas)
+        points_chk.pack(side="right", padx=(8, 0))
+        HoverTooltip(points_chk, "Show LiDAR Points", "Toggle real-time 3D LiDAR depth points streamed from iOS.")
+
+        path_chk = ttk.Checkbutton(toolbar, text="Path", variable=self.live_show_path, command=self.redraw_live_3d_canvas)
+        path_chk.pack(side="right", padx=(8, 0))
+        HoverTooltip(path_chk, "Show Trajectory Path", "Toggle the historical 3D motion path of the camera.")
+
+        follow_chk = ttk.Checkbutton(toolbar, text="Follow", variable=self.live_follow, command=self.redraw_live_3d_canvas)
+        follow_chk.pack(side="right", padx=(8, 0))
+        HoverTooltip(follow_chk, "Follow Active Camera", "Centers the 3D viewport pivot on the live camera frustum.")
+
+        edit_origin_chk = ttk.Checkbutton(toolbar, text="Origin Gizmo", variable=self.live_edit_origin, command=self.redraw_live_3d_canvas)
+        edit_origin_chk.pack(side="right", padx=(8, 0))
+        HoverTooltip(edit_origin_chk, "Interactive Stage Origin Gizmo", "Drag on the 3D viewport to shift or rotate the stage world origin.")
+
         self.live_view_mode_combo = ttk.Combobox(toolbar, textvariable=self.live_view_mode, values=["Orbit", "Cockpit"], state="readonly", width=8)
-        self.live_view_mode_combo.pack(side="right", padx=(4, 4))
+        self.live_view_mode_combo.pack(side="right", padx=(4, 6))
         self.live_view_mode_combo.bind("<<ComboboxSelected>>", lambda e: self.redraw_live_3d_canvas())
-        HoverTooltip(self.live_view_mode_combo, "Viewport Camera Mode", "Switch between external 3rd-person Orbit view and 1st-person Camera Cockpit POV.")
-        
+        HoverTooltip(self.live_view_mode_combo, "Viewport Mode", "Switch between 3rd-person Orbit view and 1st-person Camera Cockpit POV.")
+
         self.live_canvas = tk.Canvas(rx_canvas_card, bg=BG_COLOR, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
         self.live_canvas.grid(row=1, column=0, sticky="nsew")
-        
-        # Bind Canvas Drag Gestures
+
         self.live_canvas.bind("<ButtonPress-1>", self.on_live_canvas_press)
         self.live_canvas.bind("<B1-Motion>", self.on_live_canvas_orbit)
         self.live_canvas.bind("<ButtonPress-3>", self.on_live_canvas_press)
@@ -1849,109 +2214,325 @@ class CamTrackDesktopApp:
         self.live_canvas.bind("<MouseWheel>", self.on_live_canvas_scroll)
         self.live_canvas.bind("<Configure>", lambda e: self.redraw_live_3d_canvas())
         self.live_canvas.bind("<Double-Button-1>", lambda e: self.reset_live_view())
-        
-        # Card 4: Console
-        rx_console_card = ttk.Frame(rx_right, style="Card.TFrame", padding=10)
-        rx_console_card.grid(row=2, column=0, sticky="nsew")
-        rx_console_card.columnconfigure(0, weight=1)
-        rx_console_card.rowconfigure(1, weight=1)
-        
-        ttk.Label(rx_console_card, text="🖥 LIVE STREAM PACKET LOG (LAST 15 FRAMES)", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 4))
-        
-        self.rx_console = tk.Text(rx_console_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Consolas", 9), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR)
-        self.rx_console.grid(row=1, column=0, sticky="nsew")
-        
-        scroll_rx_console = ttk.Scrollbar(rx_console_card, orient="vertical", command=self.rx_console.yview)
-        scroll_rx_console.grid(row=1, column=1, sticky="ns")
-        self.rx_console.configure(yscrollcommand=scroll_rx_console.set)
-        
-        # ----------------- TAB 5: SYSTEM MANUAL & DOCUMENTATION -----------------
-        self.tab_docs.columnconfigure(0, weight=1)
-        self.tab_docs.rowconfigure(1, weight=1)
-        
-        self.create_workflow_banner(
-            self.tab_docs,
-            "① Review Rig Coordinate Conventions   →   ② Follow Scan & 3DGS or Live UE5 Track Workflow   →   ③ Verify Abu Clock ST 2059-2 Timecode Lock",
-            "Interactive Studio Operations Manual",
-            "Complete reference guide for Abu Track & Scan hardware mounting, lever-arm calibration, Abu Clock PTP/CSPTP synchronization, and Unreal Engine 5 / Postshot / Metashape pipelines.",
+
+        # 3. Collapsible Bottom Stream Console Drawer (Collapsed by default so 3D stage stays huge — Phase 3 Step 3.3)
+        rx_console_card = tk.Frame(
+            rx_right,
+            bg=CARD_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            padx=12,
+            pady=6,
         )
-        
-        docs_card = ttk.Frame(self.tab_docs, style="Card.TFrame", padding=16)
-        docs_card.grid(row=1, column=0, sticky="nsew")
-        docs_card.columnconfigure(0, weight=1)
-        docs_card.rowconfigure(1, weight=1)
-        
-        ttk.Label(docs_card, text="📘 ABU TRACK & SCAN — INTERACTIVE STUDIO GUIDE & ACADEMY", style="Header.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 12))
-        
-        self.docs_text = tk.Text(docs_card, bg=FIELD_BG, fg=TEXT_MUTED, font=("Segoe UI", 10), relief="flat", bd=0, highlightthickness=1, highlightcolor=BORDER_COLOR, highlightbackground=BORDER_COLOR, wrap="word", padx=16, pady=14)
-        self.docs_text.grid(row=1, column=0, sticky="nsew")
-        
-        scroll_docs = ttk.Scrollbar(docs_card, orient="vertical", command=self.docs_text.yview)
-        scroll_docs.grid(row=1, column=1, sticky="ns")
-        self.docs_text.configure(yscrollcommand=scroll_docs.set)
-        
-        # Configure tags for clean human-readable Segoe UI rendering
-        self.docs_text.tag_config("h1", font=("Segoe UI", 13, "bold"), foreground=ACCENT_CYAN, spacing1=12, spacing3=6)
-        self.docs_text.tag_config("h2", font=("Segoe UI", 11, "bold"), foreground=ACCENT_CYAN, spacing1=10, spacing3=4)
-        self.docs_text.tag_config("bold", font=("Segoe UI", 10, "bold"), foreground=TEXT_PRIMARY)
-        self.docs_text.tag_config("bullet", font=("Segoe UI", 10, "bold"), foreground=ACCENT_GREEN)
-        self.docs_text.tag_config("code", font=("Consolas", 10, "bold"), foreground=ACCENT_AMBER, background=BG_COLOR)
-        self.docs_text.tag_config("warning", font=("Segoe UI", 10, "bold"), foreground=ACCENT_RED)
-        self.docs_text.tag_config("normal", font=("Segoe UI", 10), foreground=TEXT_MUTED, spacing2=4)
-        
-        self.write_documentation_manual()
-        
-        # ----------------- TAB 6: UE MONITOR FEED -----------------
+        rx_console_card.grid(row=2, column=0, sticky="ew")
+        rx_console_card.columnconfigure(0, weight=1)
+
+        log_bar = tk.Frame(rx_console_card, bg=CARD_BG, cursor="hand2")
+        log_bar.grid(row=0, column=0, sticky="ew")
+        log_bar.columnconfigure(1, weight=1)
+
+        self.rx_log_chevron_lbl = tk.Label(
+            log_bar,
+            text="▸  Packet Log",
+            bg=CARD_BG,
+            fg=TEXT_MUTED,
+            font=("Segoe UI Semibold", 9, "bold"),
+        )
+        self.rx_log_chevron_lbl.grid(row=0, column=0, padx=(0, 10))
+
+        self.rx_log_latest_lbl = tk.Label(
+            log_bar,
+            textvariable=self.latest_rx_log_summary_var,
+            bg=FIELD_BG,
+            fg=TEXT_MUTED,
+            font=("Consolas", 9),
+            anchor="w",
+            padx=8,
+            pady=3,
+        )
+        self.rx_log_latest_lbl.grid(row=0, column=1, sticky="ew", padx=(0, 10))
+
+        self.toggle_rx_log_btn = tk.Button(
+            log_bar,
+            text="Show Log",
+            bg=FIELD_BG,
+            fg=TEXT_PRIMARY,
+            activebackground=HOVER_BG,
+            activeforeground="#FFFFFF",
+            font=("Segoe UI Semibold", 9),
+            bd=0,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            padx=10,
+            pady=4,
+            cursor="hand2",
+            command=self.toggle_rx_log_drawer,
+        )
+        self.toggle_rx_log_btn.grid(row=0, column=2)
+
+        for w in (log_bar, self.rx_log_chevron_lbl, self.rx_log_latest_lbl):
+            w.bind("<Button-1>", self.toggle_rx_log_drawer)
+
+        self.rx_console_body = tk.Frame(rx_console_card, bg=CARD_BG)
+        self.rx_console_body.columnconfigure(0, weight=1)
+        self.rx_console_body.rowconfigure(0, weight=1)
+
+        self.rx_console = tk.Text(
+            self.rx_console_body,
+            height=6,
+            bg=FIELD_BG,
+            fg=TEXT_MUTED,
+            font=("Consolas", 9),
+            relief="flat",
+            bd=0,
+            highlightthickness=1,
+            highlightcolor=BORDER_COLOR,
+            highlightbackground=BORDER_COLOR,
+            padx=8,
+            pady=6,
+        )
+        self.rx_console.grid(row=0, column=0, sticky="nsew")
+
+        scroll_rx_console = ttk.Scrollbar(self.rx_console_body, orient="vertical", command=self.rx_console.yview, style="Vertical.TScrollbar")
+        scroll_rx_console.grid(row=0, column=1, sticky="ns", padx=(2, 0))
+        self.rx_console.configure(yscrollcommand=scroll_rx_console.set)
+
+        # =========================================================================
+        # WORKSPACE 3: VIDEO & RETURN MONITOR (Phase 4 Step 4.3)
+        # =========================================================================
         self.tab_ue_monitor.columnconfigure(0, weight=1)
         self.tab_ue_monitor.rowconfigure(2, weight=1)
-        
+
         self.create_workflow_banner(
             self.tab_ue_monitor,
-            "① Enable Pixel Streaming or RTSP/SRT Output in UE5   →   ② Enter Stream URL below   →   ③ Start Local Decoder or Launch WebRTC Browser",
+            "Video & Unreal Return Monitor",
+            "Monitor live Unreal Engine 5 composites via low-latency RTSP / SRT / HTTP stream decoding or WebRTC Pixel Streaming.",
             "Unreal Engine 5 & AR Return Monitor",
-            "Monitor the live Unreal Engine 5 virtual production composite directly inside the workstation via low-latency RTSP/SRT/HTTP decoding or WebRTC Pixel Streaming.",
+            "Enter an rtsp://, srt://, or http:// endpoint from Unreal Engine or OBS and click 'Start Decoder', or launch WebRTC Pixel Streaming in your browser.",
         )
-        
-        # Header and Control Panel Card
-        ctrl_card = ttk.Frame(self.tab_ue_monitor, style="Card.TFrame", padding=12)
+
+        ctrl_card = self.create_studio_card(self.tab_ue_monitor, pad_x=14, pad_y=10)
         ctrl_card.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         ctrl_card.columnconfigure(1, weight=1)
-        
-        ttk.Label(ctrl_card, text="🖥 UNREAL ENGINE RETURN FEED CONFIGURATION", style="Header.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 10))
-        
-        ttk.Label(ctrl_card, text="Stream URL:").grid(row=1, column=0, sticky="w", pady=4)
+
+        ttk.Label(ctrl_card, text="Stream Endpoint URL").grid(row=0, column=0, sticky="w", pady=2)
         url_entry = ttk.Entry(ctrl_card, textvariable=self.ue_monitor_url_var)
-        url_entry.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+        url_entry.grid(row=0, column=1, sticky="ew", padx=10, pady=2)
         HoverTooltip(url_entry, "Return Video Stream Endpoint", "Enter an rtsp://, srt://, or http:// stream URL from Unreal Engine or OBS.")
-        
-        # Action Buttons
-        btn_frame = ttk.Frame(ctrl_card)
-        btn_frame.grid(row=1, column=2, sticky="e", pady=4)
-        
-        self.start_ue_dec_btn = ttk.Button(btn_frame, text="▶ Start Local Decoder (SRT/RTSP)", style="Action.TButton", command=self.start_ue_monitor)
-        self.start_ue_dec_btn.pack(side="left", padx=4, ipadx=6, ipady=2)
-        
-        self.stop_ue_dec_btn = ttk.Button(btn_frame, text="■ Stop Decoder", command=self.stop_ue_monitor, state="disabled")
-        self.stop_ue_dec_btn.pack(side="left", padx=4, ipadx=6, ipady=2)
-        
-        self.launch_browser_btn = ttk.Button(btn_frame, text="🌐 Launch Browser (WebRTC)", command=self.launch_ue_browser)
-        self.launch_browser_btn.pack(side="left", padx=4, ipadx=6, ipady=2)
-        
-        # Video Display Canvas Card
-        disp_card = ttk.Frame(self.tab_ue_monitor, style="Card.TFrame", padding=12)
+
+        btn_frame = ttk.Frame(ctrl_card, style="Card.TFrame")
+        btn_frame.grid(row=0, column=2, sticky="e", pady=2)
+
+        self.start_ue_dec_btn = ttk.Button(btn_frame, text="▶ Start Decoder", style="Action.TButton", command=self.start_ue_monitor)
+        self.start_ue_dec_btn.pack(side="left", padx=4)
+
+        self.stop_ue_dec_btn = ttk.Button(btn_frame, text="■ Stop", style="Danger.TButton", command=self.stop_ue_monitor, state="disabled")
+        self.stop_ue_dec_btn.pack(side="left", padx=4)
+
+        self.launch_browser_btn = ttk.Button(btn_frame, text="Open WebRTC Browser", command=self.launch_ue_browser)
+        self.launch_browser_btn.pack(side="left", padx=(4, 0))
+
+        disp_card = self.create_studio_card(self.tab_ue_monitor, pad_x=12, pad_y=12)
         disp_card.grid(row=2, column=0, sticky="nsew")
         disp_card.columnconfigure(0, weight=1)
         disp_card.rowconfigure(0, weight=1)
-        
-        self.ue_canvas = tk.Canvas(disp_card, bg="black", bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR)
+
+        self.ue_canvas = tk.Canvas(disp_card, bg=BG_COLOR, bd=0, highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.ue_canvas.grid(row=0, column=0, sticky="nsew")
         self.ue_status_text_str = (
-            "UE5 RETURN MONITOR IDLE\n"
-            "Enter RTSP / SRT / HTTP Stream URL above and click 'Start Local Decoder'\n"
-            "or click 'Launch Browser (WebRTC)' for Unreal Pixel Streaming"
+            "Return Monitor Idle\n"
+            "Enter an RTSP, SRT, or HTTP Stream URL above and click 'Start Decoder'\n"
+            "or click 'Open WebRTC Browser' for Unreal Pixel Streaming"
         )
         self.ue_status_text_color = TEXT_MUTED
         self.ue_canvas.bind("<Configure>", self._on_ue_canvas_configure)
+
+        # =========================================================================
+        # WORKSPACE 4: LENS LAB (Phase 4 Step 4.3)
+        # =========================================================================
+        self.tab_calibrator.columnconfigure(0, weight=4, minsize=430)
+        self.tab_calibrator.columnconfigure(1, weight=6)
+        self.tab_calibrator.rowconfigure(1, weight=1)
+
+        self.create_workflow_banner(
+            self.tab_calibrator,
+            "Lens Lab — Optical Calibration Solver",
+            "Solve sub-pixel Brown-Conrady focal length, principal point, and radial/tangential distortion from checkerboard captures.",
+            "Optical Lens Calibration & Distortion Solver",
+            "Load 10–25 photos of a flat checkerboard pattern from varied angles, run the sub-pixel OpenCV solver, and export .ATLP, Metashape XML, or Postshot JSON profiles.",
+        )
+
+        calib_left = ttk.Frame(self.tab_calibrator)
+        calib_left.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
+        calib_left.columnconfigure(0, weight=1)
+        calib_left.rowconfigure(1, weight=1)
+
+        calib_io_card = self.create_studio_card(calib_left, "Checkerboard Setup", "Specify interior corner intersections and square size")
+        calib_io_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        calib_io_card.columnconfigure(1, weight=1)
+
+        ttk.Label(calib_io_card, text="Inner Corners (W × H)").grid(row=2, column=0, sticky="w", pady=4)
+        grid_dim_frame = ttk.Frame(calib_io_card, style="Card.TFrame")
+        grid_dim_frame.grid(row=2, column=1, columnspan=2, sticky="w", pady=4)
+
+        self.width_entry = ttk.Entry(grid_dim_frame, textvariable=self.calib_board_width, width=5, justify="center")
+        self.width_entry.pack(side="left", padx=(4, 2))
+        ttk.Label(grid_dim_frame, text="×").pack(side="left", padx=2)
+        self.height_entry = ttk.Entry(grid_dim_frame, textvariable=self.calib_board_height, width=5, justify="center")
+        self.height_entry.pack(side="left", padx=2)
+        ttk.Label(grid_dim_frame, text="corners", style="Muted.TLabel").pack(side="left", padx=(4, 0))
+        HoverTooltip(grid_dim_frame, "Checkerboard Inner Corners", "Count the interior intersections where black and white squares meet.")
+
+        ttk.Label(calib_io_card, text="Square Size (mm)").grid(row=3, column=0, sticky="w", pady=4)
+        sq_frame = ttk.Frame(calib_io_card, style="Card.TFrame")
+        sq_frame.grid(row=3, column=1, columnspan=2, sticky="w", pady=4)
+        self.sq_entry = ttk.Entry(sq_frame, textvariable=self.calib_square_size, width=8, justify="center")
+        self.sq_entry.pack(side="left", padx=(4, 4))
+        ttk.Label(sq_frame, text="mm", style="Muted.TLabel").pack(side="left")
+
+        ttk.Label(calib_io_card, text="Board Photos Folder").grid(row=4, column=0, sticky="w", pady=4)
+        calib_entry = ttk.Entry(calib_io_card, textvariable=self.calib_photo_dir)
+        calib_entry.grid(row=4, column=1, sticky="ew", padx=8, pady=4)
+        ttk.Button(calib_io_card, text="Browse", command=self.browse_calib_photos).grid(row=4, column=2, pady=4)
+
+        calib_list_card = self.create_studio_card(calib_left, "Captured Board Series", "Select any image to preview detected corner intersections")
+        calib_list_card.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+        calib_list_card.columnconfigure(0, weight=1)
+        calib_list_card.rowconfigure(2, weight=1)
+
+        self.calib_listbox = tk.Listbox(
+            calib_list_card,
+            bg=FIELD_BG,
+            fg=TEXT_PRIMARY,
+            font=("Consolas", 10),
+            selectbackground=ACCENT_PRIMARY,
+            selectforeground="#FFFFFF",
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            bd=0,
+        )
+        self.calib_listbox.grid(row=2, column=0, sticky="nsew")
+        self.calib_listbox.bind("<<ListboxSelect>>", self.on_calib_listbox_select)
+
+        scroll_calib = ttk.Scrollbar(calib_list_card, orient="vertical", command=self.calib_listbox.yview, style="Vertical.TScrollbar")
+        scroll_calib.grid(row=2, column=1, sticky="ns", padx=(2, 0))
+        self.calib_listbox.configure(yscrollcommand=scroll_calib.set)
+
+        calib_actions = self.create_studio_card(calib_left, "Solver & Profile Export")
+        calib_actions.grid(row=2, column=0, sticky="ew")
+        calib_actions.columnconfigure(0, weight=1)
+        calib_actions.columnconfigure(1, weight=1)
+        calib_actions.columnconfigure(2, weight=1)
+
+        self.solve_calib_btn = ttk.Button(calib_actions, text="Run Optical Solver", style="Action.TButton", command=self.solve_lens_calibration)
+        self.solve_calib_btn.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 6), ipady=3)
+
+        self.apply_calib_btn = ttk.Button(calib_actions, text="Apply to Active Project", command=self.apply_calibration_to_project)
+        self.apply_calib_btn.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(0, 8))
+
+        self.export_atlp_btn = ttk.Button(calib_actions, text=".ATLP Profile", command=self.export_atlp_profile)
+        self.export_atlp_btn.grid(row=3, column=0, sticky="ew", padx=(0, 3))
+
+        self.export_meta_xml_btn = ttk.Button(calib_actions, text="Metashape XML", command=self.export_metashape_calibration_xml)
+        self.export_meta_xml_btn.grid(row=3, column=1, sticky="ew", padx=3)
+
+        self.export_post_json_btn = ttk.Button(calib_actions, text="Postshot JSON", command=self.export_postshot_calibration_json)
+        self.export_post_json_btn.grid(row=3, column=2, sticky="ew", padx=(3, 0))
+
+        # Right Panel: Checkerboard Preview + Solver Console
+        calib_right = ttk.Frame(self.tab_calibrator)
+        calib_right.grid(row=1, column=1, sticky="nsew")
+        calib_right.columnconfigure(0, weight=1)
+        calib_right.rowconfigure(0, weight=6)
+        calib_right.rowconfigure(1, weight=4)
+
+        calib_preview_card = self.create_studio_card(calib_right, "Corner Detection Preview", pad_x=12, pad_y=10)
+        calib_preview_card.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+        calib_preview_card.columnconfigure(0, weight=1)
+        calib_preview_card.rowconfigure(1, weight=1)
+
+        self.calib_fig = plt.figure(facecolor=BG_COLOR)
+        self.calib_ax = self.calib_fig.add_subplot(111)
+        self.calib_ax.set_facecolor(BG_COLOR)
+        self.calib_ax.axis('off')
+
+        self.calib_canvas = FigureCanvasTkAgg(self.calib_fig, master=calib_preview_card)
+        self.calib_canvas.get_tk_widget().grid(row=1, column=0, sticky="nsew")
+
+        calib_log_card = self.create_studio_card(calib_right, "Optical Solver Console", pad_x=12, pad_y=10)
+        calib_log_card.grid(row=1, column=0, sticky="nsew")
+        calib_log_card.columnconfigure(0, weight=1)
+        calib_log_card.rowconfigure(1, weight=1)
+
+        self.calib_console = tk.Text(
+            calib_log_card,
+            bg=FIELD_BG,
+            fg=TEXT_PRIMARY,
+            font=("Consolas", 10),
+            relief="flat",
+            bd=0,
+            highlightthickness=1,
+            highlightcolor=BORDER_FOCUS,
+            highlightbackground=BORDER_COLOR,
+            padx=10,
+            pady=8,
+        )
+        self.calib_console.grid(row=1, column=0, sticky="nsew")
+
+        scroll_console = ttk.Scrollbar(calib_log_card, orient="vertical", command=self.calib_console.yview, style="Vertical.TScrollbar")
+        scroll_console.grid(row=1, column=1, sticky="ns", padx=(2, 0))
+        self.calib_console.configure(yscrollcommand=scroll_console.set)
+
+        # =========================================================================
+        # WORKSPACE 5: STUDIO GUIDE & DOCUMENTATION (Phase 4 Step 4.3)
+        # =========================================================================
+        self.tab_docs.columnconfigure(0, weight=1)
+        self.tab_docs.rowconfigure(1, weight=1)
+
+        self.create_workflow_banner(
+            self.tab_docs,
+            "Studio Guide & Reference Manual",
+            "Comprehensive documentation for hardware rig calibration, SMPTE ST 2059 timecode, Unreal Engine 5 Live Link, and 3DGS exports.",
+            "Abu Studio Operations Manual",
+            "Complete reference guide for Abu Studio hardware mounting, lever-arm calibration, Abu Clock PTP/CSPTP synchronization, and Unreal Engine 5 / Postshot / Metashape pipelines.",
+        )
+
+        docs_card = self.create_studio_card(self.tab_docs, pad_x=16, pad_y=14)
+        docs_card.grid(row=1, column=0, sticky="nsew")
+        docs_card.columnconfigure(0, weight=1)
+        docs_card.rowconfigure(0, weight=1)
+
+        self.docs_text = tk.Text(
+            docs_card,
+            bg=FIELD_BG,
+            fg=TEXT_MUTED,
+            font=("Segoe UI", 10),
+            relief="flat",
+            bd=0,
+            highlightthickness=1,
+            highlightcolor=BORDER_COLOR,
+            highlightbackground=BORDER_COLOR,
+            wrap="word",
+            padx=20,
+            pady=16,
+        )
+        self.docs_text.grid(row=0, column=0, sticky="nsew")
+
+        scroll_docs = ttk.Scrollbar(docs_card, orient="vertical", command=self.docs_text.yview, style="Vertical.TScrollbar")
+        scroll_docs.grid(row=0, column=1, sticky="ns", padx=(2, 0))
+        self.docs_text.configure(yscrollcommand=scroll_docs.set)
+
+        self.docs_text.tag_config("h1", font=("Segoe UI Semibold", 14, "bold"), foreground=TEXT_PRIMARY, spacing1=12, spacing3=6)
+        self.docs_text.tag_config("h2", font=("Segoe UI Semibold", 11, "bold"), foreground=ACCENT_CYAN, spacing1=10, spacing3=4)
+        self.docs_text.tag_config("bold", font=("Segoe UI Semibold", 10, "bold"), foreground=TEXT_PRIMARY)
+        self.docs_text.tag_config("bullet", font=("Segoe UI Semibold", 10, "bold"), foreground=ACCENT_PRIMARY)
+        self.docs_text.tag_config("code", font=("Consolas", 10, "bold"), foreground=ACCENT_AMBER, background=BG_COLOR)
+        self.docs_text.tag_config("warning", font=("Segoe UI Semibold", 10, "bold"), foreground=ACCENT_RED)
+        self.docs_text.tag_config("normal", font=("Segoe UI", 10), foreground=TEXT_MUTED, spacing2=4)
+
+        self.write_documentation_manual()
+        self.switch_workspace(2)
+
 
     def _on_ue_canvas_configure(self, event=None):
         if self.ue_monitor_thread and getattr(self.ue_monitor_thread, "running", False):
@@ -1965,7 +2546,7 @@ class CamTrackDesktopApp:
                 h // 2,
                 text=self.ue_status_text_str,
                 fill=self.ue_status_text_color,
-                font=("Segoe UI", 11, "bold"),
+                font=("Segoe UI", 11),
                 justify="center",
             )
         except Exception:
@@ -1981,7 +2562,7 @@ class CamTrackDesktopApp:
             return
             
         logger.info(f"UE Monitor: Starting local decoder thread for {url}")
-        self.ue_status_text_str = f"CONNECTING TO STREAM ({url})..."
+        self.ue_status_text_str = f"Connecting to video stream ({url})..."
         self.ue_status_text_color = ACCENT_CYAN
         self._on_ue_canvas_configure()
         
@@ -1996,9 +2577,9 @@ class CamTrackDesktopApp:
             self.ue_monitor_thread = None
             
         self.ue_status_text_str = (
-            "UE5 RETURN MONITOR IDLE\n"
-            "Enter RTSP / SRT / HTTP Stream URL above and click 'Start Local Decoder'\n"
-            "or click 'Launch Browser (WebRTC)' for Unreal Pixel Streaming"
+            "UE5 Return Monitor Idle\n"
+            "Enter an RTSP / SRT / HTTP stream URL above and click 'Start Local Decoder'\n"
+            "or click 'Open WebRTC in Browser' for Unreal Pixel Streaming."
         )
         self.ue_status_text_color = TEXT_MUTED
         self._on_ue_canvas_configure()
@@ -2024,7 +2605,6 @@ class CamTrackDesktopApp:
             
         def add_h1(text):
             self.docs_text.insert(tk.END, "\n" + text + "\n", "h1")
-            self.docs_text.insert(tk.END, "="*len(text) + "\n", "h1")
             
         def add_h2(text):
             self.docs_text.insert(tk.END, "\n" + text + "\n", "h2")
@@ -2033,37 +2613,33 @@ class CamTrackDesktopApp:
             self.docs_text.insert(tk.END, f"  {bullet_char}  ", "bullet")
             self.docs_text.insert(tk.END, label, "bold")
             self.docs_text.insert(tk.END, desc + "\n", "normal")
-            
-        def add_code(text):
-            self.docs_text.insert(tk.END, "  " + text + "\n", "code")
 
-        add_h1("ABU TRACK & SCAN — STUDIO OPERATIONS MANUAL")
-        add_p("Welcome to the Abu Track & Scan Desktop Workstation manual. This suite unifies sub-microsecond Abu Clock SMPTE ST 2059-2 timing, iOS 6DoF VIO + LiDAR depth scanning, DSLR/Mirrorless geodetic EXIF synchronization, 3D Gaussian Splatting (Postshot / COLMAP) & Metashape exports, and Unreal Engine 5 Live Link virtual production.")
+        add_h1("Abu Studio — Operations & Reference Guide")
+        add_p("Welcome to the Abu Studio Desktop Workstation guide. This suite unifies sub-microsecond Abu Clock SMPTE ST 2059-2 timing, iOS 6DoF VIO + LiDAR depth scanning, DSLR/Mirrorless geodetic EXIF synchronization, 3D Gaussian Splatting (Postshot / COLMAP) & Metashape exports, and Unreal Engine 5 Live Link virtual production.")
         
-        add_h2("1. WORKSPACE TAB ARCHITECTURE (6-TAB STUDIO PIPELINE)")
-        add_bullet("📸", "Tab 1 — Scan & Photo Sync: ", "Interpolates 60Hz–240Hz iOS VIO + GPS + Abu Clock TAI telemetry into DSLR/Mirrorless or iOS photos, applies 6-axis lever-arm/boresight offsets, and exports georeferenced_metashape.csv, session_manifest.abuscan.json, and colmap_images.txt.")
-        add_bullet("🕸", "Tab 2 — 3D Spatial Map: ", "Interactive 3D trajectory frustum & LiDAR point cloud inspector. Single-click any photo to highlight its 3D camera pyramid; double-click (or click 'Inspect Photo & EXIF') to view its thumbnail and telemetry. Includes Statistical Outlier Removal (SOR) and 1-click exports for Postshot (3DGS), Metashape (Z-Up), and RealityScan.")
-        add_bullet("📡", "Tab 3 — Live Track & Stream: ", "Real-time UDP telemetry receiver (Port 8080), RTP H.264/HEVC camera video decoder (Port 5004), DirectX Spout GPU texture sender, jitter buffer, and multi-protocol UE5 forwarder (Port 8081: Live Link JSON, 41B SMPTE FreeD-TC 0xD2, 29B FreeD, OpenTrackIO).")
-        add_bullet("🖥", "Tab 4 — UE & AR Monitor: ", "Low-latency RTSP / SRT / HTTP video return decoder and WebRTC Pixel Streaming launcher for monitoring Unreal Engine 5 composites.")
-        add_bullet("🎯", "Tab 5 — Lens Lab: ", "Sub-pixel OpenCV Brown-Conrady checkerboard optical solver for focal length (fx, fy), principal point (cx, cy), and radial/tangential distortion (.ATLP, Metashape XML, Postshot JSON).")
-        add_bullet("📘", "Tab 6 — Interactive Guide: ", "Complete reference manual, port topology, and single-source-of-truth calibration rules.")
+        add_h2("1. Studio Workspace Architecture")
+        add_bullet("•", "Live Stage: ", "Real-time UDP telemetry receiver (Port 8080), RTP H.264/HEVC camera video decoder (Port 5004), DirectX Spout GPU texture sender, jitter buffer, and multi-protocol UE5 forwarder (Port 8081: Live Link JSON, 41B SMPTE FreeD-TC 0xD2, 29B FreeD, OpenTrackIO).")
+        add_bullet("•", "Video Monitor: ", "Low-latency RTSP / SRT / HTTP video return decoder and WebRTC Pixel Streaming launcher for monitoring Unreal Engine 5 composites.")
+        add_bullet("•", "Photo Sync: ", "Interpolates 60Hz–240Hz iOS VIO + GPS + Abu Clock TAI telemetry into DSLR/Mirrorless or iOS photos, applies 6-axis lever-arm/boresight offsets, and exports georeferenced_metashape.csv, session_manifest.abuscan.json, and colmap_images.txt.")
+        add_bullet("•", "Spatial Map: ", "Interactive 3D trajectory frustum & LiDAR point cloud inspector. Single-click any photo to highlight its 3D camera pyramid; double-click (or click 'Inspect Photo & EXIF') to view its thumbnail and telemetry. Includes Statistical Outlier Removal (SOR) and 1-click exports for Postshot (3DGS), Metashape (Z-Up), and RealityScan.")
+        add_bullet("•", "Lens Lab: ", "Sub-pixel OpenCV Brown-Conrady checkerboard optical solver for focal length (fx, fy), principal point (cx, cy), and radial/tangential distortion (.ATLP, Metashape XML, Postshot JSON).")
         
-        add_h2("2. UNIFIED NETWORK PORT TOPOLOGY")
+        add_h2("2. Network Port Topology")
         add_bullet("•", "UDP 8080 (iOS → PC Telemetry): ", "Primary 60Hz–120Hz 6DoF pose + LiDAR + Abu Clock telemetry listener on this workstation (or direct to UE5).")
         add_bullet("•", "UDP 5004 (iOS → PC RTP Video): ", "Low-latency H.264 / HEVC camera video stream from iOS to the Desktop 3D Cockpit viewport and Spout GPU sender.")
         add_bullet("•", "UDP 8081 (PC → UE5 Forwarder): ", "Re-broadcasts buffered, coordinate-aligned poses from this workstation to Unreal Engine 5 Live Link on the same PC (127.0.0.1:8081) or a render node.")
         add_bullet("•", "UDP 50320 & 53530 (Abu Clock PTP & Discovery): ", "Sub-microsecond SNTP/CSPTP clock synchronization and automatic subnet node discovery.")
-        add_bullet("🛡", "1-Click Firewall Setup: ", "In '📡 Live Track & Stream' → Card 01, click '🛡 Fix Firewall (8080/5004)' to automatically whitelist all required UDP ports in Windows Defender Firewall.")
+        add_bullet("•", "1-Click Firewall Setup: ", "In the Left Navigation Rail or Receiver Settings card, click 'Fix Firewall' to automatically whitelist all required UDP ports in Windows Defender Firewall.")
         
-        add_h2("3. SINGLE SOURCE OF TRUTH (AVOIDING DOUBLE-COMPENSATION)")
+        add_h2("3. Single Source of Truth (Avoiding Double-Compensation)")
         add_p("To prevent accidentally applying Lever-Arm, Stage Origin, or -90° Pitch offsets twice across iOS, Windows, and Unreal Engine:")
-        add_bullet("⚠", "Lever-Arm & Stage Origin Guard: ", "Enter your physical hot-shoe Lever-Arm (dx, dy, dz cm) EITHER in the iOS app OR in the Windows Workstation — never both. If iOS sends telemetry with Lever-Arm or Origin already baked in, Card 03 ('Stage Origin & Lever-Arm') automatically displays an amber warning and prevents double-offsetting.")
-        add_bullet("⚠", "-90° Pitch Horizon Offset: ", "When forwarding from Windows to UE5 (Card 02), 'Apply -90° UE Pitch Horizon Offset' is enabled by default. Leave 'Apply -90° Pitch Offset' UNCHECKED inside the UE5 Live Link Source settings when receiving from the Windows Forwarder.")
+        add_bullet("•", "Lever-Arm & Stage Origin Guard: ", "Enter your physical hot-shoe Lever-Arm (dx, dy, dz cm) EITHER in the iOS app OR in the Windows Workstation — never both. If iOS sends telemetry with Lever-Arm or Origin already baked in, the 'Stage Origin & Lever-Arm' card automatically displays an amber warning and prevents double-offsetting.")
+        add_bullet("•", "-90° Pitch Horizon Offset: ", "When forwarding from Windows to UE5, 'Apply -90° UE Pitch Horizon Offset' is enabled by default. Leave 'Apply -90° Pitch Offset' unchecked inside the UE5 Live Link Source settings when receiving from the Windows Forwarder.")
         
-        add_h2("4. ABU CLOCK ST 2059-2 & MULTI-RIG BARRIER CAPTURE")
-        add_bullet("⏱", "Top Master Timecode Bar: ", "Always visible across all tabs. Displays live PTP/CSPTP lock state, SMPTE timecode, sub-frame phase (φ), and discovered ecosystem nodes.")
-        add_bullet("⚡", "Trigger Multi-Rig (+50ms): ", "Broadcasts a deterministic SCHEDULE_CAPTURE_AT barrier packet 50ms into the future so all connected iPhones and rigs fire their shutters at the exact same microsecond.")
-        add_bullet("🎬", "Digital Clapper Slate: ", "Opens the high-contrast Frame-00 optical flash & 1kHz audio slate for calibrating non-genlocked DSLR/Mirrorless cameras via '⚡ Auto-Solve Frame-00 Slate Flash Offset' in Tab 1.")
+        add_h2("4. Abu Clock ST 2059-2 & Multi-Rig Barrier Capture")
+        add_bullet("•", "Top Studio Header Bar: ", "Always visible across all workspaces. Displays live PTP/CSPTP lock state, SMPTE timecode, sub-frame phase (φ), and a 1-click copyable LAN IP pill.")
+        add_bullet("•", "Trigger Capture (+50ms): ", "Broadcasts a deterministic SCHEDULE_CAPTURE_AT barrier packet 50ms into the future so all connected iPhones and rigs fire their shutters at the exact same microsecond.")
+        add_bullet("•", "Clapper Slate: ", "Opens the high-contrast Frame-00 optical flash & 1kHz audio slate for calibrating non-genlocked DSLR/Mirrorless cameras via 'Auto-Solve Frame-00 Slate Flash Offset' in Photo Sync.")
         
         self.docs_text.configure(state="disabled")
         
@@ -2081,12 +2657,12 @@ class CamTrackDesktopApp:
         self.ax.yaxis.pane.set_edgecolor(BORDER_COLOR)
         self.ax.zaxis.pane.set_edgecolor(BORDER_COLOR)
         
-        self.ax.set_xlabel("X (East)", color=TEXT_MUTED, fontname="Consolas", fontsize=9)
-        self.ax.set_ylabel("Y (North)", color=TEXT_MUTED, fontname="Consolas", fontsize=9)
-        self.ax.set_zlabel("Z (Up)", color=TEXT_MUTED, fontname="Consolas", fontsize=9)
+        self.ax.set_xlabel("X (East)", color=TEXT_MUTED, fontname="Segoe UI", fontsize=9)
+        self.ax.set_ylabel("Y (North)", color=TEXT_MUTED, fontname="Segoe UI", fontsize=9)
+        self.ax.set_zlabel("Z (Up)", color=TEXT_MUTED, fontname="Segoe UI", fontsize=9)
         
         self.ax.tick_params(colors=TEXT_MUTED, labelsize=9)
-        self.ax.set_title("SPATIAL MAP RECONSTRUCTION CONSOLE", color=ACCENT_CYAN, fontsize=10, fontweight="bold", fontname="Consolas", pad=12)
+        self.ax.set_title("Spatial Trajectory & LiDAR Point Cloud", color=TEXT_PRIMARY, fontsize=10, fontweight="bold", fontname="Segoe UI", pad=10)
         
     def format_epoch(self, epoch):
         from datetime import datetime
@@ -2123,14 +2699,14 @@ class CamTrackDesktopApp:
         self._updating_offset = False
         
     def add_offset_input(self, parent, label, variable, col, row=1, tooltip_title: str = "", tooltip_body: str = ""):
-        frame = ttk.Frame(parent)
-        frame.grid(row=row, column=col, sticky="ew", padx=8, pady=5)
+        frame = ttk.Frame(parent, style="Card.TFrame")
+        frame.grid(row=row, column=col, sticky="ew", padx=(0 if col == 0 else 4, 4 if col < 2 else 0), pady=3)
         frame.columnconfigure(0, weight=1)
         
         lbl = ttk.Label(frame, text=label, style="Muted.TLabel")
-        lbl.grid(row=0, column=0, pady=(0, 4))
+        lbl.grid(row=0, column=0, sticky="w", pady=(0, 3))
         entry = ttk.Entry(frame, textvariable=variable, font=("Consolas", 10), justify="center", width=8)
-        entry.grid(row=1, column=0, pady=2, ipady=3)
+        entry.grid(row=1, column=0, sticky="ew", pady=1, ipady=2)
         if tooltip_title and tooltip_body:
             HoverTooltip(lbl, tooltip_title, tooltip_body)
             HoverTooltip(entry, tooltip_title, tooltip_body)
@@ -4353,10 +4929,10 @@ class CamTrackDesktopApp:
             self.abu_clock_bcd_var.set(f"φ={snap.phase:.2f}")
             self.abu_clock_tai_var.set(f"TAI: {snap.tai_ns} ns")
             self.abu_clock_lock_var.set(snap.lock_state)
-            self.abu_clock_nodes_var.set(f"NODES: {len(self.abu_clock.discovered_nodes)}")
+            self.abu_clock_nodes_var.set(f"{len(self.abu_clock.discovered_nodes)} Nodes")
             if hasattr(self, "clock_phase_canvas") and hasattr(self, "clock_phase_rect"):
-                bar_w = int(max(0.0, min(1.0, snap.phase)) * 90.0)
-                self.clock_phase_canvas.coords(self.clock_phase_rect, 0, 0, bar_w, 6)
+                bar_w = int(max(0.0, min(1.0, snap.phase)) * 72.0)
+                self.clock_phase_canvas.coords(self.clock_phase_rect, 0, 0, bar_w, 4)
             self.root.after(33, self.update_pc_local_time)
         except Exception:
             try:
@@ -4422,15 +4998,17 @@ class CamTrackDesktopApp:
         self.receiver_sec_start = None
         self.receiver_sec_packet_count = 0
         
-        self.receiver_status_var.set("LISTENING")
-        self.rx_status_lbl.configure(foreground=ACCENT_CYAN)
+        self.receiver_status_var.set("Listening")
+        self.rx_status_lbl.configure(foreground=ACCENT_GREEN)
+        if hasattr(self, "rail_rx_status_lbl"):
+            self.rail_rx_status_lbl.configure(fg=ACCENT_GREEN)
         
         self.start_rx_btn.state(["disabled"])
         self.stop_rx_btn.state(["!disabled"])
         
-        self.rx_log(f"RECEIVER STATE // Listening on port {port} (0.0.0.0:{port}). READY FOR STREAM!")
+        self.rx_log(f"Receiver listening on UDP port {port} (0.0.0.0:{port}) — ready for iOS stream.")
         if self.forward_enabled.get():
-            self.rx_log(f"FORWARD STATE // Active Forwarder -> {self.forward_host.get()}:{self.forward_port.get()} [{self.forward_protocol.get()}]")
+            self.rx_log(f"Active UE5 Forwarder -> {self.forward_host.get()}:{self.forward_port.get()} [{self.forward_protocol.get()}]")
         
         self.playout_buffer = []
         self.pose_history_ring = []
@@ -4451,7 +5029,7 @@ class CamTrackDesktopApp:
             self.video_decoder_running = True
             self.video_decoder_thread = threading.Thread(target=self.run_video_decoder_loop, daemon=True)
             self.video_decoder_thread.start()
-            self.rx_log(f"VIDEO DECODER // Listener thread spawned on port {self.video_stream_port.get()}")
+            self.rx_log(f"Video decoder listener active on UDP port {self.video_stream_port.get()}")
 
     def stop_receiver(self):
         if not self.receiver_running:
@@ -4479,15 +5057,17 @@ class CamTrackDesktopApp:
             
         if self.video_decoder_running:
             self.video_decoder_running = False
-            self.rx_log("VIDEO DECODER // Decoder thread shutdown requested.")
+            self.rx_log("Video decoder thread stopped.")
             
-        self.receiver_status_var.set("OFFLINE")
+        self.receiver_status_var.set("Offline")
         self.rx_status_lbl.configure(foreground=TEXT_MUTED)
+        if hasattr(self, "rail_rx_status_lbl"):
+            self.rail_rx_status_lbl.configure(fg=TEXT_MUTED)
         
         self.start_rx_btn.state(["!disabled"])
         self.stop_rx_btn.state(["disabled"])
         
-        self.rx_log("RECEIVER STATE // Stopped listening. Port unbound.")
+        self.rx_log("Receiver stopped listening — UDP port unbound.")
 
     def run_receiver_socket(self):
         import time
@@ -5000,6 +5580,8 @@ class CamTrackDesktopApp:
 
     def rx_log(self, msg):
         try:
+            if hasattr(self, "latest_rx_log_summary_var"):
+                self.latest_rx_log_summary_var.set(msg)
             if not hasattr(self, 'rx_console') or not self.rx_console.winfo_exists():
                 return
             self.rx_console.configure(state="normal")
@@ -5534,21 +6116,22 @@ class CamTrackDesktopApp:
             except Exception as e:
                 logger.error(f"3D Canvas: Failed to render live video background: {str(e)}")
         
-        # Draw tech grid
-        for cx in range(20, w, 40):
-            self.live_canvas.create_line(cx, 0, cx, h, fill="#041224", width=0.5)
-        for cy in range(20, h, 40):
-            self.live_canvas.create_line(0, cy, w, cy, fill="#041224", width=0.5)
+        # Draw studio hairline grid
+        for cx in range(24, w, 48):
+            self.live_canvas.create_line(cx, 0, cx, h, fill="#131822", width=1)
+        for cy in range(24, h, 48):
+            self.live_canvas.create_line(0, cy, w, cy, fill="#131822", width=1)
             
-        # Draw Bounding crosshairs
-        self.live_canvas.create_line(10, 10, 30, 10, fill="#00f0ff", width=1)
-        self.live_canvas.create_line(10, 10, 10, 30, fill="#00f0ff", width=1)
-        self.live_canvas.create_line(w-10, 10, w-30, 10, fill="#00f0ff", width=1)
-        self.live_canvas.create_line(w-10, 10, w-10, 30, fill="#00f0ff", width=1)
-        self.live_canvas.create_line(10, h-10, 30, h-10, fill="#00f0ff", width=1)
-        self.live_canvas.create_line(10, h-10, 10, h-30, fill="#00f0ff", width=1)
-        self.live_canvas.create_line(w-10, h-10, w-30, h-10, fill="#00f0ff", width=1)
-        self.live_canvas.create_line(w-10, h-10, w-10, h-30, fill="#00f0ff", width=1)
+        # Draw subtle corner reticles
+        ret_col = "#2E3A52"
+        self.live_canvas.create_line(12, 12, 28, 12, fill=ret_col, width=1)
+        self.live_canvas.create_line(12, 12, 12, 28, fill=ret_col, width=1)
+        self.live_canvas.create_line(w-12, 12, w-28, 12, fill=ret_col, width=1)
+        self.live_canvas.create_line(w-12, 12, w-12, 28, fill=ret_col, width=1)
+        self.live_canvas.create_line(12, h-12, 28, h-12, fill=ret_col, width=1)
+        self.live_canvas.create_line(12, h-12, 12, h-28, fill=ret_col, width=1)
+        self.live_canvas.create_line(w-12, h-12, w-28, h-12, fill=ret_col, width=1)
+        self.live_canvas.create_line(w-12, h-12, w-12, h-28, fill=ret_col, width=1)
         
         # Draw Rotated and Shifted Origin Gizmo
         tx_o = self.ws_origin_x.get()
@@ -5572,20 +6155,20 @@ class CamTrackDesktopApp:
             # X - East (Red)
             x_proj = self.project_live_3d(tx_o + vx_x, ty_o + vx_y, tz_o + vx_z, w, h)
             if x_proj:
-                self.live_canvas.create_line(ox, oy, x_proj[0], x_proj[1], fill="#ff3366", width=2.5)
-                self.live_canvas.create_text(x_proj[0]+8, x_proj[1], text="X", fill="#ff3366", font=("Consolas", 9, "bold"))
+                self.live_canvas.create_line(ox, oy, x_proj[0], x_proj[1], fill="#EF4444", width=2.5)
+                self.live_canvas.create_text(x_proj[0]+8, x_proj[1], text="X", fill="#EF4444", font=("Consolas", 9, "bold"))
                 
             # Y - Up (Green)
             y_proj = self.project_live_3d(tx_o + vy_x, ty_o + vy_y, tz_o + vy_z, w, h)
             if y_proj:
-                self.live_canvas.create_line(ox, oy, y_proj[0], y_proj[1], fill="#00ff66", width=2.5)
-                self.live_canvas.create_text(y_proj[0], y_proj[1]-8, text="Y", fill="#00ff66", font=("Consolas", 9, "bold"))
+                self.live_canvas.create_line(ox, oy, y_proj[0], y_proj[1], fill="#10B981", width=2.5)
+                self.live_canvas.create_text(y_proj[0], y_proj[1]-8, text="Y", fill="#10B981", font=("Consolas", 9, "bold"))
                 
             # Z - North (Blue)
             z_proj = self.project_live_3d(tx_o + vz_x, ty_o + vz_y, tz_o + vz_z, w, h)
             if z_proj:
-                self.live_canvas.create_line(ox, oy, z_proj[0], z_proj[1], fill="#3366ff", width=2.5)
-                self.live_canvas.create_text(z_proj[0], z_proj[1]+8, text="Z", fill="#3366ff", font=("Consolas", 9, "bold"))
+                self.live_canvas.create_line(ox, oy, z_proj[0], z_proj[1], fill="#3B82F6", width=2.5)
+                self.live_canvas.create_text(z_proj[0], z_proj[1]+8, text="Z", fill="#3B82F6", font=("Consolas", 9, "bold"))
                 
         # Thread-safe copy of points and trajectory lists
         with self.data_lock:
@@ -5614,7 +6197,7 @@ class CamTrackDesktopApp:
                 if proj:
                     sx, sy = proj
                     if 0 <= sx <= w and 0 <= sy <= h:
-                        self.live_canvas.create_oval(sx-1, sy-1, sx+1, sy+1, fill="#00ff66", outline="")
+                        self.live_canvas.create_oval(sx-1, sy-1, sx+1, sy+1, fill="#10B981", outline="")
                         
         # Draw camera trajectory path
         if self.live_show_path.get() and len(traj_copy) > 1:
@@ -5624,7 +6207,7 @@ class CamTrackDesktopApp:
                 if proj:
                     line_pts.extend(proj)
             if len(line_pts) >= 4:
-                self.live_canvas.create_line(line_pts, fill="#ffcc00", width=1.5, smooth=True)
+                self.live_canvas.create_line(line_pts, fill="#F59E0B", width=1.5, smooth=True)
                 
         # Draw current camera indicator
         if traj_copy:
@@ -5632,12 +6215,12 @@ class CamTrackDesktopApp:
             proj = self.project_live_3d(last_pt[0], last_pt[1], last_pt[2], w, h)
             if proj:
                 sx, sy = proj
-                self.live_canvas.create_oval(sx-5, sy-5, sx+5, sy+5, fill="#ff3366", outline="white", width=1.5)
+                self.live_canvas.create_oval(sx-5, sy-5, sx+5, sy+5, fill="#EF4444", outline="white", width=1.5)
                 tc_hud = getattr(self, "latest_stream_smpte", "") or self.abu_clock.now().smpte_string
                 self.live_canvas.create_text(
-                    15, h-15, 
-                    text=f"CAM: ({last_pt[0]:+.2f}, {last_pt[1]:+.2f}, {last_pt[2]:+.2f}) | TC: {tc_hud} | PTS: {len(pts_copy)}", 
-                    anchor="w", fill="#00f0ff", font=("Consolas", 9, "bold")
+                    16, h-16, 
+                    text=f"Camera: ({last_pt[0]:+.2f}, {last_pt[1]:+.2f}, {last_pt[2]:+.2f}) m   ·   TC: {tc_hud}   ·   Points: {len(pts_copy)}", 
+                    anchor="w", fill=ACCENT_CYAN, font=("Consolas", 9, "bold")
                 )
 
     def forward_packet_to_unreal(self, parsed):
@@ -5847,7 +6430,7 @@ if __name__ == "__main__":
         root.update_idletasks()
         logger.info("Frozen EXE --self-test completed successfully.")
         root.destroy()
-        sys.exit(0)
+        os._exit(0)
     kill_zombie_processes()
     root = tk.Tk()
     app = CamTrackDesktopApp(root)
